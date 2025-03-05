@@ -2,6 +2,7 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>منشور إنستجرام - نسخ النص</title>
   <style>
     /* إعدادات الصفحة العامة */
@@ -13,12 +14,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
     }
-
+    
     /* تصميم بطاقة الـGlassmorphism */
     .container {
       background: rgba(255, 255, 255, 0.15);
+      /* إذا لم يكن المتصفح يدعم backdrop-filter، ستظهر الخلفية شبه شفافة فقط */
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -33,14 +35,14 @@
       color: #fff;
       text-align: right;
     }
-
+    
     /* رأس البطاقة (أيقونة وعنوان) */
     .header {
       display: flex;
       align-items: center;
       margin-bottom: 20px;
     }
-
+    
     .icon {
       background-color: rgba(255, 255, 255, 0.2);
       width: 50px;
@@ -53,20 +55,20 @@
       margin-right: 16px;
       flex-shrink: 0;
     }
-
+    
     .icon img {
       width: 28px;
       height: 28px;
       object-fit: contain;
     }
-
+    
     /* النص الذي سيتم نسخه */
     .text {
       font-size: 16px;
       line-height: 1.6;
       white-space: pre-wrap;
     }
-
+    
     /* زر النسخ */
     .copy-btn {
       background-color: rgba(255, 255, 255, 0.2);
@@ -80,11 +82,11 @@
       align-self: flex-end;
       margin-top: 20px;
     }
-
+    
     .copy-btn:hover {
       background-color: rgba(255, 255, 255, 0.3);
     }
-
+    
     /* رسالة تأكيد النسخ */
     .copied {
       position: absolute;
@@ -98,7 +100,7 @@
       transition: opacity 0.3s ease;
       pointer-events: none;
     }
-
+    
     .copied.show {
       opacity: 1;
     }
@@ -160,7 +162,7 @@
     <!-- رسالة تأكيد النسخ -->
     <div class="copied" id="copiedMsg">تم النسخ!</div>
   </div>
-
+  
   <script>
     function copyText() {
       const textToCopy = document.getElementById('textToCopy').textContent;
