@@ -2,13 +2,13 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>Glassmorphism Copy to Clipboard</title>
+  <title>منشور إنستجرام - نسخ النص</title>
   <style>
+    /* إعدادات الصفحة العامة */
     body {
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      /* Pink/Purple gradient background */
       background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
       display: flex;
       align-items: center;
@@ -16,30 +16,25 @@
       height: 100vh;
     }
 
-    /* Glass Card Container */
+    /* تصميم بطاقة الـGlassmorphism */
     .container {
-      /* Semi-transparent "frosted glass" background */
       background: rgba(255, 255, 255, 0.15);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-
-      /* Border to enhance the glass effect */
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
-
-      /* Layout and spacing */
       padding: 20px 30px;
       display: flex;
       flex-direction: column;
       position: relative;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       max-width: 800px;
       width: 90%;
       color: #fff;
-      text-align: right; /* لضمان اتجاه النص بالعربية */
+      text-align: right;
     }
 
-    /* Header area with icon + title (optional) */
+    /* رأس البطاقة (أيقونة وعنوان) */
     .header {
       display: flex;
       align-items: center;
@@ -65,14 +60,14 @@
       object-fit: contain;
     }
 
-    /* The text we want to copy */
+    /* النص الذي سيتم نسخه */
     .text {
       font-size: 16px;
       line-height: 1.6;
-      white-space: pre-wrap; /* يحافظ على تنسيق الأسطر عند النسخ */
+      white-space: pre-wrap;
     }
 
-    /* Copy button */
+    /* زر النسخ */
     .copy-btn {
       background-color: rgba(255, 255, 255, 0.2);
       border: none;
@@ -82,7 +77,7 @@
       cursor: pointer;
       transition: background-color 0.3s ease;
       font-size: 14px;
-      align-self: flex-end; /* يجعل الزر في نهاية الحاوية (يمين أو يسار) */
+      align-self: flex-end;
       margin-top: 20px;
     }
 
@@ -90,7 +85,7 @@
       background-color: rgba(255, 255, 255, 0.3);
     }
 
-    /* "Copied" message */
+    /* رسالة تأكيد النسخ */
     .copied {
       position: absolute;
       bottom: -30px;
@@ -110,17 +105,16 @@
   </style>
 </head>
 <body>
-
   <div class="container">
-    <!-- جزء اختياري لوضع أيقونة أو عنوان أعلى البطاقة -->
+    <!-- رأس البطاقة -->
     <div class="header">
       <div class="icon">
-        <!-- استبدل المسار "your-icon.png" بالمسار الفعلي لأيقونتك -->
+        <!-- استبدل "your-icon.png" بمسار الأيقونة الفعلي -->
         <img src="your-icon.png" alt="Icon" />
       </div>
       <h2 style="margin: 0;">منشور إنستجرام</h2>
     </div>
-
+    
     <!-- النص الذي سيتم نسخه -->
     <div class="text" id="textToCopy">
 أنت خبير في إنشاء محتوى إنستجرام عالي التفاعل، ومهمتك هي توليد منشور مميز لحساب متخصص في {اكتب هنا التخصص}. لا تعتمد على تخمين المواضيع، بل ابحث أولًا عن أكثر المواضيع انتشارًا في هذا المجال على الإنترنت ووسائل التواصل الاجتماعي في وقت إنشاء المنشور، ثم استخدم هذه البيانات لإنشاء محتوى يجذب الجمهور ويزيد التفاعل.
@@ -159,11 +153,11 @@
 استخدم الذكاء الاصطناعي لاختيار أكثر الهاشتاغات شيوعًا في {التخصص} خلال آخر {حدد المدة}.
 اجمع بين هاشتاغات عامة وهاشتاغات متخصصة لضمان وصول أوسع.
     </div>
-
+    
     <!-- زر النسخ -->
     <button class="copy-btn" onclick="copyText()">نسخ</button>
-
-    <!-- رسالة تم النسخ -->
+    
+    <!-- رسالة تأكيد النسخ -->
     <div class="copied" id="copiedMsg">تم النسخ!</div>
   </div>
 
@@ -183,6 +177,5 @@
         });
     }
   </script>
-
 </body>
 </html>
