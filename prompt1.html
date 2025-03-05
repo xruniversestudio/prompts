@@ -2,30 +2,40 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>Copy to Clipboard Example</title>
+  <title>Glassmorphism Copy to Clipboard</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #111; /* Just for contrast with the container */
+      /* Pink/Purple gradient background */
+      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100vh;
     }
 
-    /* Container with gradient background */
+    /* Glass Card Container */
     .container {
-      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
-      padding: 20px 30px;
+      /* Semi-transparent "frosted glass" background */
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+
+      /* Border to enhance the glass effect */
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
-      color: #fff;
+
+      /* Layout and spacing */
+      padding: 20px 30px;
       display: flex;
       align-items: center;
       position: relative;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       max-width: 600px;
+      width: 90%;
+      color: #fff;
     }
 
     /* Icon area */
@@ -39,6 +49,7 @@
       justify-content: center;
       margin-left: 8px;
       margin-right: 16px;
+      flex-shrink: 0;
     }
 
     .icon img {
@@ -53,6 +64,7 @@
       font-size: 16px;
       line-height: 1.4;
       text-align: right; /* Arabic alignment */
+      margin: 0;
     }
 
     /* Copy button */
