@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>Copy to Clipboard Example</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #111; /* Just for contrast with the container */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    /* Container with gradient background */
+    .container {
+      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
+      padding: 20px 30px;
+      border-radius: 16px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      max-width: 600px;
+    }
+
+    /* Icon area */
+    .icon {
+      background-color: rgba(255, 255, 255, 0.2);
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+      margin-right: 16px;
+    }
+
+    .icon img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    /* The text we want to copy */
+    .text {
+      flex: 1;
+      font-size: 16px;
+      line-height: 1.4;
+      text-align: right; /* Arabic alignment */
+    }
+
+    /* Copy button */
+    .copy-btn {
+      background-color: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-left: 16px;
+      font-size: 14px;
+    }
+
+    .copy-btn:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* "Copied" message */
+    .copied {
+      position: absolute;
+      bottom: -30px;
+      right: 20px;
+      font-size: 14px;
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .copied.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="icon">
+      <!-- Replace with your actual icon path -->
+      <img src="your-icon.png" alt="Icon" />
+    </div>
+    <div class="text" id="textToCopy">
+      تخيل أنه بإمكانك إنشاء مشهد سينمائي متكامل باستخدام صورتين فقط.
+    </div>
+    <button class="copy-btn" onclick="copyText()">نسخ</button>
+    <div class="copied" id="copiedMsg">تم النسخ!</div>
+  </div>
+
+  <script>
+    function copyText() {
+      const textToCopy = document.getElementById('textToCopy').textContent;
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          const copiedMsg = document.getElementById('copiedMsg');
+          copiedMsg.classList.add('show');
+          setTimeout(() => {
+            copiedMsg.classList.remove('show');
+          }, 1500);
+        })
+        .catch(err => {
+          console.error('Error copying text: ', err);
+        });
+    }
+  </script>
+
+</body>
+</html>
