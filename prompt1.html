@@ -10,16 +10,14 @@
       padding: 20px 0;
       font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
       background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
-      display: flex;
-      flex-direction: column; /* تغيير إلى عمودي لتكديس العناصر */
-      align-items: center; /* تمركز أفقي */
-      justify-content: flex-start; /* البدء من الأعلى */
       min-height: 100vh;
+      position: relative; /* لتحديد موقع اللوجو */
     }
     
     .logo {
-      margin-top: 20px; /* مسافة من الأعلى */
-      margin-bottom: 20px; /* مسافة بين اللوجو والبطاقة */
+      position: absolute;
+      top: 20px;
+      right: 20px; /* الزاوية العلوية اليمنى */
     }
     
     .logo img {
@@ -45,14 +43,15 @@
       color: #fff;
       text-align: right;
       direction: rtl;
-      max-height: 70vh; /* تقليل الارتفاع لإفساح المجال للوجو */
-      overflow-y: auto;
+      margin: 80px auto 20px; /* هامش علوي لتجنب التداخل مع اللوجو */
+      max-height: 80vh; /* لضمان عدم التجاوز */
+      overflow-y: auto; /* السماح بالتمرير إذا لزم الأمر */
     }
     
     .header {
       display: flex;
       align-items: center;
-      justify-content: space-between; /* لتوزيع العنوان وزر النسخ */
+      justify-content: space-between; /* توزيع العنوان وزر النسخ */
       margin-bottom: 20px;
     }
     
@@ -79,7 +78,7 @@
     
     .copied {
       position: absolute;
-      top: 10px; /* تعديل الموقع ليظهر أعلى الزر */
+      top: 10px; /* يظهر أعلى الزر */
       right: 20px;
       font-size: 14px;
       background-color: rgba(255, 255, 255, 0.2);
@@ -98,6 +97,7 @@
       .container {
         padding: 15px 20px;
         max-width: 100%;
+        margin: 70px auto 20px; /* تقليل الهامش العلوي على الشاشات الصغيرة */
       }
       .logo img {
         width: 50px;
@@ -110,7 +110,7 @@
   </style>
 </head>
 <body>
-  <!-- اللوجو في أعلى الصفحة -->
+  <!-- اللوجو في الزاوية العلوية اليمنى -->
   <div class="logo">
     <img src="https://github.com/xruniversestudio/prompts/blob/main/WhatsApp%20Image%202025-01-18%20at%2022.28.01.png?raw=true" alt="Logo" loading="lazy" />
   </div>
