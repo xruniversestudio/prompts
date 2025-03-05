@@ -7,13 +7,25 @@
   <style>
     body {
       margin: 0;
-      padding: 20px 0; /* إضافة مسافة علوية وسفلية للصفحة */
+      padding: 20px 0;
       font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
       background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
       display: flex;
-      align-items: flex-start; /* تغيير من center إلى flex-start لتبدأ من الأعلى */
-      justify-content: center;
+      flex-direction: column; /* تغيير إلى عمودي لتكديس العناصر */
+      align-items: center; /* تمركز أفقي */
+      justify-content: flex-start; /* البدء من الأعلى */
       min-height: 100vh;
+    }
+    
+    .logo {
+      margin-top: 20px; /* مسافة من الأعلى */
+      margin-bottom: 20px; /* مسافة بين اللوجو والبطاقة */
+    }
+    
+    .logo img {
+      width: 60px; /* يمكنك تعديل الحجم حسب الحاجة */
+      height: 60px;
+      object-fit: contain;
     }
     
     .container {
@@ -33,40 +45,15 @@
       color: #fff;
       text-align: right;
       direction: rtl;
-      margin-top: 20px; /* هامش علوي لدفع البطاقة للأسفل */
-      max-height: 80vh; /* تحديد ارتفاع أقصى للبطاقة */
-      overflow-y: auto; /* السماح بالتمرير إذا تجاوز المحتوى الارتفاع */
+      max-height: 70vh; /* تقليل الارتفاع لإفساح المجال للوجو */
+      overflow-y: auto;
     }
     
     .header {
       display: flex;
       align-items: center;
+      justify-content: space-between; /* لتوزيع العنوان وزر النسخ */
       margin-bottom: 20px;
-    }
-    
-    .icon {
-      background-color: rgba(255, 255, 255, 0.2);
-      width: 50px;
-      height: 50px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-left: 8px;
-      margin-right: 16px;
-      flex-shrink: 0;
-    }
-    
-    .icon img {
-      width: 28px;
-      height: 28px;
-      object-fit: contain;
-    }
-    
-    .text {
-      font-size: 16px;
-      line-height: 1.6;
-      white-space: pre-wrap;
     }
     
     .copy-btn {
@@ -78,17 +65,21 @@
       cursor: pointer;
       transition: background-color 0.3s ease;
       font-size: 14px;
-      align-self: flex-end;
-      margin-top: 20px;
     }
     
     .copy-btn:hover {
       background-color: rgba(255, 255, 255, 0.3);
     }
     
+    .text {
+      font-size: 16px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    
     .copied {
       position: absolute;
-      bottom: -30px;
+      top: 10px; /* تعديل الموقع ليظهر أعلى الزر */
       right: 20px;
       font-size: 14px;
       background-color: rgba(255, 255, 255, 0.2);
@@ -108,13 +99,9 @@
         padding: 15px 20px;
         max-width: 100%;
       }
-      .icon {
-        width: 40px;
-        height: 40px;
-      }
-      .icon img {
-        width: 20px;
-        height: 20px;
+      .logo img {
+        width: 50px;
+        height: 50px;
       }
       .text {
         font-size: 14px;
@@ -123,12 +110,17 @@
   </style>
 </head>
 <body>
+  <!-- اللوجو في أعلى الصفحة -->
+  <div class="logo">
+    <img src="https://raw.githubusercontent.com/xruniversestudio/prompts/refs/heads/main/WhatsApp%20Image%202025-01-18%20at%2022.28.01.jpeg" alt="Logo" loading="lazy" />
+  </div>
+  
+  <!-- البطاقة -->
   <div class="container">
     <div class="header">
-      <div class="icon">
-        <img src="https://example.com/icon.png" alt="Icon" loading="lazy" />
-      </div>
       <h2 style="margin: 0;">منشور إنستجرام</h2>
+      <!-- زر النسخ في الأعلى -->
+      <button class="copy-btn" onclick="copyText()">نسخ</button>
     </div>
     
     <div class="text" id="textToCopy">
@@ -169,8 +161,7 @@
 اجمع بين هاشتاغات عامة وهاشتاغات متخصصة لضمان وصول أوسع.
     </div>
     
-    <button class="copy-btn" onclick="copyText()">نسخ</button>
-    
+    <!-- رسالة تأكيد النسخ -->
     <div class="copied" id="copiedMsg">تم النسخ!</div>
   </div>
   
