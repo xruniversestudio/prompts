@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>برومبت ذكي لإنشاء منشورات إنستجرام عالية التفاعل بمساعدة الذكاء الاصطناعي!</title>
+  <title>منشور إنستجرام - نسخ النص</title>
   <style>
     body {
       margin: 0;
@@ -15,64 +15,65 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      overflow-y: auto; /* التمرير على مستوى الصفحة */
     }
     
     .logo {
       position: absolute;
-      top: 1vw; /* نسبي لحجم الشاشة */
+      top: 1vw;
       right: 1vw;
     }
     
     .logo img {
-      width: clamp(40px, 5vw, 60px); /* حجم مرن بين 40px و60px */
+      width: clamp(40px, 5vw, 60px);
       height: clamp(40px, 5vw, 60px);
       object-fit: contain;
     }
     
     .container {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
-      padding: clamp(10px, 2vw, 30px); /* حشوة مرنة */
+      background: rgba(255, 255, 255, 0.1); /* شفافية أكثر */
+      backdrop-filter: blur(15px); /* تعزيز تأثير الـ Glass */
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.3); /* حدود أوضح */
+      border-radius: 20px; /* زوايا أكثر نعومة */
+      padding: clamp(15px, 2vw, 30px);
       display: flex;
       flex-direction: column;
       position: relative;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* ظل أعمق */
       width: 90%;
       max-width: 800px;
       color: #fff;
       text-align: right;
       direction: rtl;
-      margin: clamp(50px, 8vw, 80px) 0 clamp(10px, 2vw, 20px); /* هوامش مرنة */
-      max-height: 85vh; /* لضمان عدم التجاوز */
-      overflow-y: auto; /* السماح بالتمرير */
+      margin: clamp(50px, 8vw, 80px) 0 clamp(15px, 2vw, 30px);
     }
     
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: clamp(10px, 2vw, 20px);
-      position: sticky; /* تثبيت الهيدر في الأعلى */
+      padding: clamp(10px, 1.5vw, 15px) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* خط فاصل */
+      margin-bottom: clamp(15px, 2vw, 20px);
+      position: sticky; /* تثبيت الهيدر */
       top: 0;
-      background: rgba(255, 255, 255, 0.1); /* خلفية خفيفة للتمييز */
-      padding: 10px 0;
-      z-index: 10; /* لضمان البقاء فوق النص */
+      background: rgba(255, 255, 255, 0.05); /* خلفية خفيفة */
+      z-index: 10;
     }
     
     .header h2 {
       margin: 0;
-      font-size: clamp(18px, 3vw, 24px); /* حجم خط مرن */
+      font-size: clamp(20px, 3vw, 26px);
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* ظل للنص */
     }
     
     .copy-btn {
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.25);
       border: none;
       color: #fff;
-      padding: clamp(6px, 1vw, 8px) clamp(10px, 2vw, 16px);
+      padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px);
       border-radius: 8px;
       cursor: pointer;
       transition: background-color 0.3s ease;
@@ -80,7 +81,7 @@
     }
     
     .copy-btn:hover {
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(255, 255, 255, 0.35);
     }
     
     .text {
@@ -94,7 +95,7 @@
       top: clamp(5px, 1vw, 10px);
       right: clamp(10px, 2vw, 20px);
       font-size: clamp(12px, 1.5vw, 14px);
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.25);
       padding: 4px 8px;
       border-radius: 6px;
       opacity: 0;
@@ -106,25 +107,26 @@
       opacity: 1;
     }
     
-    /* Media Queries للشاشات المختلفة */
+    /* Media Queries */
     @media (max-width: 600px) {
       .container {
         width: 95%;
         padding: 10px;
-        margin: 50px 0 10px;
+        margin: 50px 0 15px;
+        border-radius: 15px;
       }
       .logo {
         top: 10px;
         right: 10px;
       }
       .header {
-        padding: 5px 0;
+        padding: 8px 0;
       }
     }
     
     @media (min-width: 1200px) {
       .container {
-        width: 70%; /* تقليل العرض على الشاشات الكبيرة */
+        width: 70%;
         padding: 30px;
       }
       .logo img {
@@ -144,7 +146,6 @@
   <div class="container">
     <div class="header">
       <h2>منشور إنستجرام</h2>
-      <!-- زر النسخ ثابت في الأعلى -->
       <button class="copy-btn" onclick="copyText()">نسخ</button>
     </div>
     
@@ -186,7 +187,6 @@
 اجمع بين هاشتاغات عامة وهاشتاغات متخصصة لضمان وصول أوسع.
     </div>
     
-    <!-- رسالة تأكيد النسخ -->
     <div class="copied" id="copiedMsg">تم النسخ!</div>
   </div>
   
