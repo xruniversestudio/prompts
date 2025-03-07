@@ -9,13 +9,13 @@
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
-      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
       min-height: 100vh;
       position: relative;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      overflow-y: auto; /* التمرير على مستوى الصفحة */
+      overflow-y: auto;
+      transition: background 0.5s ease; /* تأثير انتقال سلس */
     }
     
     .logo {
@@ -31,16 +31,16 @@
     }
     
     .container {
-      background: rgba(255, 255, 255, 0.1); /* شفافية أكثر */
-      backdrop-filter: blur(15px); /* تعزيز تأثير الـ Glass */
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
       -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 255, 255, 0.3); /* حدود أوضح */
-      border-radius: 20px; /* زوايا أكثر نعومة */
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
       padding: clamp(15px, 2vw, 30px);
       display: flex;
       flex-direction: column;
       position: relative;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* ظل أعمق */
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       width: 90%;
       max-width: 800px;
       color: #fff;
@@ -54,11 +54,11 @@
       align-items: center;
       justify-content: space-between;
       padding: clamp(10px, 1.5vw, 15px) 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* خط فاصل */
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
       margin-bottom: clamp(15px, 2vw, 20px);
-      position: sticky; /* تثبيت الهيدر */
+      position: sticky;
       top: 0;
-      background: rgba(255, 255, 255, 0.05); /* خلفية خفيفة */
+      background: rgba(255, 255, 255, 0.05);
       z-index: 10;
     }
     
@@ -66,7 +66,7 @@
       margin: 0;
       font-size: clamp(20px, 3vw, 26px);
       font-weight: 600;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* ظل للنص */
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     
     .copy-btn {
@@ -107,6 +107,26 @@
       opacity: 1;
     }
     
+    /* زر تغيير الألوان */
+    .theme-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+      z-index: 20;
+    }
+    
+    .theme-btn:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+    
     /* Media Queries */
     @media (max-width: 600px) {
       .container {
@@ -122,6 +142,10 @@
       .header {
         padding: 8px 0;
       }
+      .theme-btn {
+        padding: 8px 15px;
+        font-size: 12px;
+      }
     }
     
     @media (min-width: 1200px) {
@@ -136,7 +160,7 @@
     }
   </style>
 </head>
-<body>
+<body class="theme-1">
   <!-- اللوجو في الزاوية العلوية اليمنى -->
   <div class="logo">
     <img src="https://github.com/xruniversestudio/prompts/blob/main/WhatsApp%20Image%202025-01-18%20at%2022.28.01.png?raw=true" alt="Logo" loading="lazy" />
@@ -190,7 +214,11 @@
     <div class="copied" id="copiedMsg">تم النسخ!</div>
   </div>
   
+  <!-- زر تغيير الألوان -->
+  <button class="theme-btn" onclick="changeTheme()">تغيير اللون</button>
+  
   <script>
+    // دالة نسخ النص
     function copyText() {
       const textToCopy = document.getElementById('textToCopy').textContent;
       navigator.clipboard.writeText(textToCopy)
@@ -205,6 +233,25 @@
           console.error('Error copying text: ', err);
         });
     }
+
+    // الثيمات
+    const themes = [
+      'linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%)', // الأرجواني والأزرق
+      'linear-gradient(90deg, #1a8f5c 0%, #0d4d6b 100%)', // الأخضر والفيروزي
+      'linear-gradient(90deg, #f05a28 0%, #8b1e3f 100%)', // البرتقالي والأحمر
+      'linear-gradient(90deg, #2e2e2e 0%, #121212 100%)'  // الرمادي والأسود
+    ];
+    
+    let currentTheme = 0;
+
+    // دالة تغيير الثيم
+    function changeTheme() {
+      currentTheme = (currentTheme + 1) % themes.length; // التبديل بين الثيمات
+      document.body.style.background = themes[currentTheme];
+    }
+
+    // تعيين الثيم الافتراضي
+    document.body.style.background = themes[currentTheme];
   </script>
 </body>
 </html>
