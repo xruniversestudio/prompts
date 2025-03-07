@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>برومبت ذكي لإنشاء منشورات إنستجرام عالية التفاعل بمساعدة الذكاء الاصطناعي!</title>
+  <title>منشور إنستجرام - نسخ النص</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
-      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
+      background: linear-gradient(90deg, #1e3a8a 0%, #06b6d4 100%); /* الثيم الافتراضي */
       min-height: 100vh;
       position: relative;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      overflow-y: auto; /* التمرير على مستوى الصفحة */
+      overflow-y: auto;
     }
     
     .logo {
@@ -31,16 +31,16 @@
     }
     
     .container {
-      background: rgba(255, 255, 255, 0.1); /* شفافية أكثر */
-      backdrop-filter: blur(15px); /* تعزيز تأثير الـ Glass */
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
       -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 255, 255, 0.3); /* حدود أوضح */
-      border-radius: 20px; /* زوايا أكثر نعومة */
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
       padding: clamp(15px, 2vw, 30px);
       display: flex;
       flex-direction: column;
       position: relative;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* ظل أعمق */
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       width: 90%;
       max-width: 800px;
       color: #fff;
@@ -53,35 +53,42 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: clamp(10px, 1.5vw, 15px) 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* خط فاصل */
+      padding: clamp(12px, 1.5vw, 20px) clamp(15px, 2vw, 25px);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)); /* خلفية متدرجة */
+      border-radius: 12px 12px 0 0; /* زوايا علوية فقط */
       margin-bottom: clamp(15px, 2vw, 20px);
-      position: sticky; /* تثبيت الهيدر */
+      position: sticky;
       top: 0;
-      background: rgba(255, 255, 255, 0.05); /* خلفية خفيفة */
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* ظل خفيف */
       z-index: 10;
     }
     
     .header h2 {
       margin: 0;
-      font-size: clamp(20px, 3vw, 26px);
-      font-weight: 600;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* ظل للنص */
+      font-size: clamp(22px, 3.5vw, 28px);
+      font-weight: 700;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); /* ظل أعمق */
+      background: linear-gradient(90deg, #fff, #ddd); /* تدرج للنص */
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent; /* لإظهار التدرج */
     }
     
     .copy-btn {
       background-color: rgba(255, 255, 255, 0.25);
-      border: none;
+      border: 1px solid rgba(255, 255, 255, 0.4); /* إضافة حدود */
       color: #fff;
-      padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px);
-      border-radius: 8px;
+      padding: clamp(6px, 1vw, 10px) clamp(12px, 2vw, 18px);
+      border-radius: 10px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: all 0.3s ease;
       font-size: clamp(12px, 1.5vw, 14px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* ظل للزر */
     }
     
     .copy-btn:hover {
       background-color: rgba(255, 255, 255, 0.35);
+      transform: translateY(-2px); /* حركة خفيفة عند التمرير */
     }
     
     .text {
@@ -107,7 +114,6 @@
       opacity: 1;
     }
     
-    /* Media Queries */
     @media (max-width: 600px) {
       .container {
         width: 95%;
@@ -120,7 +126,7 @@
         right: 10px;
       }
       .header {
-        padding: 8px 0;
+        padding: 10px;
       }
     }
     
@@ -191,6 +197,7 @@
   </div>
   
   <script>
+    // دالة نسخ النص
     function copyText() {
       const textToCopy = document.getElementById('textToCopy').textContent;
       navigator.clipboard.writeText(textToCopy)
