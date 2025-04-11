@@ -1,428 +1,759 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Build The Future - Construction Company</title>
-  <style>
-    /* RESET */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شركة البناء الحديث - مقاولات عامة</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* أنماط CSS العامة */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --text-color: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f9f9f9;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        section {
+            padding: 60px 0;
+        }
+        
+        h1, h2, h3, h4 {
+            color: var(--dark-color);
+            margin-bottom: 20px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background-color: #c0392b;
+            transform: translateY(-3px);
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .section-title {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            width: 50%;
+            height: 3px;
+            background-color: var(--secondary-color);
+            bottom: -10px;
+            left: 0;
+        }
 
-    body {
-      background-color: #fff;
-      color: #333;
-      line-height: 1.5;
-    }
+        /* أنماط Header */
+        .header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
 
-    /* Header */
-    header {
-      background-color: #f8f8f8;
-      padding: 1rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #ddd;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .logo img {
-      max-height: 50px;
-    }
-    .logo h1 {
-      font-size: 1.5rem;
-      color: #444;
-      font-weight: bold;
-    }
-    .top-nav ul {
-      list-style: none;
-      display: flex;
-      gap: 1.5rem;
-    }
-    .top-nav ul li a {
-      text-decoration: none;
-      color: #444;
-      font-weight: 600;
-      transition: color 0.3s;
-    }
-    .top-nav ul li a:hover {
-      color: #f1a029;
-    }
+        .header-top {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
 
-    /* Hero Section (Slider) */
-    .hero-section {
-      position: relative;
-      width: 100%;
-      height: 70vh;
-      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center/cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .hero-section::before {
-      content: "";
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4);
-    }
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      color: #fff;
-      max-width: 800px;
-      margin: 0 1rem;
-    }
-    .hero-content h2 {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-    }
-    .hero-content p {
-      font-size: 1.1rem;
-      margin-bottom: 1.5rem;
-    }
-    .hero-content .btn-hero {
-      display: inline-block;
-      background-color: #f1a029;
-      color: #fff;
-      padding: 0.8rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: background-color 0.3s;
-    }
-    .hero-content .btn-hero:hover {
-      background-color: #d98e27;
-    }
+        .header-top .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    /* Why Building Section */
-    .why-section {
-      padding: 2rem 1rem;
-      text-align: center;
-      background-color: #fcfcfc;
-    }
-    .why-section h3 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      color: #444;
-    }
-    .why-section p {
-      max-width: 700px;
-      margin: 0 auto 2rem;
-      color: #666;
-      line-height: 1.6;
-    }
-    .why-section .why-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .why-card {
-      background-color: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 1rem;
-      transition: box-shadow 0.3s;
-      text-align: left;
-    }
-    .why-card:hover {
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .why-card h4 {
-      color: #f1a029;
-      margin-bottom: 0.5rem;
-      font-size: 1.2rem;
-    }
-    .why-card p {
-      color: #555;
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
+        .logo h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
 
-    /* Services / Projects Gallery */
-    .gallery-section {
-      padding: 2rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      align-items: flex-start;
-      justify-content: center;
-    }
-    .gallery-section .block {
-      flex: 1 1 300px;
-      background-color: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      overflow: hidden;
-      transition: transform 0.3s;
-    }
-    .gallery-section .block:hover {
-      transform: translateY(-5px);
-    }
-    .gallery-section .block img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-    }
-    .gallery-section .block h4 {
-      color: #f1a029;
-      font-size: 1.2rem;
-      margin: 0.8rem;
-    }
-    .gallery-section .block p {
-      margin: 0.5rem 0.8rem 1rem;
-      color: #555;
-      font-size: 0.95rem;
-    }
+        .logo p {
+            color: #777;
+            font-size: 0.9rem;
+        }
 
-    /* Form / Map Section */
-    .form-map-section {
-      padding: 2rem 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-    .map-box,
-    .form-box {
-      flex: 1 1 300px;
-      background-color: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 1rem;
-    }
-    .map-box iframe {
-      width: 100%;
-      height: 300px;
-      border: none;
-      border-radius: 4px;
-    }
-    .form-box h4 {
-      color: #444;
-      margin-bottom: 1rem;
-      font-size: 1.3rem;
-    }
-    .form-box form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    .form-box input,
-    .form-box textarea {
-      padding: 0.8rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 0.95rem;
-    }
-    .form-box button {
-      background-color: #f1a029;
-      color: #fff;
-      border: none;
-      padding: 0.8rem;
-      font-size: 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .form-box button:hover {
-      background-color: #d98e27;
-    }
+        .navbar ul {
+            display: flex;
+            list-style: none;
+        }
 
-    /* Footer */
-    footer {
-      background-color: #f1f1f1;
-      border-top: 1px solid #ddd;
-      padding: 2rem 1rem;
-      text-align: center;
-      color: #666;
-    }
-    footer .footer-content {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    footer .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 2rem;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-    footer .footer-links .column {
-      flex: 1 1 200px;
-      min-width: 180px;
-      text-align: left;
-    }
-    footer .footer-links h5 {
-      color: #444;
-      margin-bottom: 0.5rem;
-      font-size: 1.1rem;
-    }
-    footer .footer-links ul {
-      list-style: none;
-      margin-top: 0.5rem;
-    }
-    footer .footer-links li a {
-      color: #666;
-      text-decoration: none;
-      font-size: 0.9rem;
-      line-height: 1.8;
-      transition: color 0.3s;
-    }
-    footer .footer-links li a:hover {
-      color: #f1a029;
-    }
-    footer p {
-      margin-top: 1rem;
-      font-size: 0.8rem;
-    }
-  </style>
+        .navbar ul li {
+            margin-left: 20px;
+        }
+
+        .navbar ul li a {
+            text-decoration: none;
+            color: var(--dark-color);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .navbar ul li a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* أنماط Hero Slider */
+        .hero-slider {
+            height: 80vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .slide.active {
+            opacity: 1;
+        }
+
+        .slide-content {
+            position: absolute;
+            top: 50%;
+            right: 10%;
+            transform: translateY(-50%);
+            color: white;
+            max-width: 600px;
+            background-color: rgba(0,0,0,0.6);
+            padding: 30px;
+            border-radius: 5px;
+        }
+
+        .slide-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .slide-content p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+
+        /* أنماط About Section */
+        .about-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .about-text {
+            flex: 1;
+        }
+
+        .about-image {
+            flex: 1;
+        }
+
+        .about-image img {
+            width: 100%;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* أنماط Projects Section */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .project-item {
+            position: relative;
+            height: 250px;
+            overflow: hidden;
+            border-radius: 5px;
+        }
+
+        .project-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+
+        .project-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .project-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            color: white;
+            padding: 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+
+        .project-item:hover .project-overlay {
+            transform: translateY(0);
+        }
+
+        /* أنماط Services Section */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .service-item {
+            background-color: white;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .service-item:hover {
+            transform: translateY(-10px);
+        }
+
+        .service-icon {
+            font-size: 2.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+        }
+
+        /* أنماط Contact Section */
+        .contact-content {
+            display: flex;
+            gap: 40px;
+        }
+
+        .contact-info {
+            flex: 1;
+        }
+
+        .contact-form {
+            flex: 1;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+
+        .info-item i {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* أنماط Footer */
+        .footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 60px 0 0;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .footer-col h3 {
+            color: white;
+            margin-bottom: 25px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        .footer-col h3:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--secondary-color);
+        }
+
+        .footer-col ul {
+            list-style: none;
+        }
+
+        .footer-col ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-col ul li a {
+            color: #ddd;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-col ul li a:hover {
+            color: var(--secondary-color);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .social-links a:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-3px);
+        }
+
+        .newsletter-form {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .newsletter-form button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* أنماط للجوال */
+        @media (max-width: 992px) {
+            .header-top .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .navbar {
+                margin: 20px 0;
+            }
+
+            .about-content,
+            .contact-content {
+                flex-direction: column;
+            }
+
+            .slide-content {
+                right: 5%;
+                left: 5%;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .navbar ul li {
+                margin: 5px 0;
+            }
+
+            .hero-slider {
+                height: 60vh;
+            }
+
+            .slide-content h2 {
+                font-size: 1.8rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
 </head>
 <body>
-
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <!-- يمكنك وضع لوجو وهمي أو صورة: -->
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Company Logo">
-      <h1>Grow The Future</h1>
-    </div>
-    <nav class="top-nav">
-      <ul>
-        <li><a href="#home">Home</a></li>
-        <li><a href="#">Charity</a></li>
-        <li><a href="#why">Services</a></li>
-        <li><a href="#gallery">Projects</a></li>
-        <li><a href="#form-map">About</a></li>
-        <li><a href="#">Agency</a></li>
-        <li><a href="#">Contact</a></li>
-      </ul>
-    </nav>
-  </header>
-
-  <!-- HERO SECTION -->
-  <section class="hero-section" id="home">
-    <div class="hero-content">
-      <h2>Building the Future</h2>
-      <p>Leading solutions that shape the tomorrow you aspire for, ensuring every detail is prepared for your success.</p>
-      <a href="#" class="btn-hero">Why Choose</a>
-    </div>
-  </section>
-
-  <!-- WHY BUILDING THE FUTURE SECTION -->
-  <section class="why-section" id="why">
-    <h3>Why Building the Future?</h3>
-    <p>Long strides here are a testament that sophie for the pronayve yelspre er bexts mind are eslaoges of every start prepared your par alwaysest.</p>
-
-    <div class="why-cards">
-      <div class="why-card">
-        <h4>General Contracting</h4>
-        <p>Areas able to attend yields: our best crews to investment serve a diversity of safety and remodelled solutions.</p>
-      </div>
-      <div class="why-card">
-        <h4>Recreation</h4>
-        <p>We bring high-end recreational infrastructure to complement your facility’s modern appeal.</p>
-      </div>
-      <div class="why-card">
-        <h4>Servit Us</h4>
-        <p>General Contracting, comprehensive fitout, cosmetic items, air circulation. Essential Civility for better vantage.</p>
-      </div>
-      <div class="why-card">
-        <h4>Local Gallery</h4>
-        <p>Exhibit our top local glossary and connect top major vantage points near your area.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- GALLERY SECTION (Services / Projects) -->
-  <section class="gallery-section" id="gallery">
-    <div class="block">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Gallery 1">
-      <h4>Image Gallery</h4>
-      <p>Take a peek inside our showcase of works in the automotive and structural industries.</p>
-    </div>
-    <div class="block">
-      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Gallery 2">
-      <h4>Project Gallery</h4>
-      <p>Leading industrial expansions with the highest standards of sustainability and design.</p>
-    </div>
-    <div class="block">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Gallery 3">
-      <h4>Recreation Center</h4>
-      <p>Modern approach to sports and leisure expansions in large-scale developments.</p>
-    </div>
-    <div class="block">
-      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Gallery 4">
-      <h4>Multi-Level Parking</h4>
-      <p>Engineered for space efficiency, designed for comfort and safety.</p>
-    </div>
-  </section>
-
-  <!-- FORM & MAP SECTION -->
-  <section class="form-map-section" id="form-map">
-    <div class="map-box">
-      <h4>Find Us</h4>
-      <!-- خريطة Google افتراضية -->
-      <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3606.986389423951!2d55.274290274647905!3d25.19751563868054!2m3!1f0!2f0!3f0!3m2!
-1i1024!2i768!4f13.1!3m3!1m2!1s0x3e5f5c928206ce6b%3A0x5b1b0917da6e4c75!2sBusiness%20Bay%20-%20Dubai%20-%20United%20Arab%20Emirates!
-5e0!3m2!1sen!2s!4v1619780929806!5m2!1sen!2s"
-              allowfullscreen="" loading="lazy"></iframe>
-    </div>
-    <div class="form-box">
-      <h4>Leave a Message</h4>
-      <form action="#" method="post">
-        <input type="text" name="fullname" placeholder="Full Name" required>
-        <input type="email" name="email" placeholder="Email Address" required>
-        <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
-        <button type="submit">Send</button>
-      </form>
-    </div>
-  </section>
-
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-content">
-      <div class="footer-links">
-        <div class="column">
-          <h5>Contact Us</h5>
-          <ul>
-            <li><a href="#">(+1) 219 713 723</a></li>
-            <li><a href="#">help@buildfuture.com</a></li>
-            <li><a href="#">1234, XYZ Street, City</a></li>
-          </ul>
+    <!-- Header Section -->
+    <header class="header">
+        <div class="header-top">
+            <div class="container">
+                <div class="logo">
+                    <h1>شركة البناء الحديث</h1>
+                    <p>نحو مستقبل عمراني أفضل</p>
+                </div>
+                <nav class="navbar">
+                    <ul>
+                        <li><a href="#home">الرئيسية</a></li>
+                        <li><a href="#about">من نحن</a></li>
+                        <li><a href="#projects">المشاريع</a></li>
+                        <li><a href="#services">الخدمات</a></li>
+                        <li><a href="#contact">اتصل بنا</a></li>
+                    </ul>
+                </nav>
+                <div class="cta">
+                    <a href="tel:+966123456789" class="btn"><i class="fas fa-phone"></i> اتصل بنا الآن</a>
+                </div>
+            </div>
         </div>
-        <div class="column">
-          <h5>Look Us</h5>
-          <ul>
-            <li><a href="#">Nearest</a></li>
-            <li><a href="#">Town</a></li>
-            <li><a href="#">Spaces</a></li>
-          </ul>
+        
+        <!-- Hero Slider -->
+        <div class="hero-slider">
+            <div class="slide active" style="background-image: url('https://xruniversestudio.github.io/prompts/s.jpeg');">
+                <div class="container">
+                    <div class="slide-content">
+                        <h2>الريادة في مجال المقاولات العامة</h2>
+                        <p>نقدم حلولاً متكاملة في مجال البناء والتشييد بمعايير الجودة العالمية</p>
+                        <a href="#contact" class="btn">اطلب عرض سعر</a>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="column">
-          <h5>Increation Rorr</h5>
-          <ul>
-            <li><a href="#">Demo</a></li>
-            <li><a href="#">Provider</a></li>
-          </ul>
-        </div>
-      </div>
-      <p>© 2023 Grow The Future Construction Company - All Rights Reserved</p>
-    </div>
-  </footer>
+    </header>
 
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <div class="container">
+            <h2 class="section-title">من نحن</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <h3>شركة البناء الحديث - خبرة تزيد عن 20 عاماً</h3>
+                    <p>تأسست شركة البناء الحديث عام 2003 كواحدة من الشركات الرائدة في مجال المقاولات العامة والإنشاءات في المملكة العربية السعودية.</p>
+                    <p>نفخر بتقديم خدماتنا لأكثر من 500 عميل من القطاعين العام والخاص، حيث نلتزم بأعلى معايير الجودة والسلامة في تنفيذ مشاريعنا.</p>
+                    <p>لدينا فريق من المهندسين والخبراء ذوي الكفاءة العالية الذين يعملون على تقديم حلول مبتكرة تلبي احتياجات عملائنا.</p>
+                    <a href="#projects" class="btn">تصفح مشاريعنا</a>
+                </div>
+                <div class="about-image">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="فريق العمل في شركة البناء الحديث">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section id="projects" class="projects-section">
+        <div class="container">
+            <h2 class="section-title text-center">مشاريعنا</h2>
+            <p class="text-center">نفخر بتنفيذ العديد من المشاريع الكبرى التي ساهمت في تطوير البنية التحتية</p>
+            
+            <div class="projects-grid">
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع ناطحة سحاب">
+                    <div class="project-overlay">
+                        <h3>برج الأعمال الدولي</h3>
+                        <p>ناطحة سحاب مكونة من 50 طابقاً في قلب الرياض</p>
+                    </div>
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع مجمع سكني">
+                    <div class="project-overlay">
+                        <h3>مجمع الواحة السكني</h3>
+                        <p>مجمع سكني فاخر يتكون من 200 وحدة سكنية</p>
+                    </div>
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع جسر">
+                    <div class="project-overlay">
+                        <h3>جسر النخيل</h3>
+                        <p>جسر بطول 2 كم يربط بين منطقتين سكنيتين</p>
+                    </div>
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع مستشفى">
+                    <div class="project-overlay">
+                        <h3>مستشفى المدينة التخصصي</h3>
+                        <p>مستشفى متكامل بسعة 500 سرير</p>
+                    </div>
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع طريق سريع">
+                    <div class="project-overlay">
+                        <h3>الطريق الدائري الشمالي</h3>
+                        <p>طريق سريع بطول 30 كم مع 5 تقاطعات</p>
+                    </div>
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع جامعة">
+                    <div class="project-overlay">
+                        <h3>جامعة التقنية الحديثة</h3>
+                        <p>حرم جامعي على مساحة 500,000 متر مربع</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center" style="margin-top: 40px;">
+                <a href="#contact" class="btn">اطلب مشروعك الخاص</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services-section">
+        <div class="container">
+            <h2 class="section-title text-center">خدماتنا</h2>
+            <p class="text-center">نقدم مجموعة متكاملة من خدمات المقاولات والإنشاءات</p>
+            
+            <div class="services-grid">
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h3>المقاولات العامة</h3>
+                    <p>تنفيذ المشاريع الإنشائية بكافة أنواعها من التصميم حتى التسليم النهائي</p>
+                </div>
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <h3>تشييد المباني السكنية</h3>
+                    <p>بناء وتشييد المجمعات السكنية والفيلات وفق أحدث التصاميم</p>
+                </div>
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-road"></i>
+                    </div>
+                    <h3>إنشاء الطرق والجسور</h3>
+                    <p>تنفيذ مشاريع البنية التحتية من طرق وجسور وأنفاق</p>
+                </div>
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3>الصيانة والتشغيل</h3>
+                    <p>خدمات الصيانة الدورية والصيانة الطارئة للمباني والمنشآت</p>
+                </div>
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-pencil-ruler"></i>
+                    </div>
+                    <h3>الاستشارات الهندسية</h3>
+                    <p>تقديم الاستشارات الهندسية والفنية لمختلف المشاريع الإنشائية</p>
+                </div>
+                <div class="service-item">
+                    <div class="service-icon">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <h3>مشاريع المرافق العامة</h3>
+                    <p>تنفيذ مشاريع المياه والصرف الصحي وشبكات الري</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2 class="section-title text-center">اتصل بنا</h2>
+            <p class="text-center">نحن هنا للإجابة على جميع استفساراتك وتقديم أفضل الحلول لمشاريعك</p>
+            
+            <div class="contact-content">
+                <div class="contact-info">
+                    <div class="info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <h3>العنوان</h3>
+                        <p>حي المروج، شارع الملك فهد، الرياض، المملكة العربية السعودية</p>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-phone"></i>
+                        <h3>الهاتف</h3>
+                        <p>+966 12 345 6789</p>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-envelope"></i>
+                        <h3>البريد الإلكتروني</h3>
+                        <p>info@modernbuilding.com</p>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <h3>ساعات العمل</h3>
+                        <p>الأحد - الخميس: 8 صباحاً - 5 مساءً</p>
+                    </div>
+                </div>
+                
+                <div class="contact-form">
+                    <form>
+                        <div class="form-group">
+                            <input type="text" placeholder="الاسم الكامل" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" placeholder="البريد الإلكتروني" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" placeholder="رقم الهاتف">
+                        </div>
+                        <div class="form-group">
+                            <select required>
+                                <option value="">اختر الخدمة المطلوبة</option>
+                                <option value="construction">المقاولات العامة</option>
+                                <option value="residential">المباني السكنية</option>
+                                <option value="roads">الطرق والجسور</option>
+                                <option value="maintenance">الصيانة والتشغيل</option>
+                                <option value="consulting">الاستشارات الهندسية</option>
+                                <option value="utilities">المرافق العامة</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <textarea placeholder="رسالتك" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn">إرسال الرسالة</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <h3>شركة البناء الحديث</h3>
+                    <p>شركة رائدة في مجال المقاولات العامة والإنشاءات، نلتزم بمعايير الجودة والسلامة في جميع مشاريعنا.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>روابط سريعة</h3>
+                    <ul>
+                        <li><a href="#home">الرئيسية</a></li>
+                        <li><a href="#about">من نحن</a></li>
+                        <li><a href="#projects">المشاريع</a></li>
+                        <li><a href="#services">الخدمات</a></li>
+                        <li><a href="#contact">اتصل بنا</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>الخدمات</h3>
+                    <ul>
+                        <li><a href="#">المقاولات العامة</a></li>
+                        <li><a href="#">تشييد المباني السكنية</a></li>
+                        <li><a href="#">إنشاء الطرق والجسور</a></li>
+                        <li><a href="#">الصيانة والتشغيل</a></li>
+                        <li><a href="#">الاستشارات الهندسية</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>النشرة البريدية</h3>
+                    <p>اشترك في نشرتنا البريدية لتصلك آخر أخبارنا وعروضنا.</p>
+                    <form class="newsletter-form">
+                        <input type="email" placeholder="بريدك الإلكتروني" required>
+                        <button type="submit" class="btn">اشترك</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2023 شركة البناء الحديث. جميع الحقوق محفوظة.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // كود JavaScript بسيط للتفاعلات
+        document.addEventListener('DOMContentLoaded', function() {
+            // تنعيم الانتقال بين الأقسام
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+            
+            // يمكن إضافة المزيد من التفاعلات هنا
+        });
+    </script>
 </body>
 </html>
