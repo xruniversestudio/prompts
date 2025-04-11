@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Al Ikhaa Contracting LLC - New Design</title>
+  <style>
+    /* RESET */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background-color: #fff;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    header {
+      background-color: #1f1f1f;
+      color: #fff;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    header .logo img {
+      height: 50px;
+    }
+    nav ul {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+    nav ul li a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: opacity 0.3s;
+    }
+    nav ul li a:hover {
+      opacity: 0.7;
+    }
+
+    /* HERO SECTION */
+    .hero {
+      position: relative;
+      width: 100%;
+      height: 70vh;
+      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center/cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #fff;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .hero .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      padding: 1rem;
+    }
+    .hero .hero-content h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .hero .hero-content p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .hero .hero-content a {
+      background-color: #f1a029;
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .hero .hero-content a:hover {
+      background-color: #cf891e;
+    }
+
+    /* FEATURES SECTION */
+    .features {
+      padding: 3rem 1rem;
+      background-color: #f8f8f8;
+      text-align: center;
+    }
+    .features h2 {
+      font-size: 2rem;
+      color: #444;
+      margin-bottom: 1.5rem;
+    }
+    .features .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+      max-width: 1200px;
+      margin: 2rem auto 0;
+    }
+    .features .card {
+      background-color: #fff;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 2rem 1.5rem;
+      transition: transform 0.3s;
+    }
+    .features .card:hover {
+      transform: translateY(-5px);
+    }
+    .features .card h3 {
+      color: #f1a029;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .features .card p {
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    /* PROJECTS SECTION */
+    .projects {
+      padding: 3rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .projects h2 {
+      font-size: 2rem;
+      color: #444;
+      margin-bottom: 1.5rem;
+    }
+    .projects .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .projects .grid img {
+      width: 100%;
+      border-radius: 4px;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+    .projects .grid img:hover {
+      transform: scale(1.03);
+    }
+
+    /* CTA SECTION */
+    .cta {
+      background-color: #f1a029;
+      color: #fff;
+      text-align: center;
+      padding: 3rem 1rem;
+      position: relative;
+    }
+    .cta h2 {
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .cta p {
+      max-width: 600px;
+      margin: 0 auto 1.5rem;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    .cta a {
+      background-color: #fff;
+      color: #f1a029;
+      padding: 0.8rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+    .cta a:hover {
+      background-color: #eed3a4;
+    }
+
+    /* FOOTER */
+    footer {
+      background-color: #1f1f1f;
+      color: #ccc;
+      text-align: center;
+      padding: 2rem 1rem;
+      margin-top: 3rem;
+    }
+    footer p {
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    footer a {
+      color: #f1a029;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Al Ikhaa Logo">
+      <h1>Al Ikhaa Contracting</h1>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero" id="home">
+    <div class="hero-content">
+      <h1>Building Tomorrow Today</h1>
+      <p>We leverage modern construction methods to deliver sustainable, innovative, and high-quality projects.</p>
+      <a href="#contact">Start Your Project</a>
+    </div>
+  </section>
+
+  <!-- FEATURES SECTION -->
+  <section class="features" id="features">
+    <h2>Why Choose Al Ikhaa?</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Integrated Solutions</h3>
+        <p>End-to-end construction services, from planning to handover, ensuring consistent quality and on-time delivery.</p>
+      </div>
+      <div class="card">
+        <h3>Expert Team</h3>
+        <p>A team of seasoned engineers and project managers equipped with the latest industry knowledge and best practices.</p>
+      </div>
+      <div class="card">
+        <h3>Focus on Safety</h3>
+        <p>We prioritize health, safety, and environmental standards, ensuring that each site is compliant and secure.</p>
+      </div>
+      <div class="card">
+        <h3>World-Class Quality</h3>
+        <p>Stringent quality checks and carefully sourced materials guarantee a final product that meets global standards.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS SECTION -->
+  <section class="projects" id="projects">
+    <h2>Our Recent Work</h2>
+    <div class="grid">
+      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Project Image 1">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Project Image 2">
+      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Project Image 3">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Project Image 4">
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta">
+    <h2>Build with Us</h2>
+    <p>Ready to transform your vision into reality? Let's discuss how we can add value to your upcoming construction projects.</p>
+    <a href="#contact">Contact Us Now</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="contact">
+    <p>Office Address: 2nd Floor, XYZ Building, Business Bay, Dubai, UAE</p>
+    <p>Email: <a href="mailto:info@al-ikhaa-group.com">info@al-ikhaa-group.com</a> | Phone: +971 4 123 4567</p>
+    <p>All rights reserved © 2023 - Al Ikhaa Contracting</p>
+  </footer>
+
+</body>
+</html>
