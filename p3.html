@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شركة البناء الحديث - مقاولات عامة</title>
+    <style>
+        /* التصميم العام */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* الهيدر */
+        header {
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://xruniversestudio.github.io/prompts/s.jpeg');
+            background-size: cover;
+            background-position: center;
+            height: 80vh;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .header-content h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .header-content p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            max-width: 800px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background-color: #f39c12;
+            color: white;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .cta-button:hover {
+            background-color: #e67e22;
+        }
+        
+        /* قسم من نحن */
+        .about {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 2.2rem;
+            color: #333;
+        }
+        
+        .about-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .about-text {
+            flex: 1;
+        }
+        
+        .about-image {
+            flex: 1;
+        }
+        
+        .about-image img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* مشاريعنا */
+        .projects {
+            padding: 80px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .project-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            height: 250px;
+        }
+        
+        .project-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+        
+        .project-item:hover img {
+            transform: scale(1.1);
+        }
+        
+        /* الخدمات */
+        .services {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        
+        .service-item {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s;
+        }
+        
+        .service-item:hover {
+            transform: translateY(-10px);
+        }
+        
+        .service-item img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .service-item h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        /* اتصل بنا */
+        .contact {
+            padding: 80px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            height: 150px;
+        }
+        
+        .submit-button {
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-button:hover {
+            background-color: #e67e22;
+        }
+        
+        /* الفوتر */
+        footer {
+            background-color: #333;
+            color: white;
+            padding: 50px 0 20px;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .footer-column h3 {
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-column ul li a {
+            color: #ddd;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-column ul li a:hover {
+            color: #f39c12;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        /* التكيف مع الشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .header-content h1 {
+                font-size: 2rem;
+            }
+            
+            .about-content {
+                flex-direction: column;
+            }
+            
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- الهيدر -->
+    <header>
+        <div class="header-content">
+            <h1>شركة البناء الحديث للمقاولات</h1>
+            <p>نقدم حلولاً متكاملة في مجال البناء والتشييد بمعايير الجودة العالمية</p>
+            <a href="#contact" class="cta-button">اطلب استشارة مجانية</a>
+        </div>
+    </header>
+    
+    <!-- قسم من نحن -->
+    <section class="about">
+        <div class="container">
+            <h2 class="section-title">من نحن</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>شركة البناء الحديث هي شركة رائدة في مجال المقاولات العامة والتشييد، تأسست عام 2005 بهدف تقديم حلول بناء متكاملة تلبي أعلى معايير الجودة والسلامة.</p>
+                    <p>نتميز بفريق من المهندسين والخبراء ذوي الكفاءة العالية، ونلتزم بتسليم المشاريع في الوقت المحدد وبأعلى مستويات الدقة والإتقان.</p>
+                    <p>خلال السنوات الماضية، نفذنا العديد من المشاريع الكبرى التي أصبحت علامات بارزة في مجال البناء والتطوير العقاري.</p>
+                </div>
+                <div class="about-image">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="فريق العمل">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- مشاريعنا -->
+    <section class="projects">
+        <div class="container">
+            <h2 class="section-title">مشاريعنا</h2>
+            <div class="projects-grid">
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع سكني">
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع تجاري">
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع فندقي">
+                </div>
+                <div class="project-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع تعليمي">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- الخدمات -->
+    <section class="services">
+        <div class="container">
+            <h2 class="section-title">خدماتنا</h2>
+            <div class="services-grid">
+                <div class="service-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="بناء وتشييد">
+                    <h3>بناء وتشييد</h3>
+                    <p>تنفيذ مشاريع البناء السكنية والتجارية بجودة عالية ووفقاً للمواصفات القياسية</p>
+                </div>
+                <div class="service-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="تطوير عقاري">
+                    <h3>تطوير عقاري</h3>
+                    <p>تخطيط وتنفيذ المشاريع العقارية المتكاملة من الفكرة إلى التسليم النهائي</p>
+                </div>
+                <div class="service-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="ترميم وتجديد">
+                    <h3>ترميم وتجديد</h3>
+                    <p>خدمات الترميم الشامل للمباني القديمة وتجديد الواجهات والتصميمات الداخلية</p>
+                </div>
+                <div class="service-item">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="إدارة مشاريع">
+                    <h3>إدارة مشاريع</h3>
+                    <p>إدارة متكاملة للمشاريع الإنشائية مع ضمان الجودة والتسليم في الوقت المحدد</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- اتصل بنا -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">اتصل بنا</h2>
+            <div class="contact-form">
+                <form>
+                    <div class="form-group">
+                        <label for="name">الاسم الكامل</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">البريد الإلكتروني</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">رقم الهاتف</label>
+                        <input type="tel" id="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">الرسالة</label>
+                        <textarea id="message" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-button">إرسال الرسالة</button>
+                </form>
+            </div>
+        </div>
+    </section>
+    
+    <!-- الفوتر -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>عن الشركة</h3>
+                    <p>شركة البناء الحديث للمقاولات العامة - تأسست عام 2005 - نقدم حلول بناء متكاملة بمعايير الجودة العالمية</p>
+                </div>
+                <div class="footer-column">
+                    <h3>روابط سريعة</h3>
+                    <ul>
+                        <li><a href="#">الصفحة الرئيسية</a></li>
+                        <li><a href="#about">من نحن</a></li>
+                        <li><a href="#projects">المشاريع</a></li>
+                        <li><a href="#services">الخدمات</a></li>
+                        <li><a href="#contact">اتصل بنا</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>معلومات الاتصال</h3>
+                    <ul>
+                        <li>العنوان: الرياض، المملكة العربية السعودية</li>
+                        <li>الهاتف: +966 12 345 6789</li>
+                        <li>البريد الإلكتروني: info@</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>جميع الحقوق محفوظة &copy; 2023 شركة البناء الحديث للمقاولات</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
