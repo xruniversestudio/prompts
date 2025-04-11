@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>شركة</title>
+  <style>
+    /* RESET */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      background-color: #ffffff;
+      color: #333;
+      line-height: 1.5;
+    }
+    
+    /* Header */
+    header {
+      background-color: #00205b; /* لون أزرق غامق */
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo img {
+      max-height: 50px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .nav-links a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .nav-links a:hover {
+      opacity: 0.8;
+    }
+
+    /* Hero/Slider Section */
+    .hero-slider {
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      /* استخدام الصورة العريضة في الخلفية */
+      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center center/cover;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      color: #fff;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding: 2rem;
+      text-align: center;
+      max-width: 800px;
+    }
+    .hero-content h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .hero-content p {
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+    .hero-content .btn-cta {
+      background-color: #f1a029; 
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .hero-content .btn-cta:hover {
+      background-color: #d98e27;
+    }
+
+    /* Intro or Highlight Section */
+    .intro-section {
+      text-align: center;
+      padding: 2rem 1rem;
+      background-color: #f9f9f9;
+    }
+    .intro-section h3 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #00205b;
+    }
+    .intro-section p {
+      max-width: 600px;
+      margin: 0 auto;
+      font-size: 1rem;
+      color: #555;
+    }
+
+    /* Featured Project Section */
+    .featured-project {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .featured-project .text-box {
+      flex: 1 1 400px;
+      min-width: 300px;
+    }
+    .featured-project .text-box h3 {
+      font-size: 1.5rem;
+      color: #00205b;
+      margin-bottom: 1rem;
+    }
+    .featured-project .text-box p {
+      color: #555;
+      margin-bottom: 1rem;
+    }
+    .featured-project .text-box a {
+      color: #f1a029;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .featured-project .project-image {
+      flex: 1 1 400px;
+      text-align: center;
+      min-width: 300px;
+    }
+    .featured-project .project-image img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+
+    /* Services Section */
+    .services-section {
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .services-section h2 {
+      font-size: 2rem;
+      color: #00205b;
+      margin-bottom: 1.5rem;
+    }
+    .service-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .service-card {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      text-align: left;
+      transition: box-shadow 0.3s;
+    }
+    .service-card:hover {
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .service-card img {
+      width: 100%;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    .service-card h4 {
+      font-size: 1.2rem;
+      color: #f1a029;
+      margin-bottom: 0.5rem;
+    }
+    .service-card p {
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    /* About Section */
+    .about-section {
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .about-section h3 {
+      text-align: center;
+      color: #00205b;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+    .about-content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    .about-text {
+      flex: 1 1 400px;
+      min-width: 300px;
+    }
+    .about-text p {
+      margin-bottom: 1rem;
+      color: #555;
+    }
+    .image-stack {
+      flex: 1 1 300px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .image-stack .img-box {
+      max-width: 200px;
+      position: relative;
+    }
+    .image-stack .img-box img {
+      width: 100%;
+      border: 2px solid #eee;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    .image-stack .img-box img:hover {
+      transform: scale(1.03);
+    }
+
+    /* Call to Action Section */
+    .cta-section {
+      background-color: #f1a029;
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #fff;
+      position: relative;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      /* استخدام الصورة العريضة كخلفية شفافة */
+      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center center/cover;
+      opacity: 0.2;
+    }
+    .cta-section .cta-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .cta-section h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .cta-section p {
+      font-size: 1rem;
+      max-width: 600px;
+      margin: 0.5rem auto 1.5rem;
+    }
+    .cta-section a {
+      display: inline-block;
+      background-color: #fff;
+      color: #f1a029;
+      padding: 0.8rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+    .cta-section a:hover {
+      background-color: #eee;
+    }
+
+    /* Clients Section */
+    .clients-section {
+      text-align: center;
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .clients-section h3 {
+      font-size: 1.8rem;
+      color: #00205b;
+      margin-bottom: 2rem;
+    }
+    .clients-logos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+    }
+    /* صور العملاء الصغيرة */
+    .clients-logos img {
+      max-height: 60px;
+      object-fit: contain;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 0.5rem;
+      background-color: #fff;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #000;
+      color: #ccc;
+      text-align: center;
+      padding: 1rem 0;
+      margin-top: 2rem;
+    }
+    footer p {
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: #f1a029;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <!-- استخدام الصورة الصغيرة كشعار -->
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Logo">
+      <h1>شركة الإخاء للمقاولات</h1>
+    </div>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="#home">الرئيسية</a></li>
+        <li><a href="#services">الخدمات</a></li>
+        <li><a href="#projects">المشاريع</a></li>
+        <li><a href="#contact">تواصل معنا</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- HERO / SLIDER -->
+  <section class="hero-slider" id="home">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h2>شريكك الموثوق في البناء منذ 2003</h2>
+      <p>نحن نبني الأمان والجودة والثقة في كل مشروع.</p>
+      <a href="#contact" class="btn-cta">تواصل معنا</a>
+    </div>
+  </section>
+
+  <!-- INTRO SECTION -->
+  <section class="intro-section">
+    <h3>أحدث مشاريعنا: المنشأة الرياضية الداخلية في دبي</h3>
+    <p>
+      قام الشيخ حمدان بتعزيز لعبة البادل لتصبح واحدة من أكثر الرياضات شعبية في دولة الإمارات. 
+      واليوم، نشارككم هذا المشروع الذي يظهر مدى اهتمام المجتمع بهذه الرياضة.
+    </p>
+  </section>
+
+  <!-- FEATURED PROJECT SECTION -->
+  <section class="featured-project" id="projects">
+    <div class="text-box">
+      <h3>مشروع المنشأة الرياضية الداخلية</h3>
+      <p>
+        قمنا بتنفيذ التصميم والبناء لهذا المرفق الرياضي الحديث، لضمان مواد عالية الجودة 
+        وهندسة معمارية مبتكرة.
+      </p>
+      <a href="#">المزيد من المشاريع</a>
+    </div>
+    <div class="project-image">
+      <!-- استخدام الصورة العريضة -->
+      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Indoor Sports Facility">
+    </div>
+  </section>
+
+  <!-- SERVICES SECTION -->
+  <section class="services-section" id="services">
+    <h2>خدماتنا</h2>
+    <div class="service-cards">
+      <div class="service-card">
+        <!-- استخدام الصورة الصغيرة -->
+        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Turnkey Construction">
+        <h4>البناء المتكامل</h4>
+        <p>
+          من التصميم إلى الأعمال المدنية والميكانيكية والكهربائية، نسلّم المشروع في الوقت المحدد.
+        </p>
+      </div>
+      <div class="service-card">
+        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Steel Building Construction">
+        <h4>المباني الفولاذية</h4>
+        <p>
+          تصميم وتركيب مباني فولاذية عالية الجودة ومتينة.
+        </p>
+      </div>
+      <div class="service-card">
+        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Fit-Out Works">
+        <h4>أعمال التشطيبات الداخلية</h4>
+        <p>
+          تجهيز داخلي يلبّي احتياجاتك: تقسيمات، نجارة، تبليط وغيرها.
+        </p>
+      </div>
+      <div class="service-card">
+        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="MEP Works">
+        <h4>الأعمال الكهروميكانيكية</h4>
+        <p>
+          السباكة والكهرباء والتكييف وأنظمة مكافحة الحريق لضمان السلامة والكفاءة.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT SECTION -->
+  <section class="about-section" id="about">
+    <h3>خبرة 19 عامًا</h3>
+    <div class="about-content">
+      <div class="about-text">
+        <p>
+          بدأنا في 2003 كفريق صغير برؤية كبيرة. وعلى مدى السنوات، نفذنا أكثر من 1000 مشروع 
+          ناجح في قطاعي البناء السكني والتجاري، مع المحافظة على أعلى معايير الابتكار والجودة.
+        </p>
+        <p>
+          نعطي الأولوية للصحة والسلامة، ولجودة العمل، وللاستدامة في كل مشروع ننجزه، 
+          بما يلبي معايير دولة الإمارات والعالم.
+        </p>
+      </div>
+      <div class="image-stack">
+        <!-- استخدام الصور الصغيرة -->
+        <div class="img-box">
+          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="صورة 1">
+        </div>
+        <div class="img-box">
+          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="صورة 2">
+        </div>
+        <div class="img-box">
+          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="صورة 3">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALL-TO-ACTION SECTION -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2>نبني الأمان والجودة والثقة</h2>
+      <p>
+        كوننا شريكًا أساسيًا لعملائنا، نضع كل خبراتنا وإمكانياتنا في التخطيط والتنفيذ بجودة 
+        لا تُضاهى لتقديم أفضل النتائج.
+      </p>
+      <a href="#contact">تواصل معنا</a>
+    </div>
+  </section>
+
+  <!-- CLIENTS SECTION -->
+  <section class="clients-section">
+    <h3>عملاؤنا الرئيسيون</h3>
+    <div class="clients-logos">
+      <!-- استخدام الصور الصغيرة في شعارات العملاء -->
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 1">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 2">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 3">
+      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 4">
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="contact">
+    <p>العنوان: الطابق الثاني، مبنى XYZ، بزنس باي، دبي، الإمارات العربية المتحدة</p>
+    <p>البريد الإلكتروني: <a href="mailto:info@al-ikhaa-group.com">info@al-ikhaa-group.com</a> | الهاتف: +971 4 123 4567</p>
+    <p>جميع الحقوق محفوظة © 2023 - شركة الإخاء للمقاولات</p>
+  </footer>
+
+</body>
+</html>
