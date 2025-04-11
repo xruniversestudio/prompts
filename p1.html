@@ -1,486 +1,1170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title> Contracting LLC</title>
-  <style>
-    /* RESET */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
-
-    body {
-      background-color: #ffffff;
-      color: #333;
-      line-height: 1.5;
-    }
-
-    /* Header */
-    header {
-      background-color: #00205b; /* Dark blue color */
-      color: #fff;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .logo img {
-      max-height: 50px;
-    }
-    .nav-links {
-      display: flex;
-      gap: 1.5rem;
-    }
-    .nav-links a {
-      color: #fff;
-      text-decoration: none;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-    .nav-links a:hover {
-      opacity: 0.8;
-    }
-
-    /* Hero/Slider Section */
-    .hero-slider {
-      position: relative;
-      width: 100%;
-      height: 60vh;
-      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center center/cover;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      color: #fff;
-    }
-    .hero-overlay {
-      position: absolute;
-      inset: 0;
-      background-color: rgba(0, 0, 0, 0.4);
-    }
-    .hero-content {
-      position: relative;
-      z-index: 2;
-      padding: 2rem;
-      text-align: center;
-      max-width: 800px;
-    }
-    .hero-content h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    .hero-content p {
-      font-size: 1.1rem;
-      margin-bottom: 1.5rem;
-    }
-    .hero-content .btn-cta {
-      background-color: #f1a029;
-      color: #fff;
-      padding: 0.8rem 1.5rem;
-      text-decoration: none;
-      font-weight: 600;
-      border-radius: 4px;
-      transition: background-color 0.3s;
-    }
-    .hero-content .btn-cta:hover {
-      background-color: #d98e27;
-    }
-
-    /* Intro Section */
-    .intro-section {
-      text-align: center;
-      padding: 2rem 1rem;
-      background-color: #f9f9f9;
-    }
-    .intro-section h3 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-      color: #00205b;
-    }
-    .intro-section p {
-      max-width: 700px;
-      margin: 0 auto;
-      font-size: 1rem;
-      color: #555;
-      line-height: 1.6;
-    }
-
-    /* Latest Project / Featured Project Section */
-    .featured-project {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 1.5rem;
-      padding: 2rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .featured-project .text-box {
-      flex: 1 1 400px;
-      min-width: 300px;
-    }
-    .featured-project .text-box h3 {
-      font-size: 1.5rem;
-      color: #00205b;
-      margin-bottom: 1rem;
-    }
-    .featured-project .text-box p {
-      color: #555;
-      margin-bottom: 1rem;
-      line-height: 1.6;
-    }
-    .featured-project .text-box a {
-      color: #f1a029;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .featured-project .project-image {
-      flex: 1 1 400px;
-      text-align: center;
-      min-width: 300px;
-    }
-    .featured-project .project-image img {
-      max-width: 100%;
-      border-radius: 4px;
-    }
-
-    /* Services Section */
-    .services-section {
-      padding: 2rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    .services-section h2 {
-      font-size: 2rem;
-      color: #00205b;
-      margin-bottom: 1.5rem;
-    }
-    .service-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-    }
-    .service-card {
-      background-color: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 1rem;
-      text-align: left;
-      transition: box-shadow 0.3s;
-    }
-    .service-card:hover {
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    .service-card img {
-      width: 100%;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-    .service-card h4 {
-      font-size: 1.2rem;
-      color: #f1a029;
-      margin-bottom: 0.5rem;
-    }
-    .service-card p {
-      font-size: 0.95rem;
-      color: #555;
-      line-height: 1.5;
-    }
-
-    /* About / Experience Section */
-    .about-section {
-      padding: 2rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .about-section h3 {
-      text-align: center;
-      color: #00205b;
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-    }
-    .about-content {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 2rem;
-      margin-top: 2rem;
-    }
-    .about-text {
-      flex: 1 1 400px;
-      min-width: 300px;
-    }
-    .about-text p {
-      margin-bottom: 1rem;
-      color: #555;
-      line-height: 1.6;
-    }
-    .image-stack {
-      flex: 1 1 300px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: center;
-    }
-    .image-stack .img-box {
-      max-width: 200px;
-      position: relative;
-    }
-    .image-stack .img-box img {
-      width: 100%;
-      border: 2px solid #eee;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s;
-    }
-    .image-stack .img-box img:hover {
-      transform: scale(1.03);
-    }
-
-    /* Call to Action Section */
-    .cta-section {
-      background-color: #f1a029;
-      padding: 2rem 1rem;
-      text-align: center;
-      color: #fff;
-      position: relative;
-    }
-    .cta-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      background: url('https://xruniversestudio.github.io/prompts/s.jpeg') no-repeat center center/cover;
-      opacity: 0.2;
-    }
-    .cta-section .cta-content {
-      position: relative;
-      z-index: 2;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .cta-section h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    .cta-section p {
-      font-size: 1rem;
-      max-width: 600px;
-      margin: 0.5rem auto 1.5rem;
-      line-height: 1.6;
-    }
-    .cta-section a {
-      display: inline-block;
-      background-color: #fff;
-      color: #f1a029;
-      padding: 0.8rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: background-color 0.3s;
-    }
-    .cta-section a:hover {
-      background-color: #eee;
-    }
-
-    /* Clients Section */
-    .clients-section {
-      text-align: center;
-      padding: 2rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .clients-section h3 {
-      font-size: 1.8rem;
-      color: #00205b;
-      margin-bottom: 2rem;
-    }
-    .clients-logos {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 2rem;
-    }
-    .clients-logos img {
-      max-height: 60px;
-      object-fit: contain;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 0.5rem;
-      background-color: #fff;
-    }
-
-    /* Footer */
-    footer {
-      background-color: #000;
-      color: #ccc;
-      text-align: center;
-      padding: 1rem 0;
-      margin-top: 2rem;
-    }
-    footer p {
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
-    footer a {
-      color: #f1a029;
-      text-decoration: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البناء المتقن | شركة مقاولات</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a5f7a;
+            --secondary: #57c5b6;
+            --accent: #159895;
+            --light: #f9f9f9;
+            --dark: #002b5b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--light);
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        /* التصميم الجديد للشريط العلوي */
+        .top-bar {
+            background-color: var(--dark);
+            color: white;
+            padding: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        .top-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .social-links a {
+            color: white;
+            margin-right: 15px;
+            transition: all 0.3s;
+        }
+        
+        .social-links a:hover {
+            color: var(--secondary);
+        }
+        
+        .contact-info span {
+            margin-left: 20px;
+        }
+        
+        .contact-info i {
+            color: var(--secondary);
+            margin-left: 5px;
+        }
+        
+        /* التصميم الجديد للقائمة */
+        header {
+            background-color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo img {
+            height: 50px;
+            margin-left: 15px;
+        }
+        
+        .logo-text h1 {
+            color: var(--dark);
+            font-size: 1.8rem;
+        }
+        
+        .logo-text span {
+            color: var(--accent);
+            font-size: 1rem;
+            display: block;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+        
+        .nav-links li {
+            margin-right: 25px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            position: relative;
+            padding: 5px 0;
+            transition: all 0.3s;
+        }
+        
+        .nav-links a:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--accent);
+            transition: width 0.3s;
+        }
+        
+        .nav-links a:hover:after {
+            width: 100%;
+            left: 0;
+        }
+        
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+        
+        .cta-button {
+            background-color: var(--accent);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: 2px solid var(--accent);
+        }
+        
+        .cta-button:hover {
+            background-color: transparent;
+            color: var(--accent);
+        }
+        
+        /* هيرو جديد مع تأثيرات */
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://xruniversestudio.github.io/prompts/s.jpeg');
+            background-size: cover;
+            background-position: center;
+            height: 90vh;
+            display: flex;
+            align-items: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero:before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to top, var(--light), transparent);
+            z-index: 1;
+        }
+        
+        .hero-content {
+            max-width: 600px;
+            position: relative;
+            z-index: 2;
+            animation: fadeInUp 1s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .secondary-button {
+            background-color: transparent;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: 2px solid white;
+        }
+        
+        .secondary-button:hover {
+            background-color: white;
+            color: var(--dark);
+        }
+        
+        /* قسم من نحن بتصميم جديد */
+        .about {
+            padding: 100px 0;
+            background-color: white;
+        }
+        
+        .about-content {
+            display: flex;
+            align-items: center;
+            gap: 50px;
+        }
+        
+        .about-image {
+            flex: 1;
+            position: relative;
+        }
+        
+        .about-image img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.1);
+        }
+        
+        .experience-badge {
+            position: absolute;
+            bottom: -20px;
+            left: -20px;
+            background-color: var(--accent);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .about-text {
+            flex: 1;
+        }
+        
+        .section-title {
+            color: var(--dark);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 0;
+            width: 50%;
+            height: 3px;
+            background-color: var(--accent);
+        }
+        
+        .about-features {
+            margin-top: 30px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        .feature-icon {
+            background-color: var(--secondary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 15px;
+            flex-shrink: 0;
+        }
+        
+        /* تصميم جديد لقسم المشاريع */
+        .projects {
+            padding: 100px 0;
+            background-color: var(--light);
+        }
+        
+        .projects-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+        
+        .project-card {
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+        }
+        
+        .project-image {
+            height: 250px;
+            overflow: hidden;
+        }
+        
+        .project-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+        
+        .project-card:hover .project-image img {
+            transform: scale(1.1);
+        }
+        
+        .project-details {
+            padding: 20px;
+        }
+        
+        .project-details h3 {
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .project-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .project-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .project-link i {
+            margin-right: 5px;
+            transition: all 0.3s;
+        }
+        
+        .project-link:hover i {
+            transform: translateX(5px);
+        }
+        
+        /* تصميم جديد للخدمات */
+        .services {
+            padding: 100px 0;
+            background-color: white;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .service-card {
+            background-color: var(--light);
+            padding: 40px 30px;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+            border-bottom: 5px solid transparent;
+        }
+        
+        .service-card:hover {
+            background-color: white;
+            border-color: var(--accent);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transform: translateY(-5px);
+        }
+        
+        .service-icon {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        
+        .service-card h3 {
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+        
+        /* قسم الاتصال بتصميم عصري */
+        .contact {
+            padding: 100px 0;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://xruniversestudio.github.io/prompts/12-1.jpg');
+            background-size: cover;
+            background-position: center;
+            color: white;
+        }
+        
+        .contact .section-title {
+            color: white;
+        }
+        
+        .contact .section-title:after {
+            background-color: var(--secondary);
+        }
+        
+        .contact-container {
+            display: flex;
+            gap: 50px;
+        }
+        
+        .contact-info {
+            flex: 1;
+        }
+        
+        .contact-form {
+            flex: 1;
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .contact-form h3 {
+            color: var(--dark);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(21, 152, 149, 0.2);
+        }
+        
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .submit-btn:hover {
+            background-color: var(--dark);
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+        
+        .info-icon {
+            background-color: var(--accent);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 15px;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+        
+        .info-text h3 {
+            color: var(--secondary);
+            margin-bottom: 5px;
+        }
+        
+        /* الفوتر الجديد */
+        footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 70px 0 0;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 50px;
+        }
+        
+        .footer-col h3 {
+            color: white;
+            margin-bottom: 25px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .footer-col h3:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--accent);
+        }
+        
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .footer-logo img {
+            height: 40px;
+            margin-left: 10px;
+        }
+        
+        .footer-logo-text h2 {
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .footer-logo-text span {
+            color: var(--secondary);
+            font-size: 0.9rem;
+        }
+        
+        .footer-about p {
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+        
+        .footer-links ul {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-links a {
+            color: #ddd;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: block;
+            padding: 5px 0;
+        }
+        
+        .footer-links a:hover {
+            color: var(--secondary);
+            transform: translateX(-5px);
+        }
+        
+        .footer-contact p {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+        
+        .footer-contact i {
+            color: var(--secondary);
+            margin-left: 10px;
+            width: 20px;
+        }
+        
+        .footer-newsletter p {
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .newsletter-form {
+            display: flex;
+        }
+        
+        .newsletter-form input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            font-family: 'Tajawal', sans-serif;
+        }
+        
+        .newsletter-form button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        /* تأثيرات الحركة */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.6s ease;
+        }
+        
+        .animate-on-scroll.animated {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* التجاوب مع الأجهزة المختلفة */
+        @media (max-width: 1200px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .about-content,
+            .contact-container {
+                flex-direction: column;
+            }
+            
+            .about-image,
+            .about-text,
+            .contact-info,
+            .contact-form {
+                flex: none;
+                width: 100%;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .hero {
+                height: auto;
+                padding: 100px 0;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .top-bar .container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            nav {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .nav-links li {
+                margin: 0 10px 10px;
+            }
+            
+            .projects-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+            
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .experience-badge {
+                padding: 15px;
+                font-size: 0.9rem;
+            }
+            
+            .contact-form {
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
-
 <body>
-
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Al Ikhaa Logo">
-      <h1>Al Ikhaa Contracting LLC</h1>
-    </div>
-    <nav>
-      <ul class="nav-links">
-        <li><a href="#home">Home</a></li>
-        <li><a href="#services">Services</a></li>
-        <li><a href="#projects">Projects</a></li>
-        <li><a href="#contact">Contact Us</a></li>
-      </ul>
-    </nav>
-  </header>
-
-  <!-- HERO / SLIDER -->
-  <section class="hero-slider" id="home">
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <h2>Your Reliable Construction Partner Since 2003</h2>
-      <p>We prioritize sustainability and quality in every project we undertake.</p>
-      <a href="#contact" class="btn-cta">Get a Quote</a>
-    </div>
-  </section>
-
-  <!-- INTRO SECTION -->
-  <section class="intro-section">
-    <h3>Latest Project: Indoor Sports Facility at Dubai Sports City</h3>
-    <p>
-      Dubai’s sports scene continues to thrive with new state-of-the-art facilities. We’re proud to showcase our latest contribution—a multifunctional indoor arena featuring cutting-edge design and world-class amenities.
-    </p>
-  </section>
-
-  <!-- FEATURED PROJECT SECTION -->
-  <section class="featured-project" id="projects">
-    <div class="text-box">
-      <h3>Indoor Sports City Project</h3>
-      <p>
-        Designed and built to meet international standards, this facility offers an unmatched environment for training and competitive sports, equipped with advanced ventilation and modern structural elements.
-      </p>
-      <a href="#">View All Projects</a>
-    </div>
-    <div class="project-image">
-      <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="Indoor Sports Facility">
-    </div>
-  </section>
-
-  <!-- SERVICES SECTION -->
-  <section class="services-section" id="services">
-    <h2>Our Services</h2>
-    <div class="service-cards">
-      <div class="service-card">
-        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Turnkey Construction">
-        <h4>Design and Build</h4>
-        <p>
-          We handle the full project lifecycle—from conceptual design and authority approvals to final handover.
-        </p>
-      </div>
-      <div class="service-card">
-        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Steel Construction">
-        <h4>Steel Structures</h4>
-        <p>
-          Expert steel design, fabrication, and installation for robust, efficient buildings.
-        </p>
-      </div>
-      <div class="service-card">
-        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Fit-Out Works">
-        <h4>Fit-Out Works</h4>
-        <p>
-          From partitioning and flooring to mechanical, electrical, and plumbing solutions, we ensure perfect interiors.
-        </p>
-      </div>
-      <div class="service-card">
-        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Approvals">
-        <h4>Approvals and Compliance</h4>
-        <p>
-          We manage all necessary local authority approvals and follow best practices in health & safety.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ABOUT SECTION -->
-  <section class="about-section" id="about">
-    <h3>Over 19 Years of Experience</h3>
-    <div class="about-content">
-      <div class="about-text">
-        <p>
-          Al Ikhaa Contracting LLC started in 2003 with a small team and a big vision. Today, we stand among the pioneers of construction services in the UAE, continually expanding our expertise.
-        </p>
-        <p>
-          We prioritize health & safety, quality, and sustainability in every project, aligning with local regulations and international standards.
-        </p>
-      </div>
-      <div class="image-stack">
-        <div class="img-box">
-          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Construction Crane">
+    <!-- الشريط العلوي -->
+    <div class="top-bar">
+        <div class="container">
+            <div class="social-links">
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+            <div class="contact-info">
+                <span><i class="fas fa-phone"></i> +966 12 345 6789</span>
+                <span><i class="fas fa-envelope"></i> info@albnapm.com</span>
+            </div>
         </div>
-        <div class="img-box">
-          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Modern Building">
+    </div>
+    
+    <!-- القائمة الرئيسية -->
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <img src="https://via.placeholder.com/50x50" alt="شعار الشركة">
+                    <div class="logo-text">
+                        <h1>البناء المتقن</h1>
+                        <span>شركة مقاولات عامة</span>
+                    </div>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#home">الرئيسية</a></li>
+                    <li><a href="#about">من نحن</a></li>
+                    <li><a href="#projects">مشاريعنا</a></li>
+                    <li><a href="#services">خدماتنا</a></li>
+                    <li><a href="#contact">اتصل بنا</a></li>
+                </ul>
+                <a href="#contact" class="cta-button">طلب خدمة</a>
+            </nav>
         </div>
-        <div class="img-box">
-          <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Interior Fit-out">
+    </header>
+    
+    <!-- قسم الهيرو -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <h1>حلول إنشائية متكاملة لمستقبل أفضل</h1>
+                <p>نقدم خدمات المقاولات العامة بأعلى معايير الجودة والسلامة، مع التزام كامل بمواعيد التسليم وميزانيات العملاء.</p>
+                <div class="hero-buttons">
+                    <a href="#projects" class="cta-button">تصفح مشاريعنا</a>
+                    <a href="#contact" class="secondary-button">اطلب استشارة</a>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CALL-TO-ACTION SECTION -->
-  <section class="cta-section">
-    <div class="cta-content">
-      <h2>We Build Safety, Quality, and Trust</h2>
-      <p>
-        As an integral partner, we leverage our expertise, manpower, and unrivaled quality standards to deliver on time and beyond expectations.
-      </p>
-      <a href="#contact">Contact Us</a>
-    </div>
-  </section>
-
-  <!-- CLIENTS SECTION -->
-  <section class="clients-section">
-    <h3>Our Main Clients</h3>
-    <div class="clients-logos">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 1">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 2">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 3">
-      <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="Client 4">
-    </div>
-  </section>
-
-  <!-- FOOTER -->
-  <footer id="contact">
-    <p>Office Address: 2nd Floor, XYZ Building, Business Bay, Dubai, UAE</p>
-    <p>Email: <a href="mailto:info@al-ikhaa-group.com">info@al-ikhaa-group.com</a> | Phone: +971 4 123 4567</p>
-    <p>All rights reserved © 2023 - Al Ikhaa Contracting LLC</p>
-  </footer>
-
+    </section>
+    
+    <!-- قسم من نحن -->
+    <section class="about" id="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-image animate-on-scroll">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="فريق العمل">
+                    <div class="experience-badge">
+                        <h3>+20 سنة</h3>
+                        <p>خبرة في المجال</p>
+                    </div>
+                </div>
+                <div class="about-text animate-on-scroll">
+                    <h2 class="section-title">من نحن</h2>
+                    <p>شركة البناء المتقن هي شركة سعودية رائدة في مجال المقاولات العامة والتطوير العقاري، تأسست عام 2003 بهدف تقديم حلول إنشائية متكاملة تلبي احتياجات العملاء في القطاعين العام والخاص.</p>
+                    <p>نتميز بفريق من المهندسين والخبراء ذوي الكفاءة العالية الذين يعملون وفق أحدث المعايير العالمية في مجال البناء والتشييد.</p>
+                    <div class="about-features">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-award"></i>
+                            </div>
+                            <div>
+                                <h3>جودة لا مثيل لها</h3>
+                                <p>نلتزم بأعلى معايير الجودة في جميع مشاريعنا</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <h3>التسليم في الموعد</h3>
+                                <p>نحرص على تسليم المشاريع في الوقت المحدد</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div>
+                                <h3>السلامة أولاً</h3>
+                                <p>نطبق أعلى معايير السلامة في مواقع العمل</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- قسم المشاريع -->
+    <section class="projects" id="projects">
+        <div class="container">
+            <div class="projects-header animate-on-scroll">
+                <h2 class="section-title">مشاريعنا</h2>
+                <a href="#contact" class="secondary-button">عرض جميع المشاريع</a>
+            </div>
+            <div class="projects-grid">
+                <div class="project-card animate-on-scroll">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع برج الأعمال">
+                    </div>
+                    <div class="project-details">
+                        <h3>برج الأعمال الدولي</h3>
+                        <div class="project-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> الرياض</span>
+                            <span><i class="fas fa-calendar-alt"></i> 2023</span>
+                        </div>
+                        <p>برج مكون من 50 طابقاً في قلب العاصمة الرياض، يضم مكاتب فاخرة ومرافق متكاملة.</p>
+                        <a href="#" class="project-link">عرض التفاصيل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                </div>
+                <div class="project-card animate-on-scroll">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع مجمع سكني">
+                    </div>
+                    <div class="project-details">
+                        <h3>مجمع النخيل السكني</h3>
+                        <div class="project-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> جدة</span>
+                            <span><i class="fas fa-calendar-alt"></i> 2022</span>
+                        </div>
+                        <p>مجمع سكني فاخر يتكون من 200 فيلا و50 شقة، مع مرافق ترفيهية متكاملة.</p>
+                        <a href="#" class="project-link">عرض التفاصيل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                </div>
+                <div class="project-card animate-on-scroll">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع طريق سريع">
+                    </div>
+                    <div class="project-details">
+                        <h3>الطريق الدائري الشمالي</h3>
+                        <div class="project-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> الدمام</span>
+                            <span><i class="fas fa-calendar-alt"></i> 2021</span>
+                        </div>
+                        <p>طريق سريع بطول 30 كم مع 5 تقاطعات علوية، يربط بين أهم مناطق المدينة.</p>
+                        <a href="#" class="project-link">عرض التفاصيل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- قسم الخدمات -->
+    <section class="services" id="services">
+        <div class="container">
+            <h2 class="section-title text-center animate-on-scroll">خدماتنا</h2>
+            <p class="text-center animate-on-scroll" style="max-width: 700px; margin: 0 auto 50px;">نقدم مجموعة متكاملة من خدمات المقاولات والإنشاءات التي تلبي احتياجات عملائنا في مختلف القطاعات</p>
+            <div class="services-grid">
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h3>المقاولات العامة</h3>
+                    <p>تنفيذ المشاريع الإنشائية بكافة أنواعها من التصميم حتى التسليم النهائي</p>
+                </div>
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <h3>تشييد المباني السكنية</h3>
+                    <p>بناء وتشييد المجمعات السكنية والفيلات وفق أحدث التصاميم</p>
+                </div>
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-road"></i>
+                    </div>
+                    <h3>إنشاء الطرق والجسور</h3>
+                    <p>تنفيذ مشاريع البنية التحتية من طرق وجسور وأنفاق</p>
+                </div>
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-hospital"></i>
+                    </div>
+                    <h3>المشاريع الحكومية</h3>
+                    <p>تنفيذ المشاريع الحكومية والمرافق العامة وفق أعلى المواصفات</p>
+                </div>
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-pencil-ruler"></i>
+                    </div>
+                    <h3>الاستشارات الهندسية</h3>
+                    <p>تقديم الاستشارات الهندسية والفنية لمختلف المشاريع الإنشائية</p>
+                </div>
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3>الصيانة والتشغيل</h3>
+                    <p>خدمات الصيانة الدورية والصيانة الطارئة للمباني والمنشآت</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- قسم الاتصال -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title animate-on-scroll">اتصل بنا</h2>
+            <p class="animate-on-scroll" style="max-width: 600px; margin-bottom: 50px;">نحن هنا للإجابة على جميع استفساراتك وتقديم أفضل الحلول لمشاريعك. تواصل معنا وسنكون سعداء بمساعدتك.</p>
+            <div class="contact-container">
+                <div class="contact-info animate-on-scroll">
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="info-text">
+                            <h3>العنوان</h3>
+                            <p>حي المروج، شارع الملك فهد، الرياض، المملكة العربية السعودية</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="info-text">
+                            <h3>الهاتف</h3>
+                            <p>+966 12 345 6789</p>
+                            <p>+966 12 345 6788</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="info-text">
+                            <h3>البريد الإلكتروني</h3>
+                            <p>info@albnapm.com</p>
+                            <p>sales@albnapm.com</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="info-text">
+                            <h3>ساعات العمل</h3>
+                            <p>الأحد - الخميس: 8 صباحاً - 5 مساءً</p>
+                            <p>الجمعة - السبت: مغلق</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="contact-form animate-on-scroll">
+                    <h3>أرسل لنا رسالة</h3>
+                    <form>
+                        <div class="form-group">
+                            <label for="name">الاسم الكامل</label>
+                            <input type="text" id="name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">البريد الإلكتروني</label>
+                            <input type="email" id="email" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">رقم الهاتف</label>
+                            <input type="tel" id="phone" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="service">الخدمة المطلوبة</label>
+                            <select id="service" class="form-control" required>
+                                <option value="">اختر الخدمة المطلوبة</option>
+                                <option value="construction">المقاولات العامة</option>
+                                <option value="residential">المباني السكنية</option>
+                                <option value="roads">الطرق والجسور</option>
+                                <option value="government">المشاريع الحكومية</option>
+                                <option value="consulting">الاستشارات الهندسية</option>
+                                <option value="maintenance">الصيانة والتشغيل</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">الرسالة</label>
+                            <textarea id="message" class="form-control" required></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">إرسال الرسالة</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- الفوتر -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <img src="https://via.placeholder.com/40x40" alt="شعار الشركة">
+                        <div class="footer-logo-text">
+                            <h2>البناء المتقن</h2>
+                            <span>شركة مقاولات عامة</span>
+                        </div>
+                    </div>
+                    <div class="footer-about">
+                        <p>شركة سعودية رائدة في مجال المقاولات العامة والتطوير العقاري، نلتزم بأعلى معايير الجودة والسلامة في جميع مشاريعنا.</p>
+                    </div>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>روابط سريعة</h3>
+                    <div class="footer-links">
+                        <ul>
+                            <li><a href="#home">الرئيسية</a></li>
+                            <li><a href="#about">من نحن</a></li>
+                            <li><a href="#projects">مشاريعنا</a></li>
+                            <li><a href="#services">خدماتنا</a></li>
+                            <li><a href="#contact">اتصل بنا</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>الخدمات</h3>
+                    <div class="footer-links">
+                        <ul>
+                            <li><a href="#">المقاولات العامة</a></li>
+                            <li><a href="#">تشييد المباني السكنية</a></li>
+                            <li><a href="#">إنشاء الطرق والجسور</a></li>
+                            <li><a href="#">المشاريع الحكومية</a></li>
+                            <li><a href="#">الاستشارات الهندسية</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>اتصل بنا</h3>
+                    <div class="footer-contact">
+                        <p><i class="fas fa-map-marker-alt"></i> حي المروج، الرياض، السعودية</p>
+                        <p><i class="fas fa-phone"></i> +966 12 345 6789</p>
+                        <p><i class="fas fa-envelope"></i> info@albnapm.com</p>
+                    </div>
+                    <h3 style="margin-top: 30px;">النشرة البريدية</h3>
+                    <div class="footer-newsletter">
+                        <p>اشترك في نشرتنا البريدية لتصلك آخر أخبارنا وعروضنا.</p>
+                        <form class="newsletter-form">
+                            <input type="email" placeholder="بريدك الإلكتروني">
+                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 شركة البناء المتقن للمقاولات. جميع الحقوق محفوظة.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <script>
+        // كود JavaScript للحركات والتأثيرات
+        document.addEventListener('DOMContentLoaded', function() {
+            // تنعيم الانتقال بين الأقسام
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+            
+            // تأثير الظهور عند التمرير
+            const animateElements = document.querySelectorAll('.animate-on-scroll');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animated');
+                    }
+                });
+            }, {
+                threshold: 0.1
+            });
+            
+            animateElements.forEach(element => {
+                observer.observe(element);
+            });
+            
+            // يمكن إضافة المزيد من التفاعلات هنا
+        });
+    </script>
 </body>
 </html>
