@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شركة البناء الحديث - مقاولات عامة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* التصميم العام */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            width: 92%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        /* الهيدر */
+        header {
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://xruniversestudio.github.io/prompts/s.jpeg');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            min-height: 600px;
+            max-height: 1200px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .header-content h1 {
+            font-size: clamp(1.8rem, 6vw, 2.8rem);
+            margin-bottom: 20px;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+        
+        .header-content p {
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            margin-bottom: 30px;
+            max-width: 800px;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background-color: #f39c12;
+            color: white;
+            padding: 12px 30px;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+        
+        /* قسم من نحن */
+        .about {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+            color: #333;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+        
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        
+        .about-text p {
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            margin-bottom: 15px;
+            font-weight: 400;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        
+        .about-image img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* مميزاتنا */
+        .features {
+            padding: 60px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+        
+        .feature-item {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .feature-item h3 {
+            margin: 20px 0 15px;
+            color: #333;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            font-weight: 600;
+        }
+        
+        .feature-item p {
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            font-weight: 400;
+            line-height: 1.6;
+        }
+        
+        /* مشاريعنا */
+        .projects {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        
+        .project-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .project-image {
+            height: 200px;
+        }
+        
+        .project-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .project-info {
+            padding: 20px;
+        }
+        
+        .project-info h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        
+        .project-info p {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        /* الخدمات */
+        .services {
+            padding: 60px 0;
+            background-color: #f9f9f9;
+        }
+        
+        .services-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        
+        .service-category {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .service-category h3 {
+            margin-bottom: 20px;
+            color: #f39c12;
+            font-size: 1.4rem;
+            text-align: center;
+        }
+        
+        .service-list {
+            list-style: none;
+        }
+        
+        .service-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 1rem;
+        }
+        
+        .service-list li:last-child {
+            border-bottom: none;
+        }
+        
+        /* اتصل بنا */
+        .contact {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .contact-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        
+        .contact-info {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .contact-info h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.4rem;
+            text-align: center;
+        }
+        
+        .contact-details {
+            list-style: none;
+        }
+        
+        .contact-details li {
+            padding: 10px 0;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .contact-details li i {
+            margin-left: 10px;
+            color: #f39c12;
+        }
+        
+        .contact-form {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        .form-group textarea {
+            height: 120px;
+        }
+        
+        .submit-button {
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: clamp(1rem, 3vw, 1.1rem);
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        /* الفوتر */
+        footer {
+            background-color: #333;
+            color: white;
+            padding: 60px 0 20px;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-column h3 {
+            margin-bottom: 20px;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            font-weight: 600;
+            color: #f39c12;
+        }
+        
+        .footer-column p, 
+        .footer-column ul li {
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            font-weight: 400;
+            line-height: 1.8;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-column ul li a {
+            color: #ddd;
+            text-decoration: none;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .social-links a {
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #444;
+            color: #aaa;
+            font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+        }
+        
+        /* تحسينات للشاشات المتوسطة */
+        @media (min-width: 768px) {
+            .about-content {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .services-container {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .contact-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        /* تحسينات للشاشات الكبيرة */
+        @media (min-width: 992px) {
+            .container {
+                width: 90%;
+            }
+            
+            .projects-grid {
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- الهيدر -->
+    <header>
+        <div class="header-content">
+            <h1>شركة البناء الحديث للمقاولات</h1>
+            <p>نقدم حلولاً متكاملة في مجال البناء والتشييد بمعايير الجودة العالمية</p>
+            <a href="#contact" class="cta-button">اطلب استشارة مجانية</a>
+        </div>
+    </header>
+    
+    <!-- قسم من نحن -->
+    <section class="about">
+        <div class="container">
+            <h2 class="section-title">من نحن</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>شركة البناء الحديث هي شركة رائدة في مجال المقاولات العامة والتشييد، تأسست عام 2005 بهدف تقديم حلول بناء متكاملة تلبي أعلى معايير الجودة والسلامة.</p>
+                    <p>نتميز بفريق من المهندسين والخبراء ذوي الكفاءة العالية، ونلتزم بتسليم المشاريع في الوقت المحدد وبأعلى مستويات الدقة والإتقان.</p>
+                    <p>خلال السنوات الماضية، نفذنا العديد من المشاريع الكبرى التي أصبحت علامات بارزة في مجال البناء والتطوير العقاري.</p>
+                </div>
+                <div class="about-image">
+                    <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="فريق العمل">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- مميزاتنا -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">مميزاتنا</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <h3>جودة البناء</h3>
+                    <p>نستخدم مواد بناء عالية الجودة ونتابع تنفيذ كل مرحلة بدقة لضمان الجودة النهائية</p>
+                </div>
+                <div class="feature-item">
+                    <h3>التسليم في الوقت المحدد</h3>
+                    <p>نلتزم بمواعيد التسليم المتفق عليها دون تأخير مع الحفاظ على أعلى معايير الجودة</p>
+                </div>
+                <div class="feature-item">
+                    <h3>فريق محترف</h3>
+                    <p>فريق عمل من المهندسين والفنيين ذوي الخبرة الطويلة في مجال البناء والتشييد</p>
+                </div>
+                <div class="feature-item">
+                    <h3>أسعار تنافسية</h3>
+                    <p>نقدم أفضل الأسعار في السوق مع الحفاظ على جودة المواد والتنفيذ</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- مشاريعنا -->
+    <section class="projects">
+        <div class="container">
+            <h2 class="section-title">أحدث مشاريعنا</h2>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع سكني">
+                    </div>
+                    <div class="project-info">
+                        <h3>مجمع سكني فاخر</h3>
+                        <p>مجمع سكني يتكون من 10 فلل فاخرة بمساحات تبدأ من 400 م²</p>
+                    </div>
+                </div>
+                <div class="project-card">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/12-1.jpg" alt="مشروع تجاري">
+                    </div>
+                    <div class="project-info">
+                        <h3>مركز تجاري حديث</h3>
+                        <p>مركز تجاري بمساحة 5000 م² يحتوي على 50 محل تجاري ومواقف سيارات</p>
+                    </div>
+                </div>
+                <div class="project-card">
+                    <div class="project-image">
+                        <img src="https://xruniversestudio.github.io/prompts/s.jpeg" alt="مشروع فندقي">
+                    </div>
+                    <div class="project-info">
+                        <h3>فندق 5 نجوم</h3>
+                        <p>فندق فاخر مكون من 15 طابقاً ويضم 200 غرفة ومرافق متكاملة</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- الخدمات -->
+    <section class="services">
+        <div class="container">
+            <h2 class="section-title">خدماتنا</h2>
+            <div class="services-container">
+                <div class="service-category">
+                    <h3>خدمات البناء</h3>
+                    <ul class="service-list">
+                        <li>بناء الفلل والقصور</li>
+                        <li>تشييد المجمعات السكنية</li>
+                        <li>إنشاء المباني التجارية</li>
+                        <li>تنفيذ المشاريع الحكومية</li>
+                        <li>بناء المدارس والمستشفيات</li>
+                    </ul>
+                </div>
+                <div class="service-category">
+                    <h3>خدمات التصميم</h3>
+                    <ul class="service-list">
+                        <li>التصميم المعماري</li>
+                        <li>التصميم الداخلي</li>
+                        <li>التصميم الإنشائي</li>
+                        <li>تصميم الواجهات</li>
+                        <li>دراسات الجدوى</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- اتصل بنا -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">اتصل بنا</h2>
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h3>معلومات التواصل</h3>
+                    <ul class="contact-details">
+                        <li><i>📍</i> العنوان: الرياض، المملكة العربية السعودية</li>
+                        <li><i>📞</i> الهاتف: +966 12 345 6789</li>
+                        <li><i>✉️</i> البريد الإلكتروني: info@modernbuilding.com</li>
+                        <li><i>🕒</i> ساعات العمل: من الأحد إلى الخميس، 8 صباحاً - 5 مساءً</li>
+                    </ul>
+                </div>
+                <div class="contact-form">
+                    <form>
+                        <div class="form-group">
+                            <label for="name">الاسم الكامل</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">البريد الإلكتروني</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">رقم الهاتف</label>
+                            <input type="tel" id="phone" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">الرسالة</label>
+                            <textarea id="message" required></textarea>
+                        </div>
+                        <button type="submit" class="submit-button">إرسال الرسالة</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- الفوتر -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>عن الشركة</h3>
+                    <p>شركة البناء الحديث للمقاولات العامة - تأسست عام 2005 - نقدم حلول بناء متكاملة بمعايير الجودة العالمية</p>
+                    <div class="social-links">
+                        <a href="#">📱</a>
+                        <a href="#">💬</a>
+                        <a href="#">📧</a>
+                    </div>
+                </div>
+                <div class="footer-column">
+                    <h3>روابط سريعة</h3>
+                    <ul>
+                        <li><a href="#">الصفحة الرئيسية</a></li>
+                        <li><a href="#about">من نحن</a></li>
+                        <li><a href="#projects">المشاريع</a></li>
+                        <li><a href="#services">الخدمات</a></li>
+                        <li><a href="#contact">اتصل بنا</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>مواقع مشاريعنا</h3>
+                    <ul>
+                        <li>الرياض - حي المروج</li>
+                        <li>جدة - حي الصفا</li>
+                        <li>الدمام - حي العقيق</li>
+                        <li>الخبر - حي الراكة</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>جميع الحقوق محفوظة &copy; 2023 شركة البناء الحديث للمقاولات</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
