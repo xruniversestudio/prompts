@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>طريقة توليد Caption لفيديو بالذكاء الاصطناعي</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      color: white;
+      direction: rtl;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 850px;
+      margin-top: 80px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+      border-radius: 12px 12px 0 0;
+      margin-bottom: 20px;
+    }
+
+    .header h2 {
+      font-size: 24px;
+      background: linear-gradient(90deg, #fff, #ddd);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .copy-btn {
+      background-color: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .instructions {
+      background-color: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .instructions ol {
+      padding-right: 20px;
+    }
+
+    .text {
+      font-size: 16px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      background: #111;
+      padding: 20px;
+      border-radius: 12px;
+      direction: ltr;
+      overflow-x: auto;
+    }
+
+    .images {
+      margin-top: 30px;
+      display: grid;
+      gap: 15px;
+      grid-template-columns: 1fr 1fr;
+      justify-content: center;
+    }
+
+    .images img {
+      width: 100%;
+      height: 400px;
+      object-fit: contain;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      border: 2px solid #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      padding: 10px;
+    }
+
+    .tool-link {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 18px;
+    }
+
+    .tool-link a {
+      color: #ffdf5e;
+      text-decoration: underline;
+      font-weight: bold;
+    }
+
+    @media (max-width: 767px) {
+      .images {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>طريقة توليد Caption لفيديو بالذكاء الاصطناعي</h2>
+   
+    </div>
+
+    <div class="instructions">
+      <strong>خطوات التنفيذ عبر AI Studio:</strong>
+      <ol>
+        <li><strong>حمّل الفيديو:</strong> في واجهة AI Studio، اضغط على أيقونة <strong>إشارة الزائد (+)</strong> لإدراج الملف، اختر "Upload File"، ثم حدد الفيديو من جهازك.</li>
+        <li><strong>اطلب الترجمة:</strong> بعد ظهور الفيديو، اكتب في مربع الأوامر:<br>
+        
+        <strong>
+  قم بتوليد ملف srt 
+باللغة العربية ضمن حاوية أكواد برمجية
+        
+        </strong><br>
+        ثم اضغط "إرسال".</li>
+        <li><strong>انتظر المعالجة:</strong> سيقوم AI بإنشاء محتوى ملف الترجمة تلقائيًا.</li>
+        <li><strong>نزّل الملف:</strong> عند ظهور الترجمة، اضغط على أيقونة التنزيل. في نافذة الحفظ، عدّل امتداد الملف إلى <code>.srt</code> ثم اضغط "Download".</li>
+      </ol>
+    </div>
+
+
+
+    <div class="images">
+      <img src="https://raw.githubusercontent.com/xruniversestudio/prompts/e3b3137b8a5a96b7b26161eef8032a896504feda/20250528_153522.jpg" alt="الخطوة الأولى - صورة تنفيذ">
+      <img src="https://raw.githubusercontent.com/xruniversestudio/prompts/refs/heads/main/20250528_153540.jpg" alt="الخطوة الثانية - النتيجة النهائية">
+    </div>
+
+    <div class="tool-link">
+      رابط الأداة: <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('copyButton').addEventListener('click', () => {
+      const text = document.getElementById('textToCopy').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("تم نسخ الكود بنجاح!");
+      }).catch(err => {
+        alert("فشل في نسخ الكود!");
+        console.error(err);
+      });
+    });
+  </script>
+</body>
+</html>
