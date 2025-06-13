@@ -127,6 +127,9 @@
             });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // **FIX:** Prevent Three.js from clearing the canvas, allowing the video to show through.
+            renderer.autoClear = false;
 
             // Create the glasses geometry
             const glassesGroup = new THREE.Group();
@@ -178,6 +181,9 @@
 
         let lastVideoTime = -1;
         async function predictWebcam() {
+            // **FIX:** Clear the renderer's depth buffer on each frame.
+            renderer.clearDepth();
+
             if (videoElement.currentTime !== lastVideoTime) {
                 lastVideoTime = videoElement.currentTime;
                 const results = faceLandmarker.detectForVideo(videoElement, performance.now());
