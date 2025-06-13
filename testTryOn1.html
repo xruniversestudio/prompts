@@ -43,7 +43,7 @@
 
     <!-- UI Container -->
     <div class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-between items-center p-4">
-        <!-- Loading message to inform the user -->
+        <!-- Loading/Error message to inform the user -->
         <div id="loadingMessage" class="bg-black bg-opacity-50 rounded-lg p-4 text-center">
             جاري التحميل... الرجاء الانتظار والسماح بالوصول إلى الكاميرا.
         </div>
@@ -83,11 +83,23 @@
             // Initialize Jeeliz FaceFilter
             JEELIZFACEFILTER.init({
                 canvasId: 'jeeFaceFilterCanvas',
-                NNCPath: 'https://appstatic.jeeliz.com/faceFilter/', // Path to the neural network model
+                NNCPath: 'https://appstatic.jeeliz.com/faceFilter/',
                 callbackReady: function(errCode, spec) {
                     if (errCode) {
-                        console.log('AN ERROR HAPPENS. ERROR CODE =', errCode);
-                        document.getElementById('loadingMessage').innerHTML = 'عذراً، حدث خطأ. الرجاء تحديث الصفحة.';
+                        console.error('AN ERROR HAPPENS. ERROR CODE =', errCode);
+                        let message = 'عذراً، حدث خطأ. الرجاء تحديث الصفحة.';
+                        // Provide more specific error messages
+                        switch (errCode) {
+                            case 'CANNOT_ACCESS_CAMERA':
+                                message = 'لا يمكن الوصول إلى الكاميرا. يرجى السماح بالوصول إلى الكاميرا في إعدادات المتصفح وإعادة تحميل الصفحة.';
+                                break;
+                            case 'GL_INCOMPATIBLE':
+                                message = 'متصفحك لا يدعم WebGL. يرجى محاولة استخدام متصفح آخر مثل Chrome أو Firefox.';
+                                break;
+                        }
+                        const loadingDiv = document.getElementById('loadingMessage');
+                        loadingDiv.innerHTML = message;
+                        loadingDiv.classList.add('text-red-400'); // Make error message more visible
                         return;
                     }
                     console.log('JEELIZFACEFILTER IS READY');
@@ -98,10 +110,17 @@
                 // Called at each render iteration
                 callbackTrack: function(detectState) {
                     if (window.threeStuffs) {
-                       window.threeStuffs.faceObject.position.copy(detectState.position);
-                       window.threeStuffs.faceObject.scale.copy(detectState.scale);
-                       window.threeStuffs.faceObject.rotation.setFromRotationMatrix(detectState.rotationMatrix);
-                       window.threeStuffs.renderer.render(window.threeStuffs.scene, window.threeStuffs.camera);
+                        // FIX: Clear the depth buffer but not the color buffer
+                        // This prevents the 3D scene from erasing the camera video feed
+                        window.threeStuffs.renderer.clearDepth();
+
+                        // Update the 3D object's position to match the face
+                        window.threeStuffs.faceObject.position.copy(detectState.position);
+                        window.threeStuffs.faceObject.scale.copy(detectState.scale);
+                        window.threeStuffs.faceObject.rotation.setFromRotationMatrix(detectState.rotationMatrix);
+                       
+                        // Render the Three.js scene on top of the video
+                        window.threeStuffs.renderer.render(window.threeStuffs.scene, window.threeStuffs.camera);
                     }
                 }
             });
@@ -113,12 +132,16 @@
                 renderer: new THREE.WebGLRenderer({
                     canvas: spec.canvas,
                     context: spec.GL,
-                    alpha: true
+                    alpha: true // Important for transparency
                 }),
                 scene: new THREE.Scene(),
                 camera: new THREE.PerspectiveCamera(),
                 faceObject: new THREE.Object3D()
             };
+
+            // FIX: Prevent Three.js from automatically clearing the canvas.
+            // Jeeliz handles drawing the video, we only want to draw on top.
+            threeStuffs.renderer.autoClear = false;
 
             const glasses = new THREE.Group();
             const bridgeGeometry = new THREE.BoxBufferGeometry(0.2, 0.05, 0.1);
