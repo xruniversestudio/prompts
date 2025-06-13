@@ -17,12 +17,11 @@
     <style>
         body {
             font-family: 'Cairo', sans-serif;
+            overflow: hidden;
         }
-        /* Style for the Gemini response modal */
         #geminiResponseModal {
             transition: opacity 0.3s ease-in-out;
         }
-        /* Basic spinner animation */
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
@@ -35,21 +34,45 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Styling for the new debug box */
+        #debug-box {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: calc(100% - 20px);
+            max-width: 400px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: scroll;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #eee;
+            z-index: 100;
+        }
+        .log-msg { color: #eee; }
+        .log-warn { color: #ffdd57; }
+        .log-error { color: #ff3860; }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
     <!-- Canvas element where the video and 3D rendering will happen -->
     <canvas id="jeeFaceFilterCanvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
 
+    <!-- Debug Box to show console logs on screen -->
+    <div id="debug-box"></div>
+
     <!-- UI Container -->
-    <div class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-between items-center p-4">
+    <div class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-between items-center p-4 pointer-events-none">
         <!-- Loading/Error message to inform the user -->
         <div id="loadingMessage" class="bg-black bg-opacity-50 rounded-lg p-4 text-center">
             جاري التحميل... الرجاء الانتظار والسماح بالوصول إلى الكاميرا.
         </div>
         
         <!-- Bottom controls -->
-        <div class="w-full flex justify-center">
+        <div class="w-full flex justify-center pointer-events-auto">
              <button id="geminiButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out">
                 ✨ نصيحة خبير الموضة
             </button>
@@ -78,17 +101,47 @@
     
     <!-- Main application logic -->
     <script>
+        // --- START DEBUG BOX ---
+        const debugBox = document.getElementById('debug-box');
+        function customLogger(originalFunc, type) {
+            return function(...args) {
+                const message = args.map(arg => {
+                    if (typeof arg === 'object' && arg !== null) {
+                        try {
+                            return JSON.stringify(arg, null, 2);
+                        } catch (e) {
+                            return '[Unserializable Object]';
+                        }
+                    }
+                    return String(arg);
+                }).join(' ');
+
+                const logEntry = document.createElement('p');
+                logEntry.className = `log-${type} border-b border-gray-700 pb-1 mb-1`;
+                logEntry.textContent = `[${type.toUpperCase()}] ${message}`;
+                debugBox.appendChild(logEntry);
+                debugBox.scrollTop = debugBox.scrollHeight;
+                originalFunc.apply(console, args);
+            }
+        }
+        console.log = customLogger(console.log, 'msg');
+        console.warn = customLogger(console.warn, 'warn');
+        console.error = customLogger(console.error, 'error');
+        console.log('Debug console initialized.');
+        // --- END DEBUG BOX ---
+
+
         // Main function, runs after the page is loaded
         function main() {
+            console.log('main() function started.');
             // Initialize Jeeliz FaceFilter
             JEELIZFACEFILTER.init({
                 canvasId: 'jeeFaceFilterCanvas',
                 NNCPath: 'https://appstatic.jeeliz.com/faceFilter/',
                 callbackReady: function(errCode, spec) {
                     if (errCode) {
-                        console.error('AN ERROR HAPPENS. ERROR CODE =', errCode);
+                        console.error('JEELIZFACEFILTER error:', errCode);
                         let message = 'عذراً، حدث خطأ. الرجاء تحديث الصفحة.';
-                        // Provide more specific error messages
                         switch (errCode) {
                             case 'CANNOT_ACCESS_CAMERA':
                                 message = 'لا يمكن الوصول إلى الكاميرا. يرجى السماح بالوصول إلى الكاميرا في إعدادات المتصفح وإعادة تحميل الصفحة.';
@@ -99,7 +152,7 @@
                         }
                         const loadingDiv = document.getElementById('loadingMessage');
                         loadingDiv.innerHTML = message;
-                        loadingDiv.classList.add('text-red-400'); // Make error message more visible
+                        loadingDiv.classList.add('text-red-400');
                         return;
                     }
                     console.log('JEELIZFACEFILTER IS READY');
@@ -110,16 +163,10 @@
                 // Called at each render iteration
                 callbackTrack: function(detectState) {
                     if (window.threeStuffs) {
-                        // FIX: Clear the depth buffer but not the color buffer
-                        // This prevents the 3D scene from erasing the camera video feed
                         window.threeStuffs.renderer.clearDepth();
-
-                        // Update the 3D object's position to match the face
                         window.threeStuffs.faceObject.position.copy(detectState.position);
                         window.threeStuffs.faceObject.scale.copy(detectState.scale);
                         window.threeStuffs.faceObject.rotation.setFromRotationMatrix(detectState.rotationMatrix);
-                       
-                        // Render the Three.js scene on top of the video
                         window.threeStuffs.renderer.render(window.threeStuffs.scene, window.threeStuffs.camera);
                     }
                 }
@@ -128,20 +175,23 @@
 
         // Function to initialize the Three.js scene
         function init_threeScene(spec) {
+            console.log('init_threeScene() started.');
             const threeStuffs = {
                 renderer: new THREE.WebGLRenderer({
                     canvas: spec.canvas,
                     context: spec.GL,
-                    alpha: true // Important for transparency
+                    alpha: true
                 }),
                 scene: new THREE.Scene(),
-                camera: new THREE.PerspectiveCamera(),
+                camera: spec.camera, // Use the camera provided by Jeeliz
                 faceObject: new THREE.Object3D()
             };
 
-            // FIX: Prevent Three.js from automatically clearing the canvas.
-            // Jeeliz handles drawing the video, we only want to draw on top.
             threeStuffs.renderer.autoClear = false;
+            threeStuffs.renderer.autoClearDepth = false;
+            threeStuffs.renderer.autoClearStencil = false;
+
+            console.log('Three.js renderer initialized.');
 
             const glasses = new THREE.Group();
             const bridgeGeometry = new THREE.BoxBufferGeometry(0.2, 0.05, 0.1);
@@ -180,14 +230,15 @@
             threeStuffs.faceObject.add(glasses);
             threeStuffs.scene.add(threeStuffs.faceObject);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             threeStuffs.scene.add(ambientLight);
             
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
             directionalLight.position.set(0, 1, 1);
             threeStuffs.scene.add(directionalLight);
             
             window.threeStuffs = threeStuffs;
+            console.log('Three.js scene and objects created.');
         }
 
         // Gemini API functionality
@@ -198,7 +249,6 @@
 
         geminiButton.addEventListener('click', async () => {
             modal.classList.remove('hidden');
-            // Reset content to loading state
             modalContent.innerHTML = `
                 <div class="flex justify-center items-center h-32">
                     <div class="spinner"></div>
@@ -210,7 +260,7 @@
             try {
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
-                const apiKey = ""; // Leave empty, will be handled by the environment
+                const apiKey = ""; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(apiUrl, {
