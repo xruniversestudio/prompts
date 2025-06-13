@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <title>WebAR تجربة نظارات مع مستشار أزياء</title>
+    <title>WebAR تجربة نظارات مع MediaPipe</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     
@@ -12,283 +12,203 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MediaPipe Vision Task -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"></script>
     
     <!-- Basic styling for the page -->
     <style>
         body {
             font-family: 'Cairo', sans-serif;
+            margin: 0;
             overflow: hidden;
         }
-        #geminiResponseModal {
-            transition: opacity 0.3s ease-in-out;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid #fff;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Styling for the new debug box */
-        #debug-box {
+        canvas {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            width: calc(100% - 20px);
-            max-width: 400px;
-            height: 150px;
-            background-color: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            overflow-y: scroll;
-            padding: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #eee;
-            z-index: 100;
+            top: 0;
+            left: 0;
         }
-        .log-msg { color: #eee; }
-        .log-warn { color: #ffdd57; }
-        .log-error { color: #ff3860; }
+        #video, #outputCanvas {
+            transform: scaleX(-1); /* Mirror the video and canvas */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
-    <!-- Canvas element where the video and 3D rendering will happen -->
-    <canvas id="jeeFaceFilterCanvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+    <!-- Container for video and canvas to overlap -->
+    <div id="container" class="relative w-full h-full">
+        <video id="video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline></video>
+        <canvas id="outputCanvas" class="absolute inset-0 w-full h-full"></canvas>
+    </div>
 
-    <!-- Debug Box to show console logs on screen -->
-    <div id="debug-box"></div>
 
     <!-- UI Container -->
-    <div class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-between items-center p-4 pointer-events-none">
+    <div id="ui-container" class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-center items-center p-4">
         <!-- Loading/Error message to inform the user -->
-        <div id="loadingMessage" class="bg-black bg-opacity-50 rounded-lg p-4 text-center">
-            جاري التحميل... الرجاء الانتظار والسماح بالوصول إلى الكاميرا.
-        </div>
-        
-        <!-- Bottom controls -->
-        <div class="w-full flex justify-center pointer-events-auto">
-             <button id="geminiButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out">
-                ✨ نصيحة خبير الموضة
-            </button>
-        </div>
-    </div>
-    
-    <!-- Gemini Response Modal -->
-    <div id="geminiResponseModal" class="hidden absolute inset-0 bg-black bg-opacity-70 z-20 flex justify-center items-center p-4">
-        <div class="bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-            <div id="geminiContent">
-                <div class="flex justify-center items-center h-32">
-                    <div class="spinner"></div>
-                </div>
-                <p class="mt-4 text-lg">خبيرنا الذكي يفكر في نصيحة لك...</p>
-            </div>
-            <button id="closeModalButton" class="mt-6 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg w-full">إغلاق</button>
+        <div id="loadingMessage" class="bg-black bg-opacity-50 rounded-lg p-6 text-center">
+            <h2 class="text-2xl font-bold mb-2">جاري تحميل نماذج الذكاء الاصطناعي من Google...</h2>
+            <p>يرجى الانتظار والسماح بالوصول إلى الكاميرا عند الطلب.</p>
         </div>
     </div>
 
-
-    <!-- Load Three.js FIRST -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.127.0/build/three.min.js"></script>
-
-    <!-- Jeeliz FaceFilter library -->
-    <script src="https://appstatic.jeeliz.com/faceFilter/jeelizFaceFilter.js"></script>
+    <!-- Load Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
     
     <!-- Main application logic -->
-    <script>
-        // --- START DEBUG BOX ---
-        const debugBox = document.getElementById('debug-box');
-        function customLogger(originalFunc, type) {
-            return function(...args) {
-                const message = args.map(arg => {
-                    if (typeof arg === 'object' && arg !== null) {
-                        try {
-                            return JSON.stringify(arg, null, 2);
-                        } catch (e) {
-                            return '[Unserializable Object]';
-                        }
-                    }
-                    return String(arg);
-                }).join(' ');
+    <script type="module">
+        import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js";
 
-                const logEntry = document.createElement('p');
-                logEntry.className = `log-${type} border-b border-gray-700 pb-1 mb-1`;
-                logEntry.textContent = `[${type.toUpperCase()}] ${message}`;
-                debugBox.appendChild(logEntry);
-                debugBox.scrollTop = debugBox.scrollHeight;
-                originalFunc.apply(console, args);
-            }
-        }
-        console.log = customLogger(console.log, 'msg');
-        console.warn = customLogger(console.warn, 'warn');
-        console.error = customLogger(console.error, 'error');
-        console.log('Debug console initialized.');
-        // --- END DEBUG BOX ---
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('outputCanvas');
+        const loadingMessage = document.getElementById('loadingMessage');
+        
+        let faceLandmarker;
+        let runningMode = "VIDEO";
+        let glasses;
+        let scene, camera, renderer;
 
-
-        // Main function, runs after the page is loaded
-        function main() {
-            console.log('main() function started.');
-            // Initialize Jeeliz FaceFilter
-            JEELIZFACEFILTER.init({
-                canvasId: 'jeeFaceFilterCanvas',
-                NNCPath: 'https://appstatic.jeeliz.com/faceFilter/',
-                callbackReady: function(errCode, spec) {
-                    if (errCode) {
-                        console.error('JEELIZFACEFILTER error:', errCode);
-                        let message = 'عذراً، حدث خطأ. الرجاء تحديث الصفحة.';
-                        switch (errCode) {
-                            case 'CANNOT_ACCESS_CAMERA':
-                                message = 'لا يمكن الوصول إلى الكاميرا. يرجى السماح بالوصول إلى الكاميرا في إعدادات المتصفح وإعادة تحميل الصفحة.';
-                                break;
-                            case 'GL_INCOMPATIBLE':
-                                message = 'متصفحك لا يدعم WebGL. يرجى محاولة استخدام متصفح آخر مثل Chrome أو Firefox.';
-                                break;
-                        }
-                        const loadingDiv = document.getElementById('loadingMessage');
-                        loadingDiv.innerHTML = message;
-                        loadingDiv.classList.add('text-red-400');
-                        return;
-                    }
-                    console.log('JEELIZFACEFILTER IS READY');
-                    document.getElementById('loadingMessage').style.display = 'none';
-                    init_threeScene(spec);
+        async function createFaceLandmarker() {
+            const filesetResolver = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+            );
+            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    delegate: "GPU"
                 },
-
-                // Called at each render iteration
-                callbackTrack: function(detectState) {
-                    if (window.threeStuffs) {
-                        window.threeStuffs.renderer.clearDepth();
-                        window.threeStuffs.faceObject.position.copy(detectState.position);
-                        window.threeStuffs.faceObject.scale.copy(detectState.scale);
-                        window.threeStuffs.faceObject.rotation.setFromRotationMatrix(detectState.rotationMatrix);
-                        window.threeStuffs.renderer.render(window.threeStuffs.scene, window.threeStuffs.camera);
-                    }
-                }
+                outputFaceBlendshapes: false,
+                outputFacialTransformationMatrixes: true,
+                runningMode: runningMode,
+                numFaces: 1
             });
+            console.log("Face Landmarker model loaded.");
         }
 
-        // Function to initialize the Three.js scene
-        function init_threeScene(spec) {
-            console.log('init_threeScene() started.');
-            const threeStuffs = {
-                renderer: new THREE.WebGLRenderer({
-                    canvas: spec.canvas,
-                    context: spec.GL,
-                    alpha: true
-                }),
-                scene: new THREE.Scene(),
-                camera: spec.camera, // Use the camera provided by Jeeliz
-                faceObject: new THREE.Object3D()
-            };
-
-            threeStuffs.renderer.autoClear = false;
-            threeStuffs.renderer.autoClearDepth = false;
-            threeStuffs.renderer.autoClearStencil = false;
-
-            console.log('Three.js renderer initialized.');
-
-            const glasses = new THREE.Group();
-            const bridgeGeometry = new THREE.BoxBufferGeometry(0.2, 0.05, 0.1);
-            const bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
-            const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
-            bridge.position.set(0, 0.1, 0);
-            glasses.add(bridge);
-
-            const lensFrameGeometry = new THREE.TorusBufferGeometry(0.2, 0.03, 16, 32);
-            const lensFrameMaterial = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5, roughness: 0.3 });
-            
-            const leftLens = new THREE.Mesh(lensFrameGeometry, lensFrameMaterial);
-            leftLens.position.set(-0.35, 0.1, 0);
-            leftLens.scale.set(1, 1, 0.5);
-            glasses.add(leftLens);
-
-            const rightLens = new THREE.Mesh(lensFrameGeometry, lensFrameMaterial);
-            rightLens.position.set(0.35, 0.1, 0);
-            rightLens.scale.set(1, 1, 0.5);
-            glasses.add(rightLens);
-            
-            const armGeometry = new THREE.BoxBufferGeometry(0.03, 0.03, 0.7);
-            const armMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
-
-            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-            leftArm.position.set(-0.55, 0.1, -0.35);
-            glasses.add(leftArm);
-            
-            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-            rightArm.position.set(0.55, 0.1, -0.35);
-            glasses.add(rightArm);
-
-            glasses.position.set(0, 0.25, 0.4); 
-            glasses.scale.set(1.2, 1.2, 1.2);
-
-            threeStuffs.faceObject.add(glasses);
-            threeStuffs.scene.add(threeStuffs.faceObject);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            threeStuffs.scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(0, 1, 1);
-            threeStuffs.scene.add(directionalLight);
-            
-            window.threeStuffs = threeStuffs;
-            console.log('Three.js scene and objects created.');
-        }
-
-        // Gemini API functionality
-        const geminiButton = document.getElementById('geminiButton');
-        const modal = document.getElementById('geminiResponseModal');
-        const modalContent = document.getElementById('geminiContent');
-        const closeModalButton = document.getElementById('closeModalButton');
-
-        geminiButton.addEventListener('click', async () => {
-            modal.classList.remove('hidden');
-            modalContent.innerHTML = `
-                <div class="flex justify-center items-center h-32">
-                    <div class="spinner"></div>
-                </div>
-                <p class="mt-4 text-lg">خبيرنا الذكي يفكر في نصيحة لك...</p>`;
-                
-            const prompt = "أنا أجرب زوجًا جديدًا من النظارات في تطبيق واقع معزز. أعطني نصيحة موضة قصيرة وممتعة ومشجعة باللغة العربية. كن مبدعًا وودودًا، واجعلها تبدو وكأنها من خبير أزياء حقيقي.";
-            
+        async function setupCamera() {
             try {
-                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                const payload = { contents: chatHistory };
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    modalContent.innerHTML = `<h3 class="text-2xl font-bold mb-4 text-purple-400">نصيحة اليوم</h3><p class="text-white">${text.replace(/\n/g, '<br>')}</p>`;
-                } else {
-                    throw new Error("استجابة غير متوقعة من الواجهة البرمجية");
-                }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                videoElement.srcObject = stream;
+                videoElement.addEventListener("loadeddata", predictWebcam);
             } catch (error) {
-                console.error("Error calling Gemini API:", error);
-                modalContent.innerHTML = `<h3 class="text-2xl font-bold mb-4 text-red-400">خطأ</h3><p>عذراً، لم نتمكن من الحصول على نصيحة الآن. حاول مرة أخرى لاحقاً.</p>`;
+                console.error("Camera access denied:", error);
+                loadingMessage.innerHTML = `<h2 class="text-2xl font-bold text-red-400">خطأ في الوصول إلى الكاميرا</h2><p>يرجى السماح بالوصول إلى الكاميرا في إعدادات المتصفح وإعادة تحميل الصفحة.</p>`;
             }
+        }
+
+        function initThreeScene() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(63, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvasElement,
+                alpha: true
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Create the glasses geometry
+            const glassesGroup = new THREE.Group();
+            // A more modern/stylish glasses model
+            const lensMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x111111,
+                transmission: 0.9,
+                roughness: 0.1,
+                ior: 1.5,
+                thickness: 0.1,
+                specularIntensity: 1,
+                clearcoat: 1
+            });
+
+            const frameMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+
+            const lensFrameGeometry = new THREE.TorusGeometry(0.07, 0.01, 16, 100);
+            const leftFrame = new THREE.Mesh(lensFrameGeometry, frameMaterial);
+            const rightFrame = new THREE.Mesh(lensFrameGeometry, frameMaterial);
+            leftFrame.position.x = -0.08;
+            rightFrame.position.x = 0.08;
+            glassesGroup.add(leftFrame, rightFrame);
+            
+            const lensGeometry = new THREE.CircleGeometry(0.06, 32);
+            const leftLens = new THREE.Mesh(lensGeometry, lensMaterial);
+            const rightLens = new THREE.Mesh(lensGeometry, lensMaterial);
+            leftLens.position.x = -0.08;
+            rightLens.position.x = 0.08;
+            glassesGroup.add(leftLens, rightLens);
+
+            const bridgeGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.05, 8);
+            const bridge = new THREE.Mesh(bridgeGeometry, frameMaterial);
+            bridge.rotation.z = Math.PI / 2;
+            glassesGroup.add(bridge);
+
+            glassesGroup.visible = false;
+            scene.add(glassesGroup);
+            glasses = glassesGroup;
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(0.5, 1, 1).normalize();
+            scene.add(directionalLight);
+        }
+
+        let lastVideoTime = -1;
+        async function predictWebcam() {
+            // Adjust canvas size to match video aspect ratio
+            const videoAspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+            const windowAspectRatio = window.innerWidth / window.innerHeight;
+            if (videoAspectRatio > windowAspectRatio) {
+                canvasElement.style.width = '100vw';
+                canvasElement.style.height = 'auto';
+            } else {
+                canvasElement.style.height = '100vh';
+                canvasElement.style.width = 'auto';
+            }
+
+            // Only run detection if the video frame has changed
+            if (videoElement.currentTime !== lastVideoTime) {
+                lastVideoTime = videoElement.currentTime;
+                const results = faceLandmarker.detectForVideo(videoElement, performance.now());
+
+                if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
+                    const matrix = results.facialTransformationMatrixes[0].data;
+                    glasses.visible = true;
+                    // Apply the transformation matrix from MediaPipe to the glasses
+                    glasses.matrix.fromArray(matrix);
+                    glasses.matrix.decompose(glasses.position, glasses.quaternion, glasses.scale);
+                    
+                    // Adjust scale and position to fit better
+                    glasses.scale.multiplyScalar(0.0011); // Adjust scale for the model
+                    glasses.position.z -= 0.03; // Move glasses slightly forward
+
+                } else {
+                    glasses.visible = false;
+                }
+            }
+
+            // Render the Three.js scene
+            renderer.render(scene, camera);
+            requestAnimationFrame(predictWebcam);
+        }
+
+        async function main() {
+            await createFaceLandmarker();
+            await setupCamera();
+            initThreeScene();
+            loadingMessage.style.display = 'none';
+        }
+
+        window.addEventListener('resize', () => {
+             if (renderer && camera) {
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+             }
         });
 
-        closeModalButton.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-
-        // Start the application once the window is loaded
-        window.addEventListener('load', main);
+        main();
     </script>
 </body>
 </html>
