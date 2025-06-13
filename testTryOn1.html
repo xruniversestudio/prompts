@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <title>WebAR تجربة نظارات مع مستشار أزياء</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Basic styling for the page -->
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        /* Style for the Gemini response modal */
+        #geminiResponseModal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Basic spinner animation */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Canvas element where the video and 3D rendering will happen -->
+    <canvas id="jeeFaceFilterCanvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+
+    <!-- UI Container -->
+    <div class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-between items-center p-4">
+        <!-- Loading message to inform the user -->
+        <div id="loadingMessage" class="bg-black bg-opacity-50 rounded-lg p-4 text-center">
+            جاري التحميل... الرجاء الانتظار والسماح بالوصول إلى الكاميرا.
+        </div>
+        
+        <!-- Bottom controls -->
+        <div class="w-full flex justify-center">
+             <button id="geminiButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out">
+                ✨ نصيحة خبير الموضة
+            </button>
+        </div>
+    </div>
+    
+    <!-- Gemini Response Modal -->
+    <div id="geminiResponseModal" class="hidden absolute inset-0 bg-black bg-opacity-70 z-20 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div id="geminiContent">
+                <div class="flex justify-center items-center h-32">
+                    <div class="spinner"></div>
+                </div>
+                <p class="mt-4 text-lg">خبيرنا الذكي يفكر في نصيحة لك...</p>
+            </div>
+            <button id="closeModalButton" class="mt-6 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg w-full">إغلاق</button>
+        </div>
+    </div>
+
+
+    <!-- Load Three.js FIRST -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.127.0/build/three.min.js"></script>
+
+    <!-- Jeeliz FaceFilter library -->
+    <script src="https://appstatic.jeeliz.com/faceFilter/jeelizFaceFilter.js"></script>
+    
+    <!-- Main application logic -->
+    <script>
+        // Main function, runs after the page is loaded
+        function main() {
+            // Initialize Jeeliz FaceFilter
+            JEELIZFACEFILTER.init({
+                canvasId: 'jeeFaceFilterCanvas',
+                NNCPath: 'https://appstatic.jeeliz.com/faceFilter/', // Path to the neural network model
+                callbackReady: function(errCode, spec) {
+                    if (errCode) {
+                        console.log('AN ERROR HAPPENS. ERROR CODE =', errCode);
+                        document.getElementById('loadingMessage').innerHTML = 'عذراً، حدث خطأ. الرجاء تحديث الصفحة.';
+                        return;
+                    }
+                    console.log('JEELIZFACEFILTER IS READY');
+                    document.getElementById('loadingMessage').style.display = 'none';
+                    init_threeScene(spec);
+                },
+
+                // Called at each render iteration
+                callbackTrack: function(detectState) {
+                    if (window.threeStuffs) {
+                       window.threeStuffs.faceObject.position.copy(detectState.position);
+                       window.threeStuffs.faceObject.scale.copy(detectState.scale);
+                       window.threeStuffs.faceObject.rotation.setFromRotationMatrix(detectState.rotationMatrix);
+                       window.threeStuffs.renderer.render(window.threeStuffs.scene, window.threeStuffs.camera);
+                    }
+                }
+            });
+        }
+
+        // Function to initialize the Three.js scene
+        function init_threeScene(spec) {
+            const threeStuffs = {
+                renderer: new THREE.WebGLRenderer({
+                    canvas: spec.canvas,
+                    context: spec.GL,
+                    alpha: true
+                }),
+                scene: new THREE.Scene(),
+                camera: new THREE.PerspectiveCamera(),
+                faceObject: new THREE.Object3D()
+            };
+
+            const glasses = new THREE.Group();
+            const bridgeGeometry = new THREE.BoxBufferGeometry(0.2, 0.05, 0.1);
+            const bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
+            const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+            bridge.position.set(0, 0.1, 0);
+            glasses.add(bridge);
+
+            const lensFrameGeometry = new THREE.TorusBufferGeometry(0.2, 0.03, 16, 32);
+            const lensFrameMaterial = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5, roughness: 0.3 });
+            
+            const leftLens = new THREE.Mesh(lensFrameGeometry, lensFrameMaterial);
+            leftLens.position.set(-0.35, 0.1, 0);
+            leftLens.scale.set(1, 1, 0.5);
+            glasses.add(leftLens);
+
+            const rightLens = new THREE.Mesh(lensFrameGeometry, lensFrameMaterial);
+            rightLens.position.set(0.35, 0.1, 0);
+            rightLens.scale.set(1, 1, 0.5);
+            glasses.add(rightLens);
+            
+            const armGeometry = new THREE.BoxBufferGeometry(0.03, 0.03, 0.7);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.55, 0.1, -0.35);
+            glasses.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.55, 0.1, -0.35);
+            glasses.add(rightArm);
+
+            glasses.position.set(0, 0.25, 0.4); 
+            glasses.scale.set(1.2, 1.2, 1.2);
+
+            threeStuffs.faceObject.add(glasses);
+            threeStuffs.scene.add(threeStuffs.faceObject);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            threeStuffs.scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(0, 1, 1);
+            threeStuffs.scene.add(directionalLight);
+            
+            window.threeStuffs = threeStuffs;
+        }
+
+        // Gemini API functionality
+        const geminiButton = document.getElementById('geminiButton');
+        const modal = document.getElementById('geminiResponseModal');
+        const modalContent = document.getElementById('geminiContent');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+        geminiButton.addEventListener('click', async () => {
+            modal.classList.remove('hidden');
+            // Reset content to loading state
+            modalContent.innerHTML = `
+                <div class="flex justify-center items-center h-32">
+                    <div class="spinner"></div>
+                </div>
+                <p class="mt-4 text-lg">خبيرنا الذكي يفكر في نصيحة لك...</p>`;
+                
+            const prompt = "أنا أجرب زوجًا جديدًا من النظارات في تطبيق واقع معزز. أعطني نصيحة موضة قصيرة وممتعة ومشجعة باللغة العربية. كن مبدعًا وودودًا، واجعلها تبدو وكأنها من خبير أزياء حقيقي.";
+            
+            try {
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = ""; // Leave empty, will be handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    modalContent.innerHTML = `<h3 class="text-2xl font-bold mb-4 text-purple-400">نصيحة اليوم</h3><p class="text-white">${text.replace(/\n/g, '<br>')}</p>`;
+                } else {
+                    throw new Error("استجابة غير متوقعة من الواجهة البرمجية");
+                }
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                modalContent.innerHTML = `<h3 class="text-2xl font-bold mb-4 text-red-400">خطأ</h3><p>عذراً، لم نتمكن من الحصول على نصيحة الآن. حاول مرة أخرى لاحقاً.</p>`;
+            }
+        });
+
+        closeModalButton.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        // Start the application once the window is loaded
+        window.addEventListener('load', main);
+    </script>
+</body>
+</html>
