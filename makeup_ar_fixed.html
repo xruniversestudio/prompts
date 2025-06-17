@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <title>تجربة المكياج الافتراضي - WebAR</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- MediaPipe -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mediapipe/0.10.9/face_mesh.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            z-index: 1;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ff69b4;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .makeup-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 25px;
+            z-index: 10;
+        }
+        
+        .makeup-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 20px;
+            color: white;
+        }
+        
+        .makeup-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .makeup-btn.active {
+            border-color: #ff69b4;
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
+        }
+        
+        .color-picker {
+            position: absolute;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 8px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 15px;
+            z-index: 10;
+        }
+        
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="makeupControls" class="makeup-controls hidden">
+        <div class="makeup-btn" id="lipstickBtn" data-type="lipstick" style="background: #dc2626;">💋</div>
+        <div class="makeup-btn" id="eyeshadowBtn" data-type="eyeshadow" style="background: #7c3aed;">👁️</div>
+        <div class="makeup-btn" id="eyelinerBtn" data-type="eyeliner" style="background: #1f2937;">✏️</div>
+        <div class="makeup-btn" id="blushBtn" data-type="blush" style="background: #f97316;">😊</div>
+        <div class="makeup-btn" id="clearBtn" data-type="clear" style="background: #6b7280;">🧹</div>
+    </div>
+
+    <div id="colorPicker" class="color-picker">
+        <div class="color-set" data-type="lipstick">
+            <div class="color-option" style="background: #dc2626;" data-color="#dc2626"></div>
+            <div class="color-option" style="background: #be185d;" data-color="#be185d"></div>
+            <div class="color-option" style="background: #7c2d12;" data-color="#7c2d12"></div>
+            <div class="color-option" style="background: #991b1b;" data-color="#991b1b"></div>
+            <div class="color-option" style="background: #ec4899;" data-color="#ec4899"></div>
+        </div>
+        
+        <div class="color-set hidden" data-type="eyeshadow">
+            <div class="color-option" style="background: #7c3aed;" data-color="#7c3aed"></div>
+            <div class="color-option" style="background: #059669;" data-color="#059669"></div>
+            <div class="color-option" style="background: #dc2626;" data-color="#dc2626"></div>
+            <div class="color-option" style="background: #d97706;" data-color="#d97706"></div>
+            <div class="color-option" style="background: #1e40af;" data-color="#1e40af"></div>
+        </div>
+        
+        <div class="color-set hidden" data-type="blush">
+            <div class="color-option" style="background: #f97316;" data-color="#f97316"></div>
+            <div class="color-option" style="background: #ec4899;" data-color="#ec4899"></div>
+            <div class="color-option" style="background: #ef4444;" data-color="#ef4444"></div>
+            <div class="color-option" style="background: #f59e0b;" data-color="#f59e0b"></div>
+        </div>
+    </div>
+
+    <div id="debugInfo" class="debug-info hidden">
+        <div>الحالة: <span id="status">غير متصل</span></div>
+        <div>الوجوه المكتشفة: <span id="faceCount">0</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+        <div>المكياج النشط: <span id="activeMakeup">لا يوجد</span></div>
+    </div>
+
+    <div id="ui-container" class="absolute top-0 left-0 w-full h-full z-10 flex flex-col justify-center items-center p-4 bg-gradient-to-br from-pink-900 to-purple-900 bg-opacity-95">
+        <div id="start-screen">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">💄</div>
+                <h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                    تجربة المكياج الافتراضي
+                </h1>
+                <p class="text-xl mb-8 text-pink-200">اكتشفي إطلالتك المثالية مع تقنية الواقع المعزز</p>
+            </div>
+            
+            <div class="flex flex-col items-center space-y-4">
+                <button id="startButton" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 ease-in-out text-xl">
+                    🎨 ابدئي التجربة
+                </button>
+                
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <input type="checkbox" id="debugMode" class="rounded text-pink-500">
+                    <label for="debugMode" class="text-pink-200">عرض معلومات التشخيص</label>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center text-pink-300">
+                <p class="text-sm">✨ جربي ألوان مختلفة من أحمر الشفاه وظلال العيون والبلاشر</p>
+            </div>
+        </div>
+
+        <div id="loadingMessage" class="hidden bg-black bg-opacity-70 rounded-lg p-6 text-center">
+            <div class="spinner mx-auto mb-4"></div>
+            <h2 class="text-2xl font-bold mb-2 text-pink-400">جاري التحميل...</h2>
+            <p id="loading-text" class="text-pink-200">يرجى الانتظار...</p>
+        </div>
+    </div>
+
+    <script>
+        class FaceTracker {
+            constructor() {
+                this.faceMeshModel = null;
+                this.isModelLoaded = false;
+                this.detections = [];
+                this.videoElement = null;
+                this.canvasElement = null;
+                this.canvasCtx = null;
+            }
+
+            async init(videoElement, canvasElement) {
+                this.videoElement = videoElement;
+                this.canvasElement = canvasElement;
+                this.canvasCtx = canvasElement.getContext('2d');
+                
+                try {
+                    // Load face detection model
+                    this.faceMeshModel = new FaceMesh({
+                        locateFile: (file) => {
+                            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`;
+                        }
+                    });
+
+                    this.faceMeshModel.setOptions({
+                        maxNumFaces: 1,
+                        refineLandmarks: true,
+                        minDetectionConfidence: 0.5,
+                        minTrackingConfidence: 0.5
+                    });
+
+                    this.faceMeshModel.onResults(this.onFaceResults.bind(this));
+                    this.isModelLoaded = true;
+                    
+                    console.log('✓ Face tracking model loaded successfully');
+                } catch (error) {
+                    console.error('Face tracking model loading failed:', error);
+                    // Fallback to simple face detection
+                    this.isModelLoaded = false;
+                }
+            }
+
+            onFaceResults(results) {
+                this.detections = results.multiFaceLandmarks || [];
+            }
+
+            async detectFaces() {
+                if (!this.isModelLoaded || !this.videoElement) {
+                    return this.getFallbackDetection();
+                }
+
+                try {
+                    await this.faceMeshModel.send({image: this.videoElement});
+                    return this.detections;
+                } catch (error) {
+                    console.error('Face detection error:', error);
+                    return this.getFallbackDetection();
+                }
+            }
+
+            getFallbackDetection() {
+                // Simple fallback that creates a face in the center
+                const width = this.canvasElement.width;
+                const height = this.canvasElement.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // Create realistic face proportions
+                const faceWidth = width * 0.25;
+                const faceHeight = height * 0.35;
+                
+                return [{
+                    // Lip landmarks (MediaPipe indices)
+                    61: {x: (centerX - faceWidth * 0.15) / width, y: (centerY + faceHeight * 0.15) / height, z: 0}, // Left corner
+                    291: {x: (centerX + faceWidth * 0.15) / width, y: (centerY + faceHeight * 0.15) / height, z: 0}, // Right corner
+                    13: {x: centerX / width, y: (centerY + faceHeight * 0.1) / height, z: 0}, // Upper lip center
+                    14: {x: centerX / width, y: (centerY + faceHeight * 0.2) / height, z: 0}, // Lower lip center
+                    
+                    // Eye landmarks
+                    33: {x: (centerX - faceWidth * 0.2) / width, y: (centerY - faceHeight * 0.15) / height, z: 0}, // Left eye left corner
+                    133: {x: (centerX - faceWidth * 0.1) / width, y: (centerY - faceHeight * 0.15) / height, z: 0}, // Left eye right corner
+                    362: {x: (centerX + faceWidth * 0.1) / width, y: (centerY - faceHeight * 0.15) / height, z: 0}, // Right eye left corner
+                    263: {x: (centerX + faceWidth * 0.2) / width, y: (centerY - faceHeight * 0.15) / height, z: 0}, // Right eye right corner
+                    
+                    // Eyebrow landmarks for eyeshadow
+                    70: {x: (centerX - faceWidth * 0.15) / width, y: (centerY - faceHeight * 0.25) / height, z: 0}, // Left eyebrow
+                    107: {x: (centerX - faceWidth * 0.05) / width, y: (centerY - faceHeight * 0.25) / height, z: 0}, // Left eyebrow inner
+                    336: {x: (centerX + faceWidth * 0.05) / width, y: (centerY - faceHeight * 0.25) / height, z: 0}, // Right eyebrow inner
+                    299: {x: (centerX + faceWidth * 0.15) / width, y: (centerY - faceHeight * 0.25) / height, z: 0}, // Right eyebrow
+                    
+                    // Cheek landmarks for blush
+                    234: {x: (centerX - faceWidth * 0.25) / width, y: (centerY + faceHeight * 0.05) / height, z: 0}, // Left cheek
+                    454: {x: (centerX + faceWidth * 0.25) / width, y: (centerY + faceHeight * 0.05) / height, z: 0}, // Right cheek
+                }];
+            }
+
+            // Convert normalized coordinates to canvas coordinates
+            denormalizeLandmark(landmark, width, height) {
+                return {
+                    x: landmark.x * width,
+                    y: landmark.y * height,
+                    z: landmark.z || 0
+                };
+            }
+        }
+
+        // DOM Elements
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const uiContainer = document.getElementById('ui-container');
+        const startScreen = document.getElementById('start-screen');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const loadingText = document.getElementById('loading-text');
+        const startButton = document.getElementById('startButton');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugMode = document.getElementById('debugMode');
+        const makeupControls = document.getElementById('makeupControls');
+        const colorPicker = document.getElementById('colorPicker');
+        
+        // Status elements
+        const statusEl = document.getElementById('status');
+        const faceCountEl = document.getElementById('faceCount');
+        const fpsEl = document.getElementById('fps');
+        const activeMakeupEl = document.getElementById('activeMakeup');
+        
+        // Variables
+        let isDebugMode = false;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let currentMakeupType = 'lipstick';
+        let faceTracker = new FaceTracker();
+        let lastVideoTime = -1;
+        let animationId = null;
+
+        // Makeup state
+        const makeupState = {
+            lipstick: { active: false, color: '#dc2626' },
+            eyeshadow: { active: false, color: '#7c3aed' },
+            eyeliner: { active: false, color: '#1f2937' },
+            blush: { active: false, color: '#f97316' }
+        };
+
+        // Setup Camera
+        async function setupCamera() {
+            loadingText.textContent = "في انتظار السماح بالوصول إلى الكاميرا...";
+            
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280, max: 1920 },
+                        height: { ideal: 720, max: 1080 }
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = stream;
+                
+                return new Promise((resolve, reject) => {
+                    videoElement.addEventListener("loadeddata", () => {
+                        console.log("✓ Camera setup successful");
+                        console.log(`Video size: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+                        
+                        // Set canvas size to match video
+                        canvasElement.width = videoElement.videoWidth;
+                        canvasElement.height = videoElement.videoHeight;
+                        
+                        resolve();
+                    });
+                    
+                    videoElement.addEventListener("error", (e) => {
+                        reject(new Error("فشل في تحميل الفيديو"));
+                    });
+                    
+                    setTimeout(() => {
+                        reject(new Error("انتهت مهلة الانتظار للكاميرا"));
+                    }, 10000);
+                });
+            } catch (error) {
+                console.error("✗ Camera setup failed:", error);
+                if (error.name === 'NotAllowedError') {
+                    throw new Error("يرجى السماح بالوصول إلى الكاميرا");
+                } else if (error.name === 'NotFoundError') {
+                    throw new Error("لم يتم العثور على كاميرا");
+                } else {
+                    throw new Error("فشل في الوصول إلى الكاميرا: " + error.message);
+                }
+            }
+        }
+
+        // Apply makeup to canvas
+        function applyMakeupToCanvas(faces) {
+            if (!faces || faces.length === 0) return;
+            
+            const face = faces[0];
+            const width = canvasElement.width;
+            const height = canvasElement.height;
+            
+            // Clear canvas
+            canvasCtx.clearRect(0, 0, width, height);
+            
+            // Apply lipstick
+            if (makeupState.lipstick.active) {
+                applyLipstick(face, width, height);
+            }
+
+            // Apply eyeshadow
+            if (makeupState.eyeshadow.active) {
+                applyEyeshadow(face, width, height);
+            }
+
+            // Apply eyeliner
+            if (makeupState.eyeliner.active) {
+                applyEyeliner(face, width, height);
+            }
+
+            // Apply blush
+            if (makeupState.blush.active) {
+                applyBlush(face, width, height);
+            }
+        }
+
+        function applyLipstick(face, width, height) {
+            if (!face[13] || !face[14] || !face[61] || !face[291]) return;
+            
+            const upperLip = faceTracker.denormalizeLandmark(face[13], width, height);
+            const lowerLip = faceTracker.denormalizeLandmark(face[14], width, height);
+            const leftCorner = faceTracker.denormalizeLandmark(face[61], width, height);
+            const rightCorner = faceTracker.denormalizeLandmark(face[291], width, height);
+            
+            canvasCtx.save();
+            canvasCtx.globalAlpha = 0.7;
+            canvasCtx.fillStyle = makeupState.lipstick.color;
+            
+            // Calculate lip dimensions
+            const lipWidth = Math.abs(rightCorner.x - leftCorner.x);
+            const lipHeight = Math.abs(lowerLip.y - upperLip.y);
+            
+            // Draw upper lip
+            canvasCtx.beginPath();
+            canvasCtx.ellipse(
+                upperLip.x, 
+                upperLip.y, 
+                lipWidth * 0.4, 
+                lipHeight * 0.3, 
+                0, 0, 2 * Math.PI
+            );
+            canvasCtx.fill();
+            
+            // Draw lower lip
+            canvasCtx.beginPath();
+            canvasCtx.ellipse(
+                lowerLip.x, 
+                lowerLip.y, 
+                lipWidth * 0.4, 
+                lipHeight * 0.4, 
+                0, 0, 2 * Math.PI
+            );
+            canvasCtx.fill();
+            
+            canvasCtx.restore();
+        }
+
+        function applyEyeshadow(face, width, height) {
+            if (!face[70] || !face[107] || !face[336] || !face[299]) return;
+            
+            canvasCtx.save();
+            canvasCtx.globalAlpha = 0.5;
+            canvasCtx.fillStyle = makeupState.eyeshadow.color;
+            
+            // Left eyeshadow
+            const leftEyebrowOuter = faceTracker.denormalizeLandmark(face[70], width, height);
+            const leftEyebrowInner = faceTracker.denormalizeLandmark(face[107], width, height);
+            const leftEyeWidth = Math.abs(leftEyebrowInner.x - leftEyebrowOuter.x);
+            
+            canvasCtx.beginPath();
+            canvasCtx.ellipse(
+                (leftEyebrowOuter.x + leftEyebrowInner.x) / 2,
+                leftEyebrowOuter.y + 10,
+                leftEyeWidth * 0.6,
+                15,
+                0, 0, 2 * Math.PI
+            );
+            canvasCtx.fill();
+            
+            // Right eyeshadow
+            const rightEyebrowInner = faceTracker.denormalizeLandmark(face[336], width, height);
+            const rightEyebrowOuter = faceTracker.denormalizeLandmark(face[299], width, height);
+            const rightEyeWidth = Math.abs(rightEyebrowOuter.x - rightEyebrowInner.x);
+            
+            canvasCtx.beginPath();
+            canvasCtx.ellipse(
+                (rightEyebrowOuter.x + rightEyebrowInner.x) / 2,
+                rightEyebrowOuter.y + 10,
+                rightEyeWidth * 0.6,
+                15,
+                0, 0, 2 * Math.PI
+            );
+            canvasCtx.fill();
+            
+            canvasCtx.restore();
+        }
+
+        function applyEyeliner(face, width, height) {
+            if (!face[33] || !face[133] || !face[362] || !face[263]) return;
+            
+            canvasCtx.save();
+            canvasCtx.globalAlpha = 0.8;
+            canvasCtx.strokeStyle = makeupState.eyeliner.color;
+            canvasCtx.lineWidth = 3;
+            canvasCtx.lineCap = 'round';
+            
+            // Left eyeliner
+            const leftEyeLeft = faceTracker.denormalizeLandmark(face[33], width, height);
+            const leftEyeRight = faceTracker.denormalizeLandmark(face[133], width, height);
+            
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(leftEyeLeft.x, leftEyeLeft.y);
+            canvasCtx.lineTo(leftEyeRight.x, leftEyeRight.y);
+            canvasCtx.stroke();
+            
+            // Right eyeliner
+            const rightEyeLeft = faceTracker.denormalizeLandmark(face[362], width, height);
+            const rightEyeRight = faceTracker.denormalizeLandmark(face[263], width, height);
+            
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(rightEyeLeft.x, rightEyeLeft.y);
+            canvasCtx.lineTo(rightEyeRight.x, rightEyeRight.y);
+            canvasCtx.stroke();
+            
+            canvasCtx.restore();
+        }
+
+        function applyBlush(face, width, height) {
+            if (!face[234] || !face[454]) return;
+            
+            canvasCtx.save();
+            canvasCtx.globalAlpha = 0.4;
+            canvasCtx.fillStyle = makeupState.blush.color;
+            
+            // Left blush
+            const leftCheek = faceTracker.denormalizeLandmark(face[234], width, height);
+            const blushSize = width * 0.03;
+            
+            canvasCtx.beginPath();
+            canvasCtx.arc(leftCheek.x, leftCheek.y, blushSize, 0, 2 * Math.PI);
+            canvasCtx.fill();
+            
+            // Right blush
+            const rightCheek = faceTracker.denormalizeLandmark(face[454], width, height);
+            
+            canvasCtx.beginPath();
+            canvasCtx.arc(rightCheek.x, rightCheek.y, blushSize, 0, 2 * Math.PI);
+            canvasCtx.fill();
+            
+            canvasCtx.restore();
+        }
+
+        // Main rendering loop
+        async function renderLoop() {
+            if (videoElement.currentTime !== lastVideoTime) {
+                lastVideoTime = videoElement.currentTime;
+                
+                try {
+                    const faces = await faceTracker.detectFaces();
+                    
+                    if (faces && faces.length > 0) {
+                        if (isDebugMode) {
+                            faceCountEl.textContent = faces.length;
+                            statusEl.textContent = "متصل ويعمل";
+                        }
+                        
+                        applyMakeupToCanvas(faces);
+                    } else {
+                        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                        if (isDebugMode) {
+                            faceCountEl.textContent = "0";
+                            statusEl.textContent = "لا يوجد وجوه مكتشفة";
+                        }
+                    }
+                } catch (error) {
+                    console.error("Rendering error:", error);
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                }
+            }
+            
+            // Update FPS counter
+            if (isDebugMode) {
+                frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - lastTime >= 1000) {
+                    fpsEl.textContent = frameCount;
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+            }
+            
+            animationId = requestAnimationFrame(renderLoop);
+        }
+
+        // Setup makeup controls
+        function setupMakeupControls() {
+            const makeupBtns = document.querySelectorAll('.makeup-btn');
+            const colorOptions = document.querySelectorAll('.color-option');
+            const colorSets = document.querySelectorAll('.color-set');
+
+            makeupBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const type = e.target.dataset.type;
+                    
+                    if (type === 'clear') {
+                        Object.keys(makeupState).forEach(key => {
+                            makeupState[key].active = false;
+                        });
+                        makeupBtns.forEach(b => b.classList.remove('active'));
+                        colorPicker.style.display = 'none';
+                        updateActiveMakeupDisplay();
+                        return;
+                    }
+                    
+                    makeupState[type].active = !makeupState[type].active;
+                    btn.classList.toggle('active');
+                    
+                    if (makeupState[type].active && type !== 'eyeliner') {
+                        currentMakeupType = type;
+                        showColorPicker(type);
+                    } else {
+                        colorPicker.style.display = 'none';
+                    }
+                    
+                    updateActiveMakeupDisplay();
+                });
+            });
+
+            colorOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    const color = e.target.dataset.color;
+                    makeupState[currentMakeupType].color = color;
+                    updateActiveMakeupDisplay();
+                });
+            });
+        }
+
+        function showColorPicker(type) {
+            colorSets.forEach(set => {
+                set.classList.add('hidden');
+                if (set.dataset.type === type) {
+                    set.classList.remove('hidden');
+                }
+            });
+            colorPicker.style.display = 'flex';
+        }
+
+        function updateActiveMakeupDisplay() {
+            if (isDebugMode) {
+                const active = Object.keys(makeupState)
+                    .filter(key => makeupState[key].active)
+                    .join(', ') || 'لا يوجد';
+                activeMakeupEl.textContent = active;
+            }
+        }
+
+        // Start the experience
+        async function startExperience() {
+            try {
+                console.log("Starting makeup experience...");
+                
+                startScreen.style.display = 'none';
+                loadingMessage.classList.remove('hidden');
+                
+                isDebugMode = debugMode.checked;
+                
+                // Setup camera
+                await setupCamera();
+                
+                // Initialize face tracker
+                loadingText.textContent = "جاري تحميل نموذج تتبع الوجه...";
+                await faceTracker.init(videoElement, canvasElement);
+                
+                // Setup controls
+                loadingText.textContent = "جاري إعداد أدوات التحكم...";
+                setupMakeupControls();
+                
+                // Start rendering
+                loadingText.textContent = "جاري بدء التجربة...";
+                renderLoop();
+                
+                // Hide UI and show controls
+                setTimeout(() => {
+                    uiContainer.style.display = 'none';
+                    makeupControls.classList.remove('hidden');
+                    
+                    if (isDebugMode) {
+                        debugInfo.classList.remove('hidden');
+                    }
+                    
+                    console.log("✓ AR Makeup experience started successfully!");
+                }, 1000);
+                
+            } catch (error) {
+                console.error("✗ Initialization failed:", error);
+                loadingText.innerHTML = `
+                    <h2 class="text-2xl font-bold text-red-400 mb-2">فشل بدء التشغيل</h2>
+                    <p class="text-red-300">${error.message}</p>
+                    <button onclick="location.reload()" class="mt-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
+                        إعادة المحاولة
+                    </button>
+                `;
+            }
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', () => {
+            console.log("Start button clicked");
+            startExperience();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (canvasElement && videoElement.videoWidth > 0) {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            if (videoElement.srcObject) {
+                const tracks = videoElement.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        });
+
+        console.log("Enhanced AR Makeup script loaded successfully");
+    </script>
+</body>
+</html>
