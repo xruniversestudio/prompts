@@ -5,6 +5,20 @@
   <style>
     body { margin: 0; overflow: hidden; }
     video, canvas { position: absolute; top: 0; left: 0; }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 15px 30px;
+      font-size: 18px;
+      background: #1e88e5;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      z-index: 10;
+      cursor: pointer;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -12,12 +26,16 @@
 </head>
 <body>
 
+<button id="startButton">ابدأ التأثير</button>
 <video class="input_video" autoplay playsinline muted style="display:none;"></video>
 <canvas class="output_canvas" width="1280" height="720"></canvas>
 
 <script>
   const videoElement = document.querySelector('.input_video');
   const canvasElement = document.querySelector('.output_canvas');
+  const startButton = document.getElementById('startButton');
+
+  let cam; // camera instance
 
   // THREE.js setup
   const scene = new THREE.Scene();
@@ -61,15 +79,18 @@
     renderer.render(scene, camera);
   });
 
-  // Start the camera
-  const cam = new CameraUtils.Camera(videoElement, {
-    onFrame: async () => {
-      await faceMesh.send({ image: videoElement });
-    },
-    width: 1280,
-    height: 720
+  startButton.addEventListener('click', () => {
+    startButton.style.display = 'none';
+
+    cam = new CameraUtils.Camera(videoElement, {
+      onFrame: async () => {
+        await faceMesh.send({ image: videoElement });
+      },
+      width: 1280,
+      height: 720
+    });
+    cam.start();
   });
-  cam.start();
 </script>
 
 </body>
