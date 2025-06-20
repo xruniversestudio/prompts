@@ -18,10 +18,22 @@
 <script>
   const videoElement = document.querySelector('.input_video');
   const canvasElement = document.querySelector('.output_canvas');
-  const canvasCtx = canvasElement.getContext('2d');
 
-  // Set up FaceMesh
-  const faceMesh = new FaceMesh({
+  // THREE.js setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, canvasElement.width / canvasElement.height, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, alpha: true });
+  renderer.setSize(canvasElement.width, canvasElement.height);
+
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.1, 0.1),
+    new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+  );
+  scene.add(cube);
+  camera.position.z = 1;
+
+  // Setup FaceMesh from CDN
+  const faceMesh = new FaceMesh.FaceMesh({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
   });
 
@@ -32,50 +44,32 @@
     minTrackingConfidence: 0.5
   });
 
-  // THREE.js setup
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, canvasElement.width / canvasElement.height, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, alpha: true });
-  renderer.setSize(canvasElement.width, canvasElement.height);
-
-  const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-  );
-  scene.add(cube);
-  camera.position.z = 1;
-
-  function onResults(results) {
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  faceMesh.onResults((results) => {
+    renderer.clear();
 
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-      const face = results.multiFaceLandmarks[0];
+      const landmarks = results.multiFaceLandmarks[0];
+      const nose = landmarks[1]; // nose tip landmark
 
-      // Get the nose tip landmark (landmark 1)
-      const nose = face[1];
-
-      // Update cube position
       cube.position.set(
-        (nose.x - 0.5) * 2,  // Center x
-        -(nose.y - 0.5) * 2, // Center y
-        -nose.z              // Depth
+        (nose.x - 0.5) * 2,
+        -(nose.y - 0.5) * 2,
+        -nose.z
       );
     }
 
     renderer.render(scene, camera);
-  }
-
-  faceMesh.onResults(onResults);
+  });
 
   // Start the camera
-  const cameraUtils = new Camera(videoElement, {
+  const cam = new CameraUtils.Camera(videoElement, {
     onFrame: async () => {
       await faceMesh.send({ image: videoElement });
     },
     width: 1280,
     height: 720
   });
-  cameraUtils.start();
+  cam.start();
 </script>
 
 </body>
