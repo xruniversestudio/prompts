@@ -1,0 +1,233 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8" />
+
+<title>Markerless AR Sparkles</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+
+
+<!-- A-Frame + Particles -->
+
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+<script src="https://unpkg.com/aframe-particle-system-component@1.0.9/dist/aframe-particle-system-component.min.js"></script>
+
+
+
+<style>
+
+#startButton {
+
+position: absolute;
+
+top: 50%;
+
+left: 50%;
+
+transform: translate(-50%, -50%);
+
+padding: 16px 32px;
+
+font-size: 18px;
+
+background-color: #007bff;
+
+color: white;
+
+border: none;
+
+border-radius: 8px;
+
+cursor: pointer;
+
+z-index: 10;
+
+}
+
+#startButton:active {
+
+background-color: #0056b3;
+
+}
+
+</style>
+
+</head>
+
+
+
+<body style="margin: 0; overflow: hidden;">
+
+<button id="startButton">Start AR</button>
+
+
+
+<a-scene
+
+embedded
+
+ar-only
+
+webxr="requiredFeatures: hit-test;"
+
+renderer="antialias: true; colorManagement: true;"
+
+style="display: none;"
+
+xrweb
+
+>
+
+<!-- Reticle -->
+
+<a-entity id="reticle"
+
+geometry="primitive: ring; radiusInner: 0.04; radiusOuter: 0.05"
+
+material="color: #fff; shader: flat"
+
+visible="false">
+
+</a-entity>
+
+
+
+<!-- Sparkles -->
+
+<a-entity id="sparkles"
+
+particle-system="preset: dust; particleCount: 600; size: 0.2; opacity: 0.9; color: #ffffff, #88ccff"
+
+visible="false">
+
+</a-entity>
+
+
+
+<!-- Camera -->
+
+<a-camera></a-camera>
+
+</a-scene>
+
+
+
+<script>
+
+AFRAME.registerComponent('xrweb', {
+
+init: function () {
+
+const sceneEl = this.el;
+
+const sparkles = document.getElementById('sparkles');
+
+const reticle = document.getElementById('reticle');
+
+
+
+sceneEl.addEventListener('enter-vr', () => {
+
+if (sceneEl.renderer.xr && sceneEl.renderer.xr.isPresenting) {
+
+const session = sceneEl.renderer.xr.getSession();
+
+
+
+session.requestReferenceSpace('viewer').then((refSpace) => {
+
+session.requestHitTestSource({ space: refSpace }).then((hitTestSource) => {
+
+const refSpaceWorld = sceneEl.renderer.xr.getReferenceSpace();
+
+
+
+sceneEl.renderer.setAnimationLoop((time, frame) => {
+
+if (!frame) return;
+
+
+
+const viewerPose = frame.getViewerPose(refSpaceWorld);
+
+if (viewerPose) {
+
+const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+if (hitTestResults.length > 0) {
+
+const hit = hitTestResults[0];
+
+const pose = hit.getPose(refSpaceWorld);
+
+
+
+reticle.object3D.visible = true;
+
+reticle.object3D.position.set(
+
+pose.transform.position.x,
+
+pose.transform.position.y,
+
+pose.transform.position.z
+
+);
+
+
+
+sceneEl.addEventListener('click', () => {
+
+sparkles.object3D.visible = true;
+
+sparkles.object3D.position.copy(reticle.object3D.position);
+
+});
+
+}
+
+}
+
+});
+
+});
+
+});
+
+}
+
+});
+
+}
+
+});
+
+
+
+// Start AR Button
+
+document.getElementById('startButton').addEventListener('click', () => {
+
+document.getElementById('startButton').style.display = 'none';
+
+const scene = document.querySelector('a-scene');
+
+scene.style.display = 'block';
+
+scene.enterAR(); // AR-only start
+
+});
+
+</script>
+
+</body>
+
+</html>
