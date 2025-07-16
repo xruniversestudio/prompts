@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Markerless AR Sparkles</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+<!-- A-Frame + Particles - روابط محدثة -->
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<script src="https://unpkg.com/aframe-particle-system-component@1.1.3/dist/aframe-particle-system-component.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+#startButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 32px;
+  font-size: 18px;
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+#startButton:hover {
+  background: linear-gradient(45deg, #0056b3, #004085);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+#startButton:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+#info {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 20;
+  display: none;
+}
+
+#error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 0, 0, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  z-index: 30;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+<button id="startButton">Start AR Experience</button>
+<div id="info">Tap on surfaces to place sparkles!</div>
+<div id="error">AR not supported or no camera access</div>
+
+<a-scene
+  embedded
+  webxr="requiredFeatures: hit-test,local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay;"
+  renderer="antialias: true; colorManagement: true; sortObjects: true;"
+  style="display: none;"
+  vr-mode-ui="enabled: false"
+  loading-screen="enabled: false"
+>
+  <!-- أضواء محسنة -->
+  <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
+  <a-light type="directional" position="0 10 5" color="#ffffff" intensity="0.6"></a-light>
+
+  <!-- مؤشر الهدف -->
+  <a-entity id="reticle"
+    geometry="primitive: ring; radiusInner: 0.03; radiusOuter: 0.05"
+    material="color: #00ff88; shader: flat; transparent: true; opacity: 0.8"
+    animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
+    visible="false">
+    <a-ring 
+      position="0 0.01 0"
+      radius-inner="0.01"
+      radius-outer="0.02"
+      color="#ffffff"
+      material="shader: flat; transparent: true; opacity: 0.6">
+    </a-ring>
+  </a-entity>
+
+  <!-- نظام الجسيمات المتلألئة -->
+  <a-entity id="sparkles"
+    particle-system="
+      preset: dust;
+      particleCount: 500;
+      size: 0.15;
+      sizeRandomness: 0.5;
+      opacity: 0.8;
+      color: #ffffff, #88ccff, #ffaa88;
+      accelerationValue: 0 -0.5 0;
+      velocityValue: 0 2 0;
+      velocitySpread: 2 1 2;
+      maxAge: 3;
+      texture: https://cdn.aframe.io/particles/star.png;
+      blending: 2;
+    "
+    visible="false">
+  </a-entity>
+
+  <!-- نظام جسيمات إضافي للتأثيرات -->
+  <a-entity id="sparkles2"
+    particle-system="
+      preset: snow;
+      particleCount: 200;
+      size: 0.08;
+      color: #ffff88, #88ff88;
+      accelerationValue: 0 -0.3 0;
+      velocityValue: 0 1.5 0;
+      velocitySpread: 1.5 0.5 1.5;
+      maxAge: 2;
+      blending: 2;
+    "
+    visible="false">
+  </a-entity>
+
+  <!-- الكاميرا -->
+  <a-camera id="camera" wasd-controls="enabled: false" look-controls="enabled: false"></a-camera>
+</a-scene>
+
+<script>
+// تسجيل مكون AR محسن
+AFRAME.registerComponent('ar-hit-test', {
+  init: function () {
+    this.hitTestSource = null;
+    this.hitTestSourceRequested = false;
+    this.sparklesActive = [];
+    
+    this.onEnterAR = this.onEnterAR.bind(this);
+    this.onExitAR = this.onExitAR.bind(this);
+    this.onSelect = this.onSelect.bind(this);
+    
+    this.el.addEventListener('enter-vr', this.onEnterAR);
+    this.el.addEventListener('exit-vr', this.onExitAR);
+    
+    // إضافة مستمع النقر
+    this.el.addEventListener('click', this.onSelect);
+    
+    // للأجهزة اللمسية
+    this.el.addEventListener('touchstart', this.onSelect);
+  },
+
+  onEnterAR: function () {
+    const session = this.el.sceneEl.renderer.xr.getSession();
+    if (session) {
+      session.addEventListener('select', this.onSelect);
+      document.getElementById('info').style.display = 'block';
+    }
+  },
+
+  onExitAR: function () {
+    const session = this.el.sceneEl.renderer.xr.getSession();
+    if (session) {
+      session.removeEventListener('select', this.onSelect);
+      document.getElementById('info').style.display = 'none';
+    }
+  },
+
+  onSelect: function (event) {
+    const reticle = document.getElementById('reticle');
+    const sparkles = document.getElementById('sparkles');
+    const sparkles2 = document.getElementById('sparkles2');
+    
+    if (reticle.getAttribute('visible')) {
+      // إنشاء تأثير الجسيمات في موقع المؤشر
+      const position = reticle.getAttribute('position');
+      
+      // تنشيط الجسيمات الأساسية
+      sparkles.setAttribute('visible', true);
+      sparkles.setAttribute('position', position);
+      
+      // تنشيط الجسيمات الثانوية
+      sparkles2.setAttribute('visible', true);
+      sparkles2.setAttribute('position', {
+        x: position.x + (Math.random() - 0.5) * 0.2,
+        y: position.y + 0.1,
+        z: position.z + (Math.random() - 0.5) * 0.2
+      });
+      
+      // إيقاف الجسيمات بعد 4 ثوانٍ
+      setTimeout(() => {
+        sparkles.setAttribute('visible', false);
+        sparkles2.setAttribute('visible', false);
+      }, 4000);
+    }
+  },
+
+  tick: function () {
+    const renderer = this.el.sceneEl.renderer;
+    const session = renderer.xr.getSession();
+    
+    if (session && session.requestHitTestSource && !this.hitTestSourceRequested) {
+      this.hitTestSourceRequested = true;
+      
+      session.requestReferenceSpace('viewer').then((referenceSpace) => {
+        return session.requestHitTestSource({ space: referenceSpace });
+      }).then((source) => {
+        this.hitTestSource = source;
+      }).catch((error) => {
+        console.warn('Hit test not supported:', error);
+      });
+    }
+    
+    if (this.hitTestSource) {
+      const frame = renderer.xr.getFrame();
+      if (frame) {
+        const hitTestResults = frame.getHitTestResults(this.hitTestSource);
+        const reticle = document.getElementById('reticle');
+        
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(renderer.xr.getReferenceSpace());
+          
+          if (pose) {
+            reticle.setAttribute('visible', true);
+            reticle.setAttribute('position', {
+              x: pose.transform.position.x,
+              y: pose.transform.position.y,
+              z: pose.transform.position.z
+            });
+            
+            // تحديث اتجاه المؤشر
+            const orientation = pose.transform.orientation;
+            reticle.setAttribute('rotation', {
+              x: orientation.x * 180 / Math.PI,
+              y: orientation.y * 180 / Math.PI,
+              z: orientation.z * 180 / Math.PI
+            });
+          }
+        } else {
+          reticle.setAttribute('visible', false);
+        }
+      }
+    }
+  }
+});
+
+// زر البداية
+document.getElementById('startButton').addEventListener('click', async () => {
+  try {
+    const sceneEl = document.querySelector('a-scene');
+    const startButton = document.getElementById('startButton');
+    const errorDiv = document.getElementById('error');
+    
+    // التحقق من دعم WebXR
+    if (!navigator.xr) {
+      throw new Error('WebXR not supported');
+    }
+    
+    // التحقق من دعم AR
+    const supported = await navigator.xr.isSessionSupported('immersive-ar');
+    if (!supported) {
+      throw new Error('AR not supported');
+    }
+    
+    // إخفاء الزر وإظهار المشهد
+    startButton.style.display = 'none';
+    sceneEl.style.display = 'block';
+    
+    // إضافة مكون AR إلى المشهد
+    sceneEl.setAttribute('ar-hit-test', '');
+    
+    // بدء تشغيل AR
+    await sceneEl.enterAR();
+    
+  } catch (error) {
+    console.error('AR Error:', error);
+    document.getElementById('error').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('startButton').style.display = 'block';
+    }, 3000);
+  }
+});
+
+// معالجة الأخطاء العامة
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+});
+</script>
+</body>
+</html>
