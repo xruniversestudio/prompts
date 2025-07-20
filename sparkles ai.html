@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elegant Sparkle Overlay - Single File</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a; /* Dark background to see sparkles */
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-family: monospace;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Elegant Sparkle Overlay - WebAR Effect Demo</div>
+
+    <!-- Importmap to handle Three.js modules directly in the browser -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- Main JavaScript Logic -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // ======== SCENE SETUP ========
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // ======== POST-PROCESSING (FOR BLOOM/GLOW) ========
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.8; // Only bright things glow
+        bloomPass.strength = 1.2;  // Glow intensity
+        bloomPass.radius = 0.5;    // Glow radius
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // ======== PARTICLE SYSTEM ========
+        const PARTICLE_COUNT = 150;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+
+        // Custom attributes for each particle
+        const particleData = [];
+        const roseGold = new THREE.Color("#B76E79");
+        const softWhite = new THREE.Color("#FFFFFF");
+
+        // We'll use a 2x2 spritesheet (4 sprites total)
+        // For this demo, let's create it dynamically with canvas
+        function createSparkleSpritesheet() {
+            const canvas = document.createElement('canvas');
+            const size = 256; // Texture size for one sprite
+            canvas.width = size * 2;
+            canvas.height = size * 2;
+            const ctx = canvas.getContext('2d');
+
+            // Helper to draw a star
+            function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+                let rot = Math.PI / 2 * 3;
+                let x = cx;
+                let y = cy;
+                const step = Math.PI / spikes;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    x = cx + Math.cos(rot) * outerRadius;
+                    y = cy + Math.sin(rot) * outerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = cx + Math.cos(rot) * innerRadius;
+                    y = cy + Math.sin(rot) * innerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+                }
+                ctx.lineTo(cx, cy - outerRadius);
+                ctx.closePath();
+                ctx.fillStyle = 'white';
+                ctx.fill();
+            }
+            
+            // 1. Soft Circle (top-left)
+            const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.7)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // 2. 4-Point Star (top-right)
+            drawStar(size * 1.5, size * 0.5, 4, size / 2.5, size / 5);
+
+            // 3. 8-Point Star (bottom-left)
+            drawStar(size * 0.5, size * 1.5, 8, size / 3, size / 6);
+
+            // 4. Another soft circle (bottom-right)
+            ctx.fillStyle = gradient;
+            ctx.fillRect(size, size, size, size);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+        const particleTexture = createSparkleSpritesheet();
+
+        // Define uniforms for the shader
+        const uniforms = {
+            u_texture: { value: particleTexture },
+            u_time: { value: 0.0 }
+        };
+
+        // Create the shader material
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: `
+                attribute vec3 color;
+                attribute float size;
+                attribute float lifetime;
+                attribute float age;
+                attribute vec2 uv_offset;
+
+                varying vec3 vColor;
+                varying float vAlpha;
+                varying vec2 vUvOffset;
+
+                void main() {
+                    vColor = color;
+                    vUvOffset = uv_offset;
+
+                    // Lifecycle fade in/out
+                    float lifePercent = age / lifetime;
+                    float fadeIn = 0.1; // Fade in for first 10% of life
+                    float fadeOut = 0.8; // Start fading out at 80% of life
+
+                    if (lifePercent < fadeIn) {
+                        vAlpha = lifePercent / fadeIn;
+                    } else if (lifePercent > fadeOut) {
+                        vAlpha = 1.0 - (lifePercent - fadeOut) / (1.0 - fadeOut);
+                    } else {
+                        vAlpha = 1.0;
+                    }
+                    
+                    // Make particles billboard (always face camera)
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_Position = projectionMatrix * mvPosition;
+                    gl_PointSize = size * (300.0 / -mvPosition.z); // Adjust size based on distance
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D u_texture;
+
+                varying vec3 vColor;
+                varying float vAlpha;
+                varying vec2 vUvOffset;
+
+                void main() {
+                    // Spritesheet logic: use gl_PointCoord and offset
+                    vec2 uv = gl_PointCoord * vec2(0.5, 0.5) + vUvOffset;
+                    vec4 texColor = texture2D(u_texture, uv);
+                    
+                    // Discard transparent pixels from the texture to get sharp shapes
+                    if (texColor.a < 0.1) discard;
+
+                    gl_FragColor = vec4(vColor, vAlpha * texColor.a);
+                }
+            `,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            vertexColors: true
+        });
+
+
+        function resetParticle(i) {
+            const spread = 10; // How far particles can spawn from center
+            
+            // Initial Position (randomly in a plane)
+            particlePositions[i * 3 + 0] = (Math.random() - 0.5) * spread;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * spread;
+
+            // Data for this particle
+            particleData[i] = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1, // lateral drift
+                    Math.random() * 0.5 + 0.2,   // upward velocity
+                    0
+                ),
+                age: 0,
+                lifetime: Math.random() * 2 + 3, // 3-5 seconds
+                size: Math.random() * 15 + 10,
+                color: Math.random() > 0.5 ? roseGold : softWhite,
+                uv_offset: new THREE.Vector2(
+                    Math.floor(Math.random() * 2) * 0.5, // 0.0 or 0.5
+                    Math.floor(Math.random() * 2) * 0.5  // 0.0 or 0.5
+                )
+            };
+        }
+
+        // Initialize all particles
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            resetParticle(i);
+            // Set initial age to be > lifetime so they respawn on first frame
+            particleData[i].age = particleData[i].lifetime + 1.0;
+        }
+
+        // Define custom attributes for the BufferGeometry
+        const customColors = new Float32Array(PARTICLE_COUNT * 3);
+        const sizes = new Float32Array(PARTICLE_COUNT);
+        const ages = new Float32Array(PARTICLE_COUNT);
+        const lifetimes = new Float32Array(PARTICLE_COUNT);
+        const uv_offsets = new Float32Array(PARTICLE_COUNT * 2);
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(customColors, 3));
+        particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        particlesGeometry.setAttribute('age', new THREE.BufferAttribute(ages, 1));
+        particlesGeometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
+        particlesGeometry.setAttribute('uv_offset', new THREE.BufferAttribute(uv_offsets, 2));
+
+
+        const particleSystem = new THREE.Points(particlesGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+
+        // ======== ANIMATION LOOP ========
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            uniforms.u_time.value += delta;
+
+            // Update particles
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particleData[i].age += delta;
+
+                // If particle is dead, reset it
+                if (particleData[i].age > particleData[i].lifetime) {
+                    resetParticle(i);
+                }
+
+                // Update position
+                const p = particleData[i];
+                particlePositions[i * 3 + 0] += p.velocity.x * delta;
+                particlePositions[i * 3 + 1] += p.velocity.y * delta;
+                particlePositions[i * 3 + 2] += p.velocity.z * delta;
+                
+                // Update attributes for the shader
+                customColors[i * 3 + 0] = p.color.r;
+                customColors[i * 3 + 1] = p.color.g;
+                customColors[i * 3 + 2] = p.color.b;
+                sizes[i] = p.size;
+                ages[i] = p.age;
+                lifetimes[i] = p.lifetime;
+                uv_offsets[i*2 + 0] = p.uv_offset.x;
+                uv_offsets[i*2 + 1] = p.uv_offset.y;
+            }
+
+            // Tell Three.js to update the buffers on the GPU
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.geometry.attributes.color.needsUpdate = true;
+            particleSystem.geometry.attributes.size.needsUpdate = true;
+            particleSystem.geometry.attributes.age.needsUpdate = true;
+            particleSystem.geometry.attributes.lifetime.needsUpdate = true;
+            particleSystem.geometry.attributes.uv_offset.needsUpdate = true;
+
+            composer.render();
+        }
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }, false);
+
+        animate();
+    </script>
+</body>
+</html>
