@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elegant Sparkle Overlay - Single File</title>
+    <title>Elegant Sparkle Overlay - Fixed</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #1a1a1a; /* Dark background to see sparkles */
+            background-color: #1a1a1a;
         }
         canvas {
             display: block;
@@ -27,23 +27,10 @@
 <body>
     <div id="info">Elegant Sparkle Overlay - WebAR Effect Demo</div>
 
-    <!-- Importmap to handle Three.js modules directly in the browser -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
+    <!-- Use CDN compatible with Claude environment -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <!-- Main JavaScript Logic -->
-    <script type="module">
-        import * as THREE from 'three';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
+    <script>
         // ======== SCENE SETUP ========
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -53,17 +40,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
-
-        // ======== POST-PROCESSING (FOR BLOOM/GLOW) ========
-        const renderScene = new RenderPass(scene, camera);
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0.8; // Only bright things glow
-        bloomPass.strength = 1.2;  // Glow intensity
-        bloomPass.radius = 0.5;    // Glow radius
-
-        const composer = new EffectComposer(renderer);
-        composer.addPass(renderScene);
-        composer.addPass(bloomPass);
 
         // ======== PARTICLE SYSTEM ========
         const PARTICLE_COUNT = 150;
@@ -75,11 +51,10 @@
         const roseGold = new THREE.Color("#B76E79");
         const softWhite = new THREE.Color("#FFFFFF");
 
-        // We'll use a 2x2 spritesheet (4 sprites total)
-        // For this demo, let's create it dynamically with canvas
+        // Create sparkle spritesheet
         function createSparkleSpritesheet() {
             const canvas = document.createElement('canvas');
-            const size = 256; // Texture size for one sprite
+            const size = 256;
             canvas.width = size * 2;
             canvas.height = size * 2;
             const ctx = canvas.getContext('2d');
@@ -119,48 +94,51 @@
             ctx.fillRect(0, 0, size, size);
 
             // 2. 4-Point Star (top-right)
+            ctx.clearRect(size, 0, size, size);
             drawStar(size * 1.5, size * 0.5, 4, size / 2.5, size / 5);
 
             // 3. 8-Point Star (bottom-left)
+            ctx.clearRect(0, size, size, size);
             drawStar(size * 0.5, size * 1.5, 8, size / 3, size / 6);
 
             // 4. Another soft circle (bottom-right)
-            ctx.fillStyle = gradient;
+            ctx.clearRect(size, size, size, size);
+            const gradient2 = ctx.createRadialGradient(size * 1.5, size * 1.5, 0, size * 1.5, size * 1.5, size/2);
+            gradient2.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient2.addColorStop(0.5, 'rgba(255,255,255,0.7)');
+            gradient2.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient2;
             ctx.fillRect(size, size, size, size);
 
             return new THREE.CanvasTexture(canvas);
         }
         const particleTexture = createSparkleSpritesheet();
 
-        // Define uniforms for the shader
-        const uniforms = {
-            u_texture: { value: particleTexture },
-            u_time: { value: 0.0 }
-        };
-
         // Create the shader material
         const particleMaterial = new THREE.ShaderMaterial({
-            uniforms: uniforms,
+            uniforms: {
+                u_texture: { value: particleTexture },
+                u_time: { value: 0.0 }
+            },
             vertexShader: `
                 attribute vec3 color;
                 attribute float size;
                 attribute float lifetime;
                 attribute float age;
                 attribute vec2 uv_offset;
-
                 varying vec3 vColor;
                 varying float vAlpha;
                 varying vec2 vUvOffset;
-
+                
                 void main() {
                     vColor = color;
                     vUvOffset = uv_offset;
-
+                    
                     // Lifecycle fade in/out
                     float lifePercent = age / lifetime;
-                    float fadeIn = 0.1; // Fade in for first 10% of life
-                    float fadeOut = 0.8; // Start fading out at 80% of life
-
+                    float fadeIn = 0.1;
+                    float fadeOut = 0.8;
+                    
                     if (lifePercent < fadeIn) {
                         vAlpha = lifePercent / fadeIn;
                     } else if (lifePercent > fadeOut) {
@@ -169,28 +147,25 @@
                         vAlpha = 1.0;
                     }
                     
-                    // Make particles billboard (always face camera)
+                    // Make particles billboard
                     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                     gl_Position = projectionMatrix * mvPosition;
-                    gl_PointSize = size * (300.0 / -mvPosition.z); // Adjust size based on distance
+                    gl_PointSize = size * (300.0 / -mvPosition.z);
                 }
             `,
             fragmentShader: `
                 uniform sampler2D u_texture;
-
                 varying vec3 vColor;
                 varying float vAlpha;
                 varying vec2 vUvOffset;
-
+                
                 void main() {
-                    // Spritesheet logic: use gl_PointCoord and offset
+                    // Spritesheet logic
                     vec2 uv = gl_PointCoord * vec2(0.5, 0.5) + vUvOffset;
                     vec4 texColor = texture2D(u_texture, uv);
                     
-                    // Discard transparent pixels from the texture to get sharp shapes
                     if (texColor.a < 0.1) discard;
-
-                    gl_FragColor = vec4(vColor, vAlpha * texColor.a);
+                    gl_FragColor = vec4(vColor * texColor.rgb, vAlpha * texColor.a);
                 }
             `,
             blending: THREE.AdditiveBlending,
@@ -199,11 +174,10 @@
             vertexColors: true
         });
 
-
         function resetParticle(i) {
-            const spread = 10; // How far particles can spawn from center
+            const spread = 10;
             
-            // Initial Position (randomly in a plane)
+            // Initial Position
             particlePositions[i * 3 + 0] = (Math.random() - 0.5) * spread;
             particlePositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
             particlePositions[i * 3 + 2] = (Math.random() - 0.5) * spread;
@@ -211,17 +185,17 @@
             // Data for this particle
             particleData[i] = {
                 velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.1, // lateral drift
-                    Math.random() * 0.5 + 0.2,   // upward velocity
+                    (Math.random() - 0.5) * 0.1,
+                    Math.random() * 0.5 + 0.2,
                     0
                 ),
                 age: 0,
-                lifetime: Math.random() * 2 + 3, // 3-5 seconds
+                lifetime: Math.random() * 2 + 3,
                 size: Math.random() * 15 + 10,
                 color: Math.random() > 0.5 ? roseGold : softWhite,
                 uv_offset: new THREE.Vector2(
-                    Math.floor(Math.random() * 2) * 0.5, // 0.0 or 0.5
-                    Math.floor(Math.random() * 2) * 0.5  // 0.0 or 0.5
+                    Math.floor(Math.random() * 2) * 0.5,
+                    Math.floor(Math.random() * 2) * 0.5
                 )
             };
         }
@@ -229,11 +203,10 @@
         // Initialize all particles
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             resetParticle(i);
-            // Set initial age to be > lifetime so they respawn on first frame
             particleData[i].age = particleData[i].lifetime + 1.0;
         }
 
-        // Define custom attributes for the BufferGeometry
+        // Define custom attributes
         const customColors = new Float32Array(PARTICLE_COUNT * 3);
         const sizes = new Float32Array(PARTICLE_COUNT);
         const ages = new Float32Array(PARTICLE_COUNT);
@@ -247,10 +220,73 @@
         particlesGeometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
         particlesGeometry.setAttribute('uv_offset', new THREE.BufferAttribute(uv_offsets, 2));
 
-
         const particleSystem = new THREE.Points(particlesGeometry, particleMaterial);
         scene.add(particleSystem);
 
+        // Simple bloom effect simulation with multiple render passes
+        const bloomScene = new THREE.Scene();
+        const bloomMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                u_texture: { value: particleTexture },
+                u_time: { value: 0.0 },
+                u_bloom: { value: 1.5 }
+            },
+            vertexShader: `
+                attribute vec3 color;
+                attribute float size;
+                attribute float lifetime;
+                attribute float age;
+                attribute vec2 uv_offset;
+                varying vec3 vColor;
+                varying float vAlpha;
+                varying vec2 vUvOffset;
+                uniform float u_bloom;
+                
+                void main() {
+                    vColor = color;
+                    vUvOffset = uv_offset;
+                    
+                    float lifePercent = age / lifetime;
+                    float fadeIn = 0.1;
+                    float fadeOut = 0.8;
+                    
+                    if (lifePercent < fadeIn) {
+                        vAlpha = lifePercent / fadeIn;
+                    } else if (lifePercent > fadeOut) {
+                        vAlpha = 1.0 - (lifePercent - fadeOut) / (1.0 - fadeOut);
+                    } else {
+                        vAlpha = 1.0;
+                    }
+                    
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_Position = projectionMatrix * mvPosition;
+                    gl_PointSize = size * u_bloom * (300.0 / -mvPosition.z);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D u_texture;
+                varying vec3 vColor;
+                varying float vAlpha;
+                varying vec2 vUvOffset;
+                
+                void main() {
+                    vec2 uv = gl_PointCoord * vec2(0.5, 0.5) + vUvOffset;
+                    vec4 texColor = texture2D(u_texture, uv);
+                    
+                    if (texColor.a < 0.1) discard;
+                    gl_FragColor = vec4(vColor * texColor.rgb * 0.3, vAlpha * texColor.a * 0.3);
+                }
+            `,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            vertexColors: true
+        });
+
+        // Clone geometry and attributes for bloom
+        const bloomGeometry = particlesGeometry.clone();
+        const bloomParticles = new THREE.Points(bloomGeometry, bloomMaterial);
+        bloomScene.add(bloomParticles);
 
         // ======== ANIMATION LOOP ========
         const clock = new THREE.Clock();
@@ -259,24 +295,22 @@
             requestAnimationFrame(animate);
 
             const delta = clock.getDelta();
-            uniforms.u_time.value += delta;
+            particleMaterial.uniforms.u_time.value += delta;
+            bloomMaterial.uniforms.u_time.value += delta;
 
             // Update particles
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 particleData[i].age += delta;
 
-                // If particle is dead, reset it
                 if (particleData[i].age > particleData[i].lifetime) {
                     resetParticle(i);
                 }
 
-                // Update position
                 const p = particleData[i];
                 particlePositions[i * 3 + 0] += p.velocity.x * delta;
                 particlePositions[i * 3 + 1] += p.velocity.y * delta;
                 particlePositions[i * 3 + 2] += p.velocity.z * delta;
                 
-                // Update attributes for the shader
                 customColors[i * 3 + 0] = p.color.r;
                 customColors[i * 3 + 1] = p.color.g;
                 customColors[i * 3 + 2] = p.color.b;
@@ -287,7 +321,7 @@
                 uv_offsets[i*2 + 1] = p.uv_offset.y;
             }
 
-            // Tell Three.js to update the buffers on the GPU
+            // Update both geometries
             particleSystem.geometry.attributes.position.needsUpdate = true;
             particleSystem.geometry.attributes.color.needsUpdate = true;
             particleSystem.geometry.attributes.size.needsUpdate = true;
@@ -295,7 +329,18 @@
             particleSystem.geometry.attributes.lifetime.needsUpdate = true;
             particleSystem.geometry.attributes.uv_offset.needsUpdate = true;
 
-            composer.render();
+            bloomGeometry.attributes.position.needsUpdate = true;
+            bloomGeometry.attributes.color.needsUpdate = true;
+            bloomGeometry.attributes.size.needsUpdate = true;
+            bloomGeometry.attributes.age.needsUpdate = true;
+            bloomGeometry.attributes.lifetime.needsUpdate = true;
+            bloomGeometry.attributes.uv_offset.needsUpdate = true;
+
+            // Render bloom effect first (background glow)
+            renderer.render(bloomScene, camera);
+            
+            // Render main particles on top
+            renderer.render(scene, camera);
         }
 
         // Handle window resizing
@@ -303,7 +348,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
         }, false);
 
         animate();
