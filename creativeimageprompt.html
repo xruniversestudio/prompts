@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>برومبت توليد صور ابداعية</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+      background: linear-gradient(90deg, #b40f8f 0%, #2c1d7c 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      color: white;
+      direction: rtl;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+
+    .logo img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 80px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+      border-radius: 12px 12px 0 0;
+      margin-bottom: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header h2 {
+      font-size: 24px;
+      background: linear-gradient(90deg, #fff, #ddd);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .copy-btn {
+      background-color: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    .copy-btn:hover {
+      background-color: rgba(255, 255, 255, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .text {
+      font-size: 16px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      padding: 0 10px;
+    }
+
+    .copied {
+      position: fixed;
+      top: 20px;
+      right: 100px;
+      background-color: rgba(255, 255, 255, 0.25);
+      padding: 8px 16px;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .copied.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+        margin-top: 70px;
+      }
+
+      .header h2 {
+        font-size: 20px;
+      }
+
+      .logo img {
+        width: 50px;
+        height: 50px;
+      }
+
+      .text {
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 10px;
+      }
+
+      .header {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .header h2 {
+        font-size: 18px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo"></div>
+
+  <div class="container">
+    <div class="header">
+      <h2>برومبت تصميم بالذكاء الاصطناعي</h2>
+      <button class="copy-btn" id="copyButton">نسخ النص</button>
+    </div>
+
+    <div class="text" id="textToCopy">
+A futuristic, ultra-realistic 3D render of a {element} floating mid-air over a dark, minimal sci-fi background. The {element} is beautifully designed with glowing details, advanced materials (like crystal, holograms, or polished metal), and emits a soft radiant light. Surrounding the {element}, generate thematic and symbolic visual elements that conceptually support its form and purpose — such as floral energy for feminine objects, data rings for digital items, or light feathers for symbolic artifacts. Choose these automatically based on the type and theme of the {element}. The lighting is cinematic and dramatic, with subtle reflections and ethereal particles. Above the {element}, glowing neon text reads: "{tagline}". Style: hyper-realistic, cinematic sci-fi, surreal elegance, 8K {aspect_ratio}
+    </div>
+  </div>
+
+  <div class="copied" id="copiedMsg">تم النسخ بنجاح!</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const copyButton = document.getElementById('copyButton');
+      const textToCopy = document.getElementById('textToCopy');
+      const copiedMsg = document.getElementById('copiedMsg');
+
+      copyButton.addEventListener('click', function() {
+        navigator.clipboard.writeText(textToCopy.textContent)
+          .then(() => {
+            copiedMsg.classList.add('show');
+            setTimeout(() => {
+              copiedMsg.classList.remove('show');
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('فشل في نسخ النص: ', err);
+            alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى');
+          });
+      });
+    });
+  </script>
+</body>
+</html>
