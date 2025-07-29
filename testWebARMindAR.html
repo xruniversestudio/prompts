@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebAR Face‑Tracking Demo</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+  <!-- MindAR Face Tracking core -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face.prod.js"></script>
+  <!-- MindAR A-Frame component for face tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-aframe.prod.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="loading">جاري التحميل... الرجاء الانتظار</div>
+
+  <a-scene
+    mindar-face="maxTrack: 1; autoStart: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    embedded
+    loading-screen="enabled: false"
+    @loaded="document.querySelector('#loading').style.display='none'"
+  >
+    <!-- تحميل الأصول -->
+    <a-assets>
+      <a-asset-item
+        id="glassesModel"
+        src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses/scene.gltf">
+      </a-asset-item>
+    </a-assets>
+
+    <!-- ربط النموذج بمعلم الوجه -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-gltf-model
+        src="#glassesModel"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.01 0.01 0.01">
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- كاميرا A-Frame -->
+    <a-camera position="0 0 0"></a-camera>
+  </a-scene>
+</body>
+</html>
