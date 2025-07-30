@@ -3,33 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WebAR Face‑Tracking Demo</title>
+  <title>WebAR Face-Tracking with Occluder</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-
-  <!-- MindAR Face Tracking core (v1.2.5) -->
+  <!-- MindAR Face Tracking (v1.2.5) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face.prod.js"></script>
-  <!-- MindAR A-Frame component for face tracking (v1.2.5) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; }
     #loading {
-      position: absolute;
-      top: 50%; left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: sans-serif;
-      color: white;
-      background: rgba(0,0,0,0.6);
-      padding: 10px 20px;
-      border-radius: 4px;
-      z-index: 100;
+      background: rgba(0,0,0,0.6); color: #fff;
+      padding: 0.5em 1em; border-radius: 4px;
+      font-family: sans-serif; z-index: 100;
     }
     a-scene { width: 100vw; height: 100vh; }
   </style>
 </head>
-
 <body>
   <div id="loading">جاري التحميل... الرجاء الانتظار</div>
 
@@ -40,15 +33,31 @@
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights"
   >
-    <!-- Assets -->
     <a-assets>
+      <!-- رأس شفاف للاكلودر -->
+      <a-asset-item
+        id="headOccluder"
+        src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb">
+      </a-asset-item>
+      <!-- نموذج النظّارات -->
       <a-asset-item
         id="glassesModel"
         src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses/scene.gltf">
       </a-asset-item>
     </a-assets>
 
-    <!-- Face anchor + 3D model -->
+    <!-- Anchor للوجه: أولاً occluder -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-gltf-model
+        mindar-face-occluder
+        src="#headOccluder"
+        position="0 -0.3 0.15"
+        rotation="0 0 0"
+        scale="0.065 0.065 0.065">
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- ثم نموذج النظّارات -->
     <a-entity mindar-face-target="anchorIndex: 168">
       <a-gltf-model
         src="#glassesModel"
@@ -58,16 +67,15 @@
       </a-gltf-model>
     </a-entity>
 
-    <!-- Camera -->
     <a-camera position="0 0 0"></a-camera>
   </a-scene>
 
   <script>
-    // Hide the loading message once the scene starts rendering
-    const sceneEl = document.querySelector('a-scene');
-    sceneEl.addEventListener('renderstart', () => {
-      document.getElementById('loading').style.display = 'none';
-    });
+    // إخفاء رسالة التحميل عند بدء العرض
+    document.querySelector('a-scene')
+      .addEventListener('renderstart', () => {
+        document.getElementById('loading').style.display = 'none';
+      });
   </script>
 </body>
 </html>
