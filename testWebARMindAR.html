@@ -1,23 +1,35 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WebAR Face‑Tracking Demo</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 
-  <!-- MindAR Face Tracking core -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face.prod.js"></script>
-  <!-- MindAR A-Frame component for face tracking -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-aframe.prod.js"></script>
+  <!-- MindAR Face Tracking core (v1.2.5) -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face.prod.js"></script>
+  <!-- MindAR A-Frame component for face tracking (v1.2.5) -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: sans-serif; }
+    #loading {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: sans-serif;
+      color: white;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 20px;
+      border-radius: 4px;
+      z-index: 100;
+    }
+    a-scene { width: 100vw; height: 100vh; }
   </style>
 </head>
+
 <body>
   <div id="loading">جاري التحميل... الرجاء الانتظار</div>
 
@@ -27,11 +39,8 @@
     device-orientation-permission-ui="enabled: false"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights"
-    embedded
-    loading-screen="enabled: false"
-    @loaded="document.querySelector('#loading').style.display='none'"
   >
-    <!-- تحميل الأصول -->
+    <!-- Assets -->
     <a-assets>
       <a-asset-item
         id="glassesModel"
@@ -39,7 +48,7 @@
       </a-asset-item>
     </a-assets>
 
-    <!-- ربط النموذج بمعلم الوجه -->
+    <!-- Face anchor + 3D model -->
     <a-entity mindar-face-target="anchorIndex: 168">
       <a-gltf-model
         src="#glassesModel"
@@ -49,8 +58,16 @@
       </a-gltf-model>
     </a-entity>
 
-    <!-- كاميرا A-Frame -->
+    <!-- Camera -->
     <a-camera position="0 0 0"></a-camera>
   </a-scene>
+
+  <script>
+    // Hide the loading message once the scene starts rendering
+    const sceneEl = document.querySelector('a-scene');
+    sceneEl.addEventListener('renderstart', () => {
+      document.getElementById('loading').style.display = 'none';
+    });
+  </script>
 </body>
 </html>
