@@ -5,96 +5,382 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تجربة مكياج افتراضي</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { 
+      margin: 0; 
+      padding: 20px;
+      background: #1a1a1a;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .video-container {
+      position: relative;
+      margin: 20px 0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
     video, canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 640px;
+      max-height: 480px;
+    }
+    canvas {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
+      top: 0;
+      left: 0;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    button {
+      background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+      border: none;
+      padding: 12px 24px;
+      margin: 5px;
+      border-radius: 25px;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      font-family: monospace;
+    }
+    .makeup-options {
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .makeup-btn {
+      background: rgba(255,255,255,0.2);
+      border: 2px solid transparent;
+    }
+    .makeup-btn.active {
+      border-color: #ff6b6b;
+      background: rgba(255,107,107,0.3);
     }
   </style>
 </head>
 <body>
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="overlay"></canvas>
+  <div class="container">
+    <h1>🎨 تطبيق المكياج الافتراضي</h1>
+    
+    <div class="controls">
+      <button id="startBtn">📹 تشغيل الكاميرا</button>
+      <button id="stopBtn" disabled>⏹️ إيقاف الكاميرا</button>
+    </div>
 
-  <!-- 1) تحميل TF.js الكامل -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <!-- 2) تحميل face-landmarks-detection -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.6/dist/face-landmarks-detection.min.js"></script>
+    <div class="makeup-options">
+      <button class="makeup-btn" id="lipstickBtn">💋 أحمر الشفاه</button>
+      <button class="makeup-btn" id="blushBtn">🌸 أحمر الخدود</button>
+      <button class="makeup-btn" id="eyeshadowBtn">👁️ ظلال العيون</button>
+      <button class="makeup-btn" id="clearBtn">🧹 مسح الكل</button>
+    </div>
+
+    <div class="status" id="status">اضغط على تشغيل الكاميرا للبدء</div>
+
+    <div class="video-container">
+      <video id="video" autoplay playsinline muted style="display: none;"></video>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+
+  <!-- TensorFlow.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.15.0/tf.min.js"></script>
+  <!-- Face Detection Model -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
 
   <script>
-  // دالة لتشغيل الكاميرا وضمان play()
-  async function setupCamera() {
-    const video = document.getElementById('video');
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    return new Promise(resolve => {
-      video.onloadedmetadata = () => {
-        video.play();
-        resolve(video);
-      };
-    });
-  }
+    let video, canvas, ctx;
+    let stream = null;
+    let isRunning = false;
+    let detectionInterval = null;
+    
+    // إعدادات المكياج
+    const makeupSettings = {
+      lipstick: true,
+      blush: true,
+      eyeshadow: false
+    };
 
-  async function main() {
-    // 1. إعداد الكاميرا
-    const video = await setupCamera();
+    // عناصر DOM
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+    const lipstickBtn = document.getElementById('lipstickBtn');
+    const blushBtn = document.getElementById('blushBtn');
+    const eyeshadowBtn = document.getElementById('eyeshadowBtn');
+    const clearBtn = document.getElementById('clearBtn');
 
-    // 2. إعداد الـ canvas
-    const canvas = document.getElementById('overlay');
-    const ctx = canvas.getContext('2d');
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // 3. تهيئة TF.js و backend
-    await tf.setBackend('webgl');
-    await tf.ready();
-    console.log('✔️ TensorFlow ready, backend:', tf.getBackend());
-
-    // 4. إنشاء الـ detector
-    const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-    const detector = await faceLandmarksDetection.createDetector(model, {
-      runtime: 'tfjs'
-    });
-    console.log('✔️ Detector initialized');
-
-    // 5. حلقة الرسم والمعالجة
-    async function renderLoop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // تقدير الوجوه
-      const faces = await detector.estimateFaces(video);
-      console.log('Faces detected:', faces.length);
-      faces.forEach(face => {
-        // رسم أحمر الشفاه
-        const upper = face.annotations.lipsUpperOuter;
-        const lower = face.annotations.lipsLowerOuter.slice().reverse();
-        const lipPath = upper.concat(lower);
-        ctx.beginPath();
-        lipPath.forEach(([x, y], i) => i===0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(180,20,40,0.5)';
-        ctx.fill();
-
-        // رسم أحمر الخدود
-        [face.annotations.leftCheek[0], face.annotations.rightCheek[0]]
-          .forEach(([x, y]) => {
-            ctx.beginPath();
-            ctx.arc(x, y, 30, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,102,178,0.3)';
-            ctx.fill();
-          });
-      });
-
-      requestAnimationFrame(renderLoop);
+    // تحديث حالة الأزرار
+    function updateButtons() {
+      lipstickBtn.classList.toggle('active', makeupSettings.lipstick);
+      blushBtn.classList.toggle('active', makeupSettings.blush);
+      eyeshadowBtn.classList.toggle('active', makeupSettings.eyeshadow);
     }
 
-    renderLoop();
-  }
+    // أحداث الأزرار
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    
+    lipstickBtn.addEventListener('click', () => {
+      makeupSettings.lipstick = !makeupSettings.lipstick;
+      updateButtons();
+    });
+    
+    blushBtn.addEventListener('click', () => {
+      makeupSettings.blush = !makeupSettings.blush;
+      updateButtons();
+    });
+    
+    eyeshadowBtn.addEventListener('click', () => {
+      makeupSettings.eyeshadow = !makeupSettings.eyeshadow;
+      updateButtons();
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      makeupSettings.lipstick = false;
+      makeupSettings.blush = false;
+      makeupSettings.eyeshadow = false;
+      updateButtons();
+    });
 
-  main().catch(err => console.error(err));
+    // تشغيل الكاميرا
+    async function startCamera() {
+      try {
+        status.textContent = '🔄 جاري تحميل النماذج...';
+        
+        // تحميل نماذج face-api.js
+        await loadModels();
+        
+        status.textContent = '📹 جاري تشغيل الكاميرا...';
+        
+        video = document.getElementById('video');
+        canvas = document.getElementById('overlay');
+        ctx = canvas.getContext('2d');
+
+        // الحصول على إذن الكاميرا
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: 640, 
+            height: 480,
+            facingMode: 'user'
+          } 
+        });
+        
+        video.srcObject = stream;
+        
+        await new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            video.style.display = 'block';
+            resolve();
+          };
+        });
+
+        await video.play();
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        isRunning = true;
+        
+        status.textContent = '✅ جاري التحليل...';
+        
+        // بدء حلقة التحليل
+        startDetection();
+        
+      } catch (err) {
+        console.error('خطأ في تشغيل الكاميرا:', err);
+        status.textContent = '❌ خطأ: ' + err.message;
+      }
+    }
+
+    // إيقاف الكاميرا
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      
+      if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+      }
+      
+      video.style.display = 'none';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      isRunning = false;
+      
+      status.textContent = 'تم إيقاف الكاميرا';
+    }
+
+    // تحميل النماذج
+    async function loadModels() {
+      const MODEL_URL = 'https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/models';
+      
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+      ]);
+    }
+
+    // بدء عملية التحليل
+    function startDetection() {
+      detectionInterval = setInterval(async () => {
+        if (!isRunning || !video || video.paused) return;
+        
+        await detectAndDraw();
+      }, 100); // كل 100ms
+    }
+
+    // تحليل الوجه والرسم
+    async function detectAndDraw() {
+      try {
+        // مسح الكانفاس
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // تحليل الوجه
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks();
+
+        if (detections.length > 0) {
+          status.textContent = `✅ تم اكتشاف ${detections.length} وجه`;
+          
+          detections.forEach(detection => {
+            const landmarks = detection.landmarks;
+            
+            // رسم أحمر الشفاه
+            if (makeupSettings.lipstick) {
+              drawLipstick(landmarks);
+            }
+            
+            // رسم أحمر الخدود
+            if (makeupSettings.blush) {
+              drawBlush(landmarks);
+            }
+            
+            // رسم ظلال العيون
+            if (makeupSettings.eyeshadow) {
+              drawEyeshadow(landmarks);
+            }
+          });
+        } else {
+          status.textContent = '🔍 البحث عن وجوه...';
+        }
+        
+      } catch (err) {
+        console.error('خطأ في التحليل:', err);
+        status.textContent = '❌ خطأ في التحليل';
+      }
+    }
+
+    // رسم أحمر الشفاه
+    function drawLipstick(landmarks) {
+      const mouth = landmarks.getMouth();
+      
+      ctx.fillStyle = 'rgba(220, 20, 60, 0.6)';
+      ctx.beginPath();
+      
+      mouth.forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // رسم أحمر الخدود
+    function drawBlush(landmarks) {
+      const leftCheek = landmarks.getLeftCheek();
+      const rightCheek = landmarks.getRightCheek();
+      
+      ctx.fillStyle = 'rgba(255, 182, 193, 0.4)';
+      
+      // الخد الأيسر
+      if (leftCheek.length > 0) {
+        const centerLeft = leftCheek[Math.floor(leftCheek.length / 2)];
+        ctx.beginPath();
+        ctx.arc(centerLeft.x, centerLeft.y, 25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // الخد الأيمن
+      if (rightCheek.length > 0) {
+        const centerRight = rightCheek[Math.floor(rightCheek.length / 2)];
+        ctx.beginPath();
+        ctx.arc(centerRight.x, centerRight.y, 25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // رسم ظلال العيون
+    function drawEyeshadow(landmarks) {
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      
+      ctx.fillStyle = 'rgba(138, 43, 226, 0.3)';
+      
+      // العين اليسرى
+      if (leftEye.length > 0) {
+        ctx.beginPath();
+        leftEye.forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(point.x, point.y - 10);
+          } else {
+            ctx.lineTo(point.x, point.y - 5);
+          }
+        });
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      // العين اليمنى
+      if (rightEye.length > 0) {
+        ctx.beginPath();
+        rightEye.forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(point.x, point.y - 10);
+          } else {
+            ctx.lineTo(point.x, point.y - 5);
+          }
+        });
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // تحديث الأزرار عند التحميل
+    updateButtons();
   </script>
 </body>
 </html>
