@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>WebAR Virtual Makeup</title>
+  <title>WebAR Virtual Makeup with Textures</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <!-- MindAR Face Tracking (v1.2.5) -->
+  <!-- MindAR Face Tracking v1.2.5 -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
@@ -15,10 +15,10 @@
     body { margin: 0; overflow: hidden; }
     #loading {
       position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%,-50%);
       background: rgba(0,0,0,0.6); color: #fff;
       padding: .5em 1em; border-radius: 4px;
-      font-family: sans-serif; z-index: 100;
+      font-family: sans-serif; z-index:100;
     }
     a-scene { width:100vw; height:100vh; }
   </style>
@@ -34,13 +34,19 @@
     renderer="colorManagement: true, physicallyCorrectLights"
   >
     <a-assets>
-      <!-- occluder رأس شفاف -->
-      <a-asset-item id="headOccluder" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
-      <!-- نموذج رموش -->
-      <a-asset-item id="lashesModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/eyelashes/scene.gltf"></a-asset-item>
+      <!-- صور المكياج -->
+      <img id="blushTex"    src="assets/blush texture.jpg"/>
+      <img id="eyelinerTex" src="assets/eyeliner texture.jpg"/>
+      <img id="eyeshadowTex"src="assets/eyeshadow texture.jpg"/>
+      <img id="lipsTex"     src="assets/lips texture.jpg"/>
+      <!-- موديل occluder للرأس -->
+      <a-asset-item
+        id="headOccluder"
+        src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb">
+      </a-asset-item>
     </a-assets>
 
-    <!-- occluder يغطي الوجه ليُخفي الأجزاء الخلفية -->
+    <!-- occluder ليعمل قناعاً خلف التأثيرات -->
     <a-entity mindar-face-target="anchorIndex: 168">
       <a-gltf-model
         mindar-face-occluder
@@ -50,49 +56,57 @@
       </a-gltf-model>
     </a-entity>
 
-    <!-- أحمر الخدود -->
-    <a-entity mindar-face-target="anchorIndex: 234">
-      <a-circle rotation="-90 0 0" color="#F28C8C" opacity="0.4"
-        radius="0.08" position="0 0.02 0.06">
-      </a-circle>
-    </a-entity>
-    <a-entity mindar-face-target="anchorIndex: 454">
-      <a-circle rotation="-90 0 0" color="#F28C8C" opacity="0.4"
-        radius="0.08" position="0 0.02 0.06">
-      </a-circle>
+    <!-- حمرة الخدود (Blush) -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-plane
+        src="#blushTex"
+        transparent="true"
+        width="0.7" height="0.25"
+        position="0 -0.05 0.05"
+        rotation="-90 0 0">
+      </a-plane>
     </a-entity>
 
-    <!-- حمرة الشفاه -->
+    <!-- ظل العين (Eyeshadow) -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-plane
+        src="#eyeshadowTex"
+        transparent="true"
+        width="0.45" height="0.18"
+        position="0 0 0.055"
+        rotation="-90 0 0">
+      </a-plane>
+    </a-entity>
+
+    <!-- كحل العين (Eyeliner) -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-plane
+        src="#eyelinerTex"
+        transparent="true"
+        width="0.45" height="0.18"
+        position="0 0 0.058"
+        rotation="-90 0 0">
+      </a-plane>
+    </a-entity>
+
+    <!-- حمرة الشفاه (Lips) -->
     <a-entity mindar-face-target="anchorIndex: 13">
-      <a-plane rotation="-90 0 0" color="#E84C62" opacity="0.6"
-        width="0.4" height="0.12" position="0 -0.02 0.06">
+      <a-plane
+        src="#lipsTex"
+        transparent="true"
+        width="0.4" height="0.15"
+        position="0 -0.02 0.06"
+        rotation="-90 0 0">
       </a-plane>
-    </a-entity>
-
-    <!-- ظل العين -->
-    <a-entity mindar-face-target="anchorIndex: 159">
-      <a-plane rotation="-90 0 0" color="#9B59B6" opacity="0.5"
-        width="0.3" height="0.12" position="0 0 0.05">
-      </a-plane>
-    </a-entity>
-    <a-entity mindar-face-target="anchorIndex: 386">
-      <a-plane rotation="-90 0 0" color="#9B59B6" opacity="0.5"
-        width="0.3" height="0.12" position="0 0 0.05">
-      </a-plane>
-    </a-entity>
-
-    <!-- رموش -->
-    <a-entity mindar-face-target="anchorIndex: 159">
-      <a-gltf-model src="#lashesModel" scale="0.02 0.02 0.02"></a-gltf-model>
     </a-entity>
 
     <!-- الكاميرا -->
     <a-camera position="0 0 0"></a-camera>
-
   </a-scene>
 
   <script>
-    document.querySelector('a-scene').addEventListener('renderstart', ()=>{
+    // إخفاء رسالة التحميل عندما يبدأ العرض
+    document.querySelector('a-scene').addEventListener('renderstart', () => {
       document.getElementById('loading').style.display = 'none';
     });
   </script>
