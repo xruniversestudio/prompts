@@ -7,10 +7,8 @@
   <style>
     body { margin: 0; overflow: hidden; }
     video, canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; object-fit: cover;
     }
   </style>
 </head>
@@ -18,79 +16,69 @@
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 
-  <!-- تحميل TensorFlow.js -->
+  <!-- 1. تحميل TFJS -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-  <!-- تحميل النماذج -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix"></script>
+  <!-- 2. تحميل face-landmarks-detection (تحديد نسخة حديثة) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.6/dist/face-landmarks-detection.min.js"></script>
 
   <script>
-    async function main() {
-      // 1. إعداد الكاميرا
-      const video = document.getElementById('video');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
+  async function main() {
+    // إعداد الكاميرا
+    const video = document.getElementById('video');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
 
-      // 2. تحميل النماذج
-      await tf.setBackend('webgl');
-      const faceModel = await faceLandmarksDetection.load(
-        faceLandmarksDetection.SupportedPackages.mediapipeFacemesh
-      );
-      // (اختياري) لعزل الخلفية أو الوجه فقط:
-      // const bodyPixModel = await bodyPix.load();
+    // استخدم الـ backend ويب جي إل
+    await tf.setBackend('webgl');
 
-      const canvas = document.getElementById('overlay');
-      const ctx = canvas.getContext('2d');
+    // اختيار وإنشاء الـ detector بالطريقة الجديدة
+    const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+    const detector = await faceLandmarksDetection.createDetector(model, {
+      runtime: 'tfjs'
+    });
 
-      video.addEventListener('loadeddata', () => {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        renderLoop();
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+
+    video.addEventListener('loadeddata', () => {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      renderLoop();
+    });
+
+    async function renderLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // تقدير معالم الوجه
+      const faces = await detector.estimateFaces(video);
+      faces.forEach(face => {
+        // رسم أحمر الشفاه
+        const upper = face.annotations.lipsUpperOuter;
+        const lower = face.annotations.lipsLowerOuter.slice().reverse();
+        const lipPath = upper.concat(lower);
+
+        ctx.beginPath();
+        lipPath.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(180,20,40,0.5)';
+        ctx.fill();
+
+        // رسم أحمر الخدود
+        [face.annotations.leftCheek[0], face.annotations.rightCheek[0]].forEach(([x,y]) => {
+          ctx.beginPath();
+          ctx.arc(x, y, 30, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,102,178,0.3)';
+          ctx.fill();
+        });
       });
 
-      // 3. حلقة المعالجة واستخراج المعالم
-      async function renderLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // -- (اختياري) استخدم BodyPix لعزل الوجه:
-        // const segmentation = await bodyPixModel.segmentPerson(video);
-        // bodyPix.drawMask(canvas, video, segmentation, 0.7, 10, false);
-
-        // الكشف عن معالم الوجه
-        const faces = await faceModel.estimateFaces({ input: video });
-        faces.forEach(face => {
-          // 3.1 رسم أحمر الشفاه
-          const upper = face.annotations.lipsUpperOuter;
-          const lower = face.annotations.lipsLowerOuter.slice().reverse();
-          const lipPath = upper.concat(lower);
-
-          ctx.beginPath();
-          lipPath.forEach(([x, y], i) => {
-            if (i === 0) ctx.moveTo(x, y);
-            else        ctx.lineTo(x, y);
-          });
-          ctx.closePath();
-          ctx.fillStyle = 'rgba(180, 20, 40, 0.5)'; // لون شفاه نصف شفاف
-          ctx.fill();
-
-          // 3.2 رسم أحمر الخدود
-          const leftCheek  = face.annotations.leftCheek[0];
-          const rightCheek = face.annotations.rightCheek[0];
-          [leftCheek, rightCheek].forEach(([x, y]) => {
-            ctx.beginPath();
-            ctx.arc(x, y, 30, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(255, 102, 178, 0.3)';
-            ctx.fill();
-          });
-        });
-
-        requestAnimationFrame(renderLoop);
-      }
+      requestAnimationFrame(renderLoop);
     }
+  }
 
-    main();
+  main().catch(console.error);
   </script>
 </body>
 </html>
