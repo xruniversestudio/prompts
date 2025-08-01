@@ -1,114 +1,96 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>WebAR Virtual Makeup with Textures</title>
-
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <!-- MindAR Face Tracking v1.2.5 -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تجربة مكياج افتراضي</title>
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      background: rgba(0,0,0,0.6); color: #fff;
-      padding: .5em 1em; border-radius: 4px;
-      font-family: sans-serif; z-index:100;
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
     }
-    a-scene { width:100vw; height:100vh; }
   </style>
 </head>
 <body>
-  <div id="loading">جاري التحميل... الرجاء الانتظار</div>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
 
-  <a-scene
-    mindar-face="maxTrack: 1; autoStart: true;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights"
-  >
-    <a-assets>
-      <!-- صور المكياج -->
-      <img id="blushTex"    src="assets/blush texture.jpg"/>
-      <img id="eyelinerTex" src="assets/eyeliner texture.jpg"/>
-      <img id="eyeshadowTex"src="assets/eyeshadow texture.jpg"/>
-      <img id="lipsTex"     src="assets/lips texture.jpg"/>
-      <!-- موديل occluder للرأس -->
-      <a-asset-item
-        id="headOccluder"
-        src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb">
-      </a-asset-item>
-    </a-assets>
-
-    <!-- occluder ليعمل قناعاً خلف التأثيرات -->
-    <a-entity mindar-face-target="anchorIndex: 168">
-      <a-gltf-model
-        mindar-face-occluder
-        src="#headOccluder"
-        position="0 -0.3 0.15"
-        scale="0.065 0.065 0.065">
-      </a-gltf-model>
-    </a-entity>
-
-    <!-- حمرة الخدود (Blush) -->
-    <a-entity mindar-face-target="anchorIndex: 168">
-      <a-plane
-        src="#blushTex"
-        transparent="true"
-        width="0.7" height="0.25"
-        position="0 -0.05 0.05"
-        rotation="-90 0 0">
-      </a-plane>
-    </a-entity>
-
-    <!-- ظل العين (Eyeshadow) -->
-    <a-entity mindar-face-target="anchorIndex: 168">
-      <a-plane
-        src="#eyeshadowTex"
-        transparent="true"
-        width="0.45" height="0.18"
-        position="0 0 0.055"
-        rotation="-90 0 0">
-      </a-plane>
-    </a-entity>
-
-    <!-- كحل العين (Eyeliner) -->
-    <a-entity mindar-face-target="anchorIndex: 168">
-      <a-plane
-        src="#eyelinerTex"
-        transparent="true"
-        width="0.45" height="0.18"
-        position="0 0 0.058"
-        rotation="-90 0 0">
-      </a-plane>
-    </a-entity>
-
-    <!-- حمرة الشفاه (Lips) -->
-    <a-entity mindar-face-target="anchorIndex: 13">
-      <a-plane
-        src="#lipsTex"
-        transparent="true"
-        width="0.4" height="0.15"
-        position="0 -0.02 0.06"
-        rotation="-90 0 0">
-      </a-plane>
-    </a-entity>
-
-    <!-- الكاميرا -->
-    <a-camera position="0 0 0"></a-camera>
-  </a-scene>
+  <!-- تحميل TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <!-- تحميل النماذج -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix"></script>
 
   <script>
-    // إخفاء رسالة التحميل عندما يبدأ العرض
-    document.querySelector('a-scene').addEventListener('renderstart', () => {
-      document.getElementById('loading').style.display = 'none';
-    });
+    async function main() {
+      // 1. إعداد الكاميرا
+      const video = document.getElementById('video');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+
+      // 2. تحميل النماذج
+      await tf.setBackend('webgl');
+      const faceModel = await faceLandmarksDetection.load(
+        faceLandmarksDetection.SupportedPackages.mediapipeFacemesh
+      );
+      // (اختياري) لعزل الخلفية أو الوجه فقط:
+      // const bodyPixModel = await bodyPix.load();
+
+      const canvas = document.getElementById('overlay');
+      const ctx = canvas.getContext('2d');
+
+      video.addEventListener('loadeddata', () => {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        renderLoop();
+      });
+
+      // 3. حلقة المعالجة واستخراج المعالم
+      async function renderLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // -- (اختياري) استخدم BodyPix لعزل الوجه:
+        // const segmentation = await bodyPixModel.segmentPerson(video);
+        // bodyPix.drawMask(canvas, video, segmentation, 0.7, 10, false);
+
+        // الكشف عن معالم الوجه
+        const faces = await faceModel.estimateFaces({ input: video });
+        faces.forEach(face => {
+          // 3.1 رسم أحمر الشفاه
+          const upper = face.annotations.lipsUpperOuter;
+          const lower = face.annotations.lipsLowerOuter.slice().reverse();
+          const lipPath = upper.concat(lower);
+
+          ctx.beginPath();
+          lipPath.forEach(([x, y], i) => {
+            if (i === 0) ctx.moveTo(x, y);
+            else        ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(180, 20, 40, 0.5)'; // لون شفاه نصف شفاف
+          ctx.fill();
+
+          // 3.2 رسم أحمر الخدود
+          const leftCheek  = face.annotations.leftCheek[0];
+          const rightCheek = face.annotations.rightCheek[0];
+          [leftCheek, rightCheek].forEach(([x, y]) => {
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 102, 178, 0.3)';
+            ctx.fill();
+          });
+        });
+
+        requestAnimationFrame(renderLoop);
+      }
+    }
+
+    main();
   </script>
 </body>
 </html>
