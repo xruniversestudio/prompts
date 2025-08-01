@@ -5,6 +5,193 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تجربة مكياج افتراضي</title>
   <style>
+    body { margin: 0; overflow: hidden; background-color: #000; }
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    .status {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: white;
+      background-color: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="status" class="status">جاري التحميل...</div>
+  
+  <!-- 1) تحميل TF.js الكامل -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <!-- 2) تحميل face-landmarks-detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.6/dist/face-landmarks-detection.min.js"></script>
+  <script>
+  // دالة لتشغيل الكاميرا وضمان play()
+  async function setupCamera() {
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        } 
+      });
+      
+      video.srcObject = stream;
+      
+      return new Promise((resolve, reject) => {
+        video.onloadedmetadata = () => {
+          video.play()
+            .then(() => {
+              status.textContent = 'تم تشغيل الكاميرا';
+              resolve(video);
+            })
+            .catch(err => {
+              status.textContent = 'خطأ في تشغيل الكاميرا: ' + err.message;
+              reject(err);
+            });
+        };
+        
+        video.onerror = (err) => {
+          status.textContent = 'خطأ في تحميل الكاميرا';
+          reject(err);
+        };
+      });
+    } catch (err) {
+      status.textContent = 'لم يتم الوصول للكاميرا: ' + err.message;
+      throw err;
+    }
+  }
+  
+  async function main() {
+    const status = document.getElementById('status');
+    
+    try {
+      // 1. إعداد الكاميرا
+      status.textContent = 'جاري تشغيل الكاميرا...';
+      const video = await setupCamera();
+      
+      // 2. إعداد الـ canvas
+      const canvas = document.getElementById('overlay');
+      const ctx = canvas.getContext('2d');
+      
+      // انتظر حتى يتم تحميل أبعاد الفيديو
+      function updateCanvasSize() {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          status.textContent = 'تم تهيئة الكاميرا والكانفاس';
+        } else {
+          setTimeout(updateCanvasSize, 100);
+        }
+      }
+      updateCanvasSize();
+      
+      // 3. تهيئة TF.js و backend
+      status.textContent = 'جاري تحميل TensorFlow...';
+      await tf.setBackend('webgl');
+      await tf.ready();
+      console.log('✔️ TensorFlow ready, backend:', tf.getBackend());
+      
+      // 4. إنشاء الـ detector
+      status.textContent = 'جاري تحميل نموذج التعرف على الوجوه...';
+      const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+      const detector = await faceLandmarksDetection.createDetector(model, {
+        runtime: 'tfjs',
+        maxFaces: 1, // كشف وجه واحد فقط لتحسين الأداء
+        refineLandmarks: true // للحصول على نقاط دقيقة للشفتين والعينين
+      });
+      console.log('✔️ Detector initialized');
+      status.textContent = 'جاري البحث عن الوجوه...';
+      
+      // 5. حلقة الرسم والمعالجة
+      async function renderLoop() {
+        // تحديث حجم الكانفاس إذا تغير حجم الفيديو
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          // تقدير الوجوه
+          const faces = await detector.estimateFaces(video);
+          console.log('Faces detected:', faces.length);
+          
+          if (faces.length > 0) {
+            status.textContent = `تم اكتشاف ${faces.length} وجه`;
+            
+            faces.forEach(face => {
+              // التحقق من وجود نقاط الشفتين
+              if (face.annotations && face.annotations.lipsUpperOuter && face.annotations.lipsLowerOuter) {
+                // رسم أحمر الشفاه
+                const upper = face.annotations.lipsUpperOuter;
+                const lower = face.annotations.lipsLowerOuter.slice().reverse();
+                const lipPath = upper.concat(lower);
+                
+                ctx.beginPath();
+                lipPath.forEach(([x, y], i) => i===0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(180,20,40,0.5)';
+                ctx.fill();
+              }
+              
+              // التحقق من وجود نقاط الخدين
+              if (face.annotations && face.annotations.leftCheek && face.annotations.rightCheek) {
+                // رسم أحمر الخدود
+                [face.annotations.leftCheek[0], face.annotations.rightCheek[0]]
+                  .forEach(([x, y]) => {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 30, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,102,178,0.3)';
+                    ctx.fill();
+                  });
+              }
+            });
+          } else {
+            status.textContent = 'لم يتم اكتشاف أي وجه';
+          }
+        } catch (err) {
+          console.error('Error in face detection:', err);
+          status.textContent = 'خطأ في كشف الوجوه: ' + err.message;
+        }
+        
+        requestAnimationFrame(renderLoop);
+      }
+      
+      // بدء حلقة الرسم بعد تأخير قصير لضمان تحميل كل شيء
+      setTimeout(renderLoop, 500);
+      
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'خطأ: ' + err.message;
+    }
+  }
+  
+  // بدء التطبيق
+    window.addEventListener('load', main);
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تجربة مكياج افتراضي</title>
+  <style>
     body { 
       margin: 0; 
       padding: 20px;
