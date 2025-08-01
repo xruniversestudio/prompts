@@ -18,74 +18,83 @@
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 
-  <!-- 1. تحميل TensorFlow.js الكامل (core + converter + backends) -->
+  <!-- 1) تحميل TF.js الكامل -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <!-- 2. تحميل face-landmarks-detection -->
+  <!-- 2) تحميل face-landmarks-detection -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.6/dist/face-landmarks-detection.min.js"></script>
 
   <script>
-    async function main() {
-      // 1. إعداد الكاميرا
-      const video = document.getElementById('video');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
+  // دالة لتشغيل الكاميرا وضمان play()
+  async function setupCamera() {
+    const video = document.getElementById('video');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    return new Promise(resolve => {
+      video.onloadedmetadata = () => {
+        video.play();
+        resolve(video);
+      };
+    });
+  }
 
-      // 2. اختر backend ويب جي إل
-      await tf.setBackend('webgl');
+  async function main() {
+    // 1. إعداد الكاميرا
+    const video = await setupCamera();
 
-      // 3. إنشاء الـ detector باستخدام API الحديث
-      const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-      const detector = await faceLandmarksDetection.createDetector(model, {
-        runtime: 'tfjs'
-      });
+    // 2. إعداد الـ canvas
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-      const canvas = document.getElementById('overlay');
-      const ctx = canvas.getContext('2d');
+    // 3. تهيئة TF.js و backend
+    await tf.setBackend('webgl');
+    await tf.ready();
+    console.log('✔️ TensorFlow ready, backend:', tf.getBackend());
 
-      video.addEventListener('loadeddata', () => {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        renderLoop();
-      });
+    // 4. إنشاء الـ detector
+    const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+    const detector = await faceLandmarksDetection.createDetector(model, {
+      runtime: 'tfjs'
+    });
+    console.log('✔️ Detector initialized');
 
-      // 4. حلقة المعالجة: تقدير المعالم ورسم المكياج
-      async function renderLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // 5. حلقة الرسم والمعالجة
+    async function renderLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // تقدير معالم الوجه
-        const faces = await detector.estimateFaces(video);
-        faces.forEach(face => {
-          // — رسم أحمر الشفاه —
-          const upper = face.annotations.lipsUpperOuter;
-          const lower = face.annotations.lipsLowerOuter.slice().reverse();
-          const lipPath = upper.concat(lower);
+      // تقدير الوجوه
+      const faces = await detector.estimateFaces(video);
+      console.log('Faces detected:', faces.length);
+      faces.forEach(face => {
+        // رسم أحمر الشفاه
+        const upper = face.annotations.lipsUpperOuter;
+        const lower = face.annotations.lipsLowerOuter.slice().reverse();
+        const lipPath = upper.concat(lower);
+        ctx.beginPath();
+        lipPath.forEach(([x, y], i) => i===0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(180,20,40,0.5)';
+        ctx.fill();
 
-          ctx.beginPath();
-          lipPath.forEach(([x, y], i) => {
-            if (i === 0) ctx.moveTo(x, y);
-            else        ctx.lineTo(x, y);
+        // رسم أحمر الخدود
+        [face.annotations.leftCheek[0], face.annotations.rightCheek[0]]
+          .forEach(([x, y]) => {
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,102,178,0.3)';
+            ctx.fill();
           });
-          ctx.closePath();
-          ctx.fillStyle = 'rgba(180,20,40,0.5)';
-          ctx.fill();
+      });
 
-          // — رسم أحمر الخدود —
-          [ face.annotations.leftCheek[0], face.annotations.rightCheek[0] ]
-            .forEach(([x, y]) => {
-              ctx.beginPath();
-              ctx.arc(x, y, 30, 0, Math.PI * 2);
-              ctx.fillStyle = 'rgba(255,102,178,0.3)';
-              ctx.fill();
-            });
-        });
-
-        requestAnimationFrame(renderLoop);
-      }
+      requestAnimationFrame(renderLoop);
     }
 
-    // شغّل الوظيفة الأساسية والتقاط أي خطأ
-    main().catch(err => console.error(err));
+    renderLoop();
+  }
+
+  main().catch(err => console.error(err));
   </script>
 </body>
 </html>
