@@ -3,20 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- A-Frame (stable) -->
+  <!-- A-Frame + MindAR (official doc versions) -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <!-- MindAR (Face + A-Frame build) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-  <style>
-    html,body { margin:0; height:100%; background:#000; }
-    .hint { position: fixed; z-index: 10; left: 0; right:0; top:0; color:#fff; 
-            font: 14px/1.4 system-ui,Arial; text-align:center; padding:8px 10px; 
-            background: linear-gradient(#0008,#0000); }
-  </style>
+  <style>html,body{margin:0;height:100%;background:#000}</style>
 </head>
 <body>
-  <div class="hint">Allow camera access • Face the camera • Tap the screen on iOS if video doesn’t start</div>
-
   <a-scene
     mindar-face
     embedded
@@ -26,46 +18,35 @@
     device-orientation-permission-ui="enabled: false">
 
     <a-assets>
-      <!-- Soft feathered ellipse as eyeshadow texture (editable color) -->
-      <img id="eyeshadowTex"
-        src='data:image/svg+xml;utf8,
-        <svg xmlns="http://www.w3.org/2000/svg" width="512" height="256">
-          <defs>
-            <radialGradient id="g" cx="50%%" cy="60%%" r="60%%">
-              <stop offset="0%%" stop-color="rgb(170,80,160)" stop-opacity="0.55"/>
-              <stop offset="70%%" stop-color="rgb(170,80,160)" stop-opacity="0.25"/>
-              <stop offset="100%%" stop-color="rgb(170,80,160)" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <rect width="100%%" height="100%%" fill="url(#g)"/>
-        </svg>' />
+      <!-- Feathered eyeshadow texture (SVG data URI with correct encoding) -->
+      <img id="eyeshadowTex" crossorigin="anonymous"
+           src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='256'><defs><radialGradient id='g' cx='50%25' cy='60%25' r='60%25'><stop offset='0%25' stop-color='%23AA50A0' stop-opacity='0.55'/><stop offset='70%25' stop-color='%23AA50A0' stop-opacity='0.25'/><stop offset='100%25' stop-color='%23AA50A0' stop-opacity='0'/></radialGradient></defs><rect width='100%25' height='100%25' fill='url(%23g)'/></svg>">
     </a-assets>
 
-    <!-- We don't use the default camera for MindAR face scenes -->
+    <!-- MindAR manages its own camera -->
     <a-camera active="false" position="0 0 0"></a-camera>
 
-    <!-- LEFT EYE (iris center ~468) -->
+    <!-- Left eye (iris center ~468) -->
     <a-entity mindar-face-target="anchorIndex: 468">
-      <!-- A slightly tilted plane to sit above the eyelid -->
       <a-plane src="#eyeshadowTex"
-               position="0 0.02 0"   <!-- lift a hair above iris -->
-               rotation="10 0 0"
-               scale="0.20 0.10 1"   <!-- tweak for size -->
-               material="transparent: true; opacity: 1.0">
+               position="0 0.02 0"
+               rotation="12 0 0"
+               scale="0.22 0.11 1"
+               material="transparent: true; opacity: 1.0; depthWrite: false">
       </a-plane>
     </a-entity>
 
-    <!-- RIGHT EYE (iris center ~473) -->
+    <!-- Right eye (iris center ~473) -->
     <a-entity mindar-face-target="anchorIndex: 473">
       <a-plane src="#eyeshadowTex"
                position="0 0.02 0"
-               rotation="10 0 0"
-               scale="0.20 0.10 1"
-               material="transparent: true; opacity: 1.0">
+               rotation="12 0 0"
+               scale="0.22 0.11 1"
+               material="transparent: true; opacity: 1.0; depthWrite: false">
       </a-plane>
     </a-entity>
 
-    <!-- Optional: soft light to help color pop on some devices -->
+    <!-- Mild lighting -->
     <a-entity light="type: ambient; intensity: 0.8"></a-entity>
     <a-entity light="type: directional; intensity: 0.6" position="0 1 0.5"></a-entity>
   </a-scene>
