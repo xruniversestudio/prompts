@@ -1,10 +1,9 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-    <!-- Import maps: Three.js + MindAR (Face + Three) -->
     <script type="importmap">
     {
       "imports": {
@@ -16,15 +15,23 @@
     </script>
 
     <style>
-      html, body { margin: 0; height: 100%; background:#000; }
-      #container { width: 100vw; height: 100vh; overflow: hidden; }
+      html, body { margin:0; height:100%; background:#000; }
+      /* الحاوية بملء الشاشة وثابتة */
+      #container {
+        position: fixed; inset: 0;
+        width: 100vw; height: 100vh; overflow: hidden;
+      }
+      /* الفيديو والكانفاس يُغطيان الشاشة بالكامل */
+      #container video, #container canvas {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;          /* أهم سطر لإزالة التقسيم */
+      }
       .btnbar {
-        position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
+        position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
         bottom: 16px; display: flex; gap: 8px;
       }
-      .btnbar button {
-        padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer;
-      }
+      .btnbar button { padding:10px 14px; border:0; border-radius:10px; cursor:pointer; }
     </style>
   </head>
   <body>
@@ -39,40 +46,43 @@
       import { MindARThree } from 'mindar-face-three';
 
       const container = document.querySelector('#container');
-      const mindarThree = new MindARThree({ container });
-
+      const mindarThree = new MindARThree({ container }); // يستخدم فيديو داخلي id="mindar-face-video"
       const { renderer, scene, camera } = mindarThree;
 
-      // Light
+      // إضاءة بسيطة
       scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
 
-      // Create the face mesh
+      // Face mesh + خامة
       const faceMesh = mindarThree.addFaceMesh();
-      faceMesh.material.transparent = true;     // allow alpha channel
-      faceMesh.material.depthWrite = false;     // prevent z-fighting with video
-      faceMesh.material.opacity = 0.75;         // softer look
+      faceMesh.material = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        alphaTest: 0.01,
+      });
 
-      // Eyeshadow texture
-      const EYESHADOW_TEX_URL = "https://xruniversestudio.github.io/prompts/eyeshadow texture (6).png";
-      new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
+      // تكستشر ظلال العيون (HTTPS)
+      const TEX_URL = "https://xruniversestudio.github.io/prompts/eyeshadow texture (6).png";
+      new THREE.TextureLoader().load(TEX_URL, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
         faceMesh.material.map = tex;
         faceMesh.material.needsUpdate = true;
       });
-
       scene.add(faceMesh);
 
-      // Lifecycle
+      // بدء/إيقاف
       const start = async () => {
         await mindarThree.start();
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
+        // تأكد أن الـrenderer بالحجم الكامل
+        const resize = () => renderer.setSize(container.clientWidth, container.clientHeight);
+        resize();
+        window.addEventListener('resize', resize);
+        renderer.setAnimationLoop(() => renderer.render(scene, camera));
       };
       const stop = async () => {
         await mindarThree.stop();
         renderer.setAnimationLoop(null);
       };
-
       document.querySelector('#start').addEventListener('click', start);
       document.querySelector('#stop').addEventListener('click', stop);
     </script>
