@@ -46,17 +46,14 @@
       // Light
       scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
 
-      // Create the face mesh that uses MediaPipe’s canonical UV
+      // Create the face mesh
       const faceMesh = mindarThree.addFaceMesh();
-      faceMesh.material.transparent = true;     // allow alpha in your PNG
-      faceMesh.material.depthWrite = false;     // smoother blending over the video
+      faceMesh.material.transparent = true;     // allow alpha channel
+      faceMesh.material.depthWrite = false;     // prevent z-fighting with video
+      faceMesh.material.opacity = 0.75;         // softer look
 
-      // TODO: replace with your own transparent PNG that paints only the eyelids.
-      // Use the canonical UV template to author it correctly (link below).
-      const EYESHADOW_TEX_URL =
-        "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/canonical_face_model_uv_visualization.png";
-      // ^ placeholder so the demo runs — swap for your eyeshadow.png
-
+      // Eyeshadow texture
+      const EYESHADOW_TEX_URL = "http://xruniversestudio.github.io/prompts/eyeshadow%20texture.jpg";
       new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
         faceMesh.material.map = tex;
         faceMesh.material.needsUpdate = true;
