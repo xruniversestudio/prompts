@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Import maps: Three.js + MindAR (Face + Three) -->
     <script type="importmap">
     {
       "imports": {
@@ -16,15 +15,24 @@
     </script>
 
     <style>
-      html, body { margin: 0; height: 100%; background:#000; }
-      #container { width: 100vw; height: 100vh; overflow: hidden; }
+      html, body { margin:0; height:100%; background:#000; }
+      #container { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
+
+      /* ✅ أهم شيء: نفس القصّ والحجم للفيديو والكانفاس */
+      #container canvas,
+      video#mindar-face-video,
+      video[id^="mindar-face-video"] {
+        position:absolute; inset:0;
+        width:100%; height:100%;
+        object-fit: cover;    /* يزيل الشريط الأسود */
+        z-index:0;
+      }
+
       .btnbar {
-        position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
+        position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
         bottom: 16px; display: flex; gap: 8px;
       }
-      .btnbar button {
-        padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer;
-      }
+      .btnbar button { padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; }
     </style>
   </head>
   <body>
@@ -40,24 +48,23 @@
 
       const container = document.querySelector('#container');
       const mindarThree = new MindARThree({ container });
-
       const { renderer, scene, camera } = mindarThree;
 
       // Light
       scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
 
-      // Create the face mesh that uses MediaPipe’s canonical UV
+      // Face mesh (canonical UV)
       const faceMesh = mindarThree.addFaceMesh();
-      faceMesh.material.transparent = true;     // allow alpha in your PNG
-      faceMesh.material.depthWrite = false;     // smoother blending over the video
+      faceMesh.material.transparent = true;
+      faceMesh.material.depthWrite = false;
+      faceMesh.material.opacity = 0.85;
 
-      // TODO: replace with your own transparent PNG that paints only the eyelids.
-      // Use the canonical UV template to author it correctly (link below).
+      // ✅ شِفْرة الرابط (المسافات) + استخدم HTTPS
       const EYESHADOW_TEX_URL =
-        "https://xruniversestudio.github.io/prompts/assets/eyeshadow texture (6).png";
-      // ^ placeholder so the demo runs — swap for your eyeshadow.png
+        "https://xruniversestudio.github.io/prompts/assets/eyeshadow%20texture%20(6).png";
 
       new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
         faceMesh.material.map = tex;
         faceMesh.material.needsUpdate = true;
       });
@@ -65,15 +72,21 @@
       scene.add(faceMesh);
 
       // Lifecycle
+      const fit = () => {
+        renderer.setSize(container.clientWidth, container.clientHeight, false);
+      };
+
       const start = async () => {
         await mindarThree.start();
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
+        fit();                           // تأكد من ملء الشاشة
+        renderer.setAnimationLoop(() => renderer.render(scene, camera));
+        window.addEventListener('resize', fit);
       };
+
       const stop = async () => {
         await mindarThree.stop();
         renderer.setAnimationLoop(null);
+        window.removeEventListener('resize', fit);
       };
 
       document.querySelector('#start').addEventListener('click', start);
