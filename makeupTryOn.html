@@ -1,82 +1,83 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
+    <!-- Import maps: Three.js + MindAR (Face + Three) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
+      }
     }
-  }
-  </script>
+    </script>
 
-  <style>
-    html, body { margin:0; height:100%; background:#000; }
-    #container { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
+    <style>
+      html, body { margin: 0; height: 100%; background:#000; }
+      #container { width: 100vw; height: 100vh; overflow: hidden; }
+      .btnbar {
+        position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
+        bottom: 16px; display: flex; gap: 8px;
+      }
+      .btnbar button {
+        padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div class="btnbar">
+      <button id="start">Start AR</button>
+      <button id="stop">Stop</button>
+    </div>
 
-    /* ✅ أهم شيء: الفيديو والكانفاس لهم نفس القصّ والحجم */
-    video#mindar-face-video,
-    #container canvas {
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      object-fit: cover;
-      z-index:0;
-    }
-    #ui { position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:10; display:flex; gap:8px; }
-    #ui button { padding:10px 14px; border:0; border-radius:10px; cursor:pointer; }
-  </style>
-</head>
-<body>
-  <div id="container"></div>
-  <div id="ui">
-    <button id="start">Start AR</button>
-    <button id="stop">Stop</button>
-  </div>
+    <script type="module">
+      import * as THREE from 'three';
+      import { MindARThree } from 'mindar-face-three';
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { MindARThree } from 'mindar-face-three';
+      const container = document.querySelector('#container');
+      const mindarThree = new MindARThree({ container });
 
-    const container = document.querySelector('#container');
-    const mindarThree = new MindARThree({ container });
-    const { renderer, scene, camera } = mindarThree;
+      const { renderer, scene, camera } = mindarThree;
 
-    // نفس إعدادات الكود الأول (تطابق UV مضبوط)
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
+      // Light
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
 
-    const faceMesh = mindarThree.addFaceMesh();
-    faceMesh.material.transparent = true;
-    faceMesh.material.depthWrite = false;
-    faceMesh.material.opacity = 0.85;
+      // Create the face mesh that uses MediaPipe’s canonical UV
+      const faceMesh = mindarThree.addFaceMesh();
+      faceMesh.material.transparent = true;     // allow alpha in your PNG
+      faceMesh.material.depthWrite = false;     // smoother blending over the video
 
-    const TEX_URL = "https://xruniversestudio.github.io/prompts/eyeshadow%20texture.jpg";
-    new THREE.TextureLoader().load(TEX_URL, (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      faceMesh.material.map = tex;
-      faceMesh.material.needsUpdate = true;
-    });
-    scene.add(faceMesh);
+      // TODO: replace with your own transparent PNG that paints only the eyelids.
+      // Use the canonical UV template to author it correctly (link below).
+      const EYESHADOW_TEX_URL =
+        "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/canonical_face_model_uv_visualization.png";
+      // ^ placeholder so the demo runs — swap for your eyeshadow.png
 
-    // 🔧 ري سايز موحّد (بدون تغيير نسب MindAR) + حلّ الشريط الأسود
-    const fit = () => {
-      renderer.setSize(container.clientWidth, container.clientHeight, false);
-    };
-    window.addEventListener('resize', fit);
+      new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
+        faceMesh.material.map = tex;
+        faceMesh.material.needsUpdate = true;
+      });
 
-    document.querySelector('#start').addEventListener('click', async () => {
-      await mindarThree.start();
-      fit();
-      renderer.setAnimationLoop(() => renderer.render(scene, camera));
-    });
+      scene.add(faceMesh);
 
-    document.querySelector('#stop').addEventListener('click', async () => {
-      await mindarThree.stop();
-      renderer.setAnimationLoop(null);
-    });
-  </script>
-</body>
+      // Lifecycle
+      const start = async () => {
+        await mindarThree.start();
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+        });
+      };
+      const stop = async () => {
+        await mindarThree.stop();
+        renderer.setAnimationLoop(null);
+      };
+
+      document.querySelector('#start').addEventListener('click', start);
+      document.querySelector('#stop').addEventListener('click', stop);
+    </script>
+  </body>
 </html>
