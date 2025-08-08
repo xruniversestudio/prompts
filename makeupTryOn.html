@@ -1,80 +1,82 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-        "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
-      }
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
     }
-    </script>
+  }
+  </script>
 
-    <style>
-      html, body { margin: 0; height: 100%; background: #000; }
-      #container { width: 100vw; height: 100vh; overflow: hidden; }
-      .btnbar {
-        position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
-        bottom: 16px; display: flex; gap: 8px;
-      }
-      .btnbar button {
-        padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="container"></div>
-    <div class="btnbar">
-      <button id="start">Start AR</button>
-      <button id="stop">Stop</button>
-    </div>
+  <style>
+    html, body { margin:0; height:100%; background:#000; }
+    #container { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
 
-    <script type="module">
-      import * as THREE from 'three';
-      import { MindARThree } from 'mindar-face-three';
+    /* ✅ أهم شيء: الفيديو والكانفاس لهم نفس القصّ والحجم */
+    video#mindar-face-video,
+    #container canvas {
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit: cover;
+      z-index:0;
+    }
+    #ui { position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:10; display:flex; gap:8px; }
+    #ui button { padding:10px 14px; border:0; border-radius:10px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="ui">
+    <button id="start">Start AR</button>
+    <button id="stop">Stop</button>
+  </div>
 
-      const container = document.querySelector('#container');
-      const mindarThree = new MindARThree({ container });
+  <script type="module">
+    import * as THREE from 'three';
+    import { MindARThree } from 'mindar-face-three';
 
-      const { renderer, scene, camera } = mindarThree;
+    const container = document.querySelector('#container');
+    const mindarThree = new MindARThree({ container });
+    const { renderer, scene, camera } = mindarThree;
 
-      // إضاءة
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
+    // نفس إعدادات الكود الأول (تطابق UV مضبوط)
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
 
-      // FaceMesh مضبوط على الـcanonical UV
-      const faceMesh = mindarThree.addFaceMesh();
-      faceMesh.material.transparent = true;
-      faceMesh.material.depthWrite = false;
-      faceMesh.material.opacity = 0.8;
+    const faceMesh = mindarThree.addFaceMesh();
+    faceMesh.material.transparent = true;
+    faceMesh.material.depthWrite = false;
+    faceMesh.material.opacity = 0.85;
 
-      // رابط صورة الظلال
-      const EYESHADOW_TEX_URL = "https://xruniversestudio.github.io/prompts/eyeshadow%20texture.jpg";
-      new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        faceMesh.material.map = tex;
-        faceMesh.material.needsUpdate = true;
-      });
+    const TEX_URL = "https://xruniversestudio.github.io/prompts/eyeshadow%20texture.jpg";
+    new THREE.TextureLoader().load(TEX_URL, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      faceMesh.material.map = tex;
+      faceMesh.material.needsUpdate = true;
+    });
+    scene.add(faceMesh);
 
-      scene.add(faceMesh);
+    // 🔧 ري سايز موحّد (بدون تغيير نسب MindAR) + حلّ الشريط الأسود
+    const fit = () => {
+      renderer.setSize(container.clientWidth, container.clientHeight, false);
+    };
+    window.addEventListener('resize', fit);
 
-      const start = async () => {
-        await mindarThree.start();
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
-      };
+    document.querySelector('#start').addEventListener('click', async () => {
+      await mindarThree.start();
+      fit();
+      renderer.setAnimationLoop(() => renderer.render(scene, camera));
+    });
 
-      const stop = async () => {
-        await mindarThree.stop();
-        renderer.setAnimationLoop(null);
-      };
-
-      document.querySelector('#start').addEventListener('click', start);
-      document.querySelector('#stop').addEventListener('click', stop);
-    </script>
-  </body>
+    document.querySelector('#stop').addEventListener('click', async () => {
+      await mindarThree.stop();
+      renderer.setAnimationLoop(null);
+    });
+  </script>
+</body>
 </html>
