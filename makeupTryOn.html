@@ -1,54 +1,37 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- A-Frame + MindAR (official doc versions) -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-  <style>html,body{margin:0;height:100%;background:#000}</style>
-</head>
-<body>
-  <a-scene
-    mindar-face
-    embedded
-    color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+<!doctype html><html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+<style>html,body{margin:0;height:100%;background:#000}</style>
+</head><body>
+<a-scene id="scene" mindar-face embedded color-space="sRGB"
+         renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
+         vr-mode-ui="enabled: false"
+         device-orientation-permission-ui="enabled: false">
+  <a-assets>
+    <img id="eyeshadowTex" crossorigin="anonymous"
+      src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='256'><defs><radialGradient id='g' cx='50%25' cy='60%25' r='60%25'><stop offset='0%25' stop-color='%23AA50A0' stop-opacity='0.55'/><stop offset='70%25' stop-color='%23AA50A0' stop-opacity='0.25'/><stop offset='100%25' stop-color='%23AA50A0' stop-opacity='0'/></radialGradient></defs><rect width='100%25' height='100%25' fill='url(%23g)'/></svg>">
+  </a-assets>
 
-    <a-assets>
-      <!-- Feathered eyeshadow texture (SVG data URI with correct encoding) -->
-      <img id="eyeshadowTex" crossorigin="anonymous"
-           src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='256'><defs><radialGradient id='g' cx='50%25' cy='60%25' r='60%25'><stop offset='0%25' stop-color='%23AA50A0' stop-opacity='0.55'/><stop offset='70%25' stop-color='%23AA50A0' stop-opacity='0.25'/><stop offset='100%25' stop-color='%23AA50A0' stop-opacity='0'/></radialGradient></defs><rect width='100%25' height='100%25' fill='url(%23g)'/></svg>">
-    </a-assets>
+  <a-camera active="false" position="0 0 0"></a-camera>
 
-    <!-- MindAR manages its own camera -->
-    <a-camera active="false" position="0 0 0"></a-camera>
+  <!-- left/right iris centers -->
+  <a-entity mindar-face-target="anchorIndex: 468">
+    <a-plane src="#eyeshadowTex" position="0 0.02 0" rotation="12 0 0"
+             scale="0.22 0.11 1" material="transparent: true; opacity: 1.0; depthWrite: false"></a-plane>
+  </a-entity>
+  <a-entity mindar-face-target="anchorIndex: 473">
+    <a-plane src="#eyeshadowTex" position="0 0.02 0" rotation="12 0 0"
+             scale="0.22 0.11 1" material="transparent: true; opacity: 1.0; depthWrite: false"></a-plane>
+  </a-entity>
 
-    <!-- Left eye (iris center ~468) -->
-    <a-entity mindar-face-target="anchorIndex: 468">
-      <a-plane src="#eyeshadowTex"
-               position="0 0.02 0"
-               rotation="12 0 0"
-               scale="0.22 0.11 1"
-               material="transparent: true; opacity: 1.0; depthWrite: false">
-      </a-plane>
-    </a-entity>
+  <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+  <a-entity light="type: directional; intensity: 0.6" position="0 1 0.5"></a-entity>
+</a-scene>
 
-    <!-- Right eye (iris center ~473) -->
-    <a-entity mindar-face-target="anchorIndex: 473">
-      <a-plane src="#eyeshadowTex"
-               position="0 0.02 0"
-               rotation="12 0 0"
-               scale="0.22 0.11 1"
-               material="transparent: true; opacity: 1.0; depthWrite: false">
-      </a-plane>
-    </a-entity>
-
-    <!-- Mild lighting -->
-    <a-entity light="type: ambient; intensity: 0.8"></a-entity>
-    <a-entity light="type: directional; intensity: 0.6" position="0 1 0.5"></a-entity>
-  </a-scene>
-</body>
-</html>
+<script>
+const scene = document.getElementById('scene');
+scene.addEventListener('arReady',  () => console.log('✅ MindAR ready'));
+scene.addEventListener('arError',  () => console.error('❌ MindAR failed to start (camera?)'));
+</script>
+</body></html>
