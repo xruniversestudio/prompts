@@ -1,37 +1,83 @@
-<!doctype html><html><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-<style>html,body{margin:0;height:100%;background:#000}</style>
-</head><body>
-<a-scene id="scene" mindar-face embedded color-space="sRGB"
-         renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
-         vr-mode-ui="enabled: false"
-         device-orientation-permission-ui="enabled: false">
-  <a-assets>
-    <img id="eyeshadowTex" crossorigin="anonymous"
-      src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='256'><defs><radialGradient id='g' cx='50%25' cy='60%25' r='60%25'><stop offset='0%25' stop-color='%23AA50A0' stop-opacity='0.55'/><stop offset='70%25' stop-color='%23AA50A0' stop-opacity='0.25'/><stop offset='100%25' stop-color='%23AA50A0' stop-opacity='0'/></radialGradient></defs><rect width='100%25' height='100%25' fill='url(%23g)'/></svg>">
-  </a-assets>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <a-camera active="false" position="0 0 0"></a-camera>
+    <!-- Import maps: Three.js + MindAR (Face + Three) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
+      }
+    }
+    </script>
 
-  <!-- left/right iris centers -->
-  <a-entity mindar-face-target="anchorIndex: 468">
-    <a-plane src="#eyeshadowTex" position="0 0.02 0" rotation="12 0 0"
-             scale="0.22 0.11 1" material="transparent: true; opacity: 1.0; depthWrite: false"></a-plane>
-  </a-entity>
-  <a-entity mindar-face-target="anchorIndex: 473">
-    <a-plane src="#eyeshadowTex" position="0 0.02 0" rotation="12 0 0"
-             scale="0.22 0.11 1" material="transparent: true; opacity: 1.0; depthWrite: false"></a-plane>
-  </a-entity>
+    <style>
+      html, body { margin: 0; height: 100%; background:#000; }
+      #container { width: 100vw; height: 100vh; overflow: hidden; }
+      .btnbar {
+        position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
+        bottom: 16px; display: flex; gap: 8px;
+      }
+      .btnbar button {
+        padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div class="btnbar">
+      <button id="start">Start AR</button>
+      <button id="stop">Stop</button>
+    </div>
 
-  <a-entity light="type: ambient; intensity: 0.8"></a-entity>
-  <a-entity light="type: directional; intensity: 0.6" position="0 1 0.5"></a-entity>
-</a-scene>
+    <script type="module">
+      import * as THREE from 'three';
+      import { MindARThree } from 'mindar-face-three';
 
-<script>
-const scene = document.getElementById('scene');
-scene.addEventListener('arReady',  () => console.log('✅ MindAR ready'));
-scene.addEventListener('arError',  () => console.error('❌ MindAR failed to start (camera?)'));
-</script>
-</body></html>
+      const container = document.querySelector('#container');
+      const mindarThree = new MindARThree({ container });
+
+      const { renderer, scene, camera } = mindarThree;
+
+      // Light
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x8888ff, 1));
+
+      // Create the face mesh that uses MediaPipe’s canonical UV
+      const faceMesh = mindarThree.addFaceMesh();
+      faceMesh.material.transparent = true;     // allow alpha in your PNG
+      faceMesh.material.depthWrite = false;     // smoother blending over the video
+
+      // TODO: replace with your own transparent PNG that paints only the eyelids.
+      // Use the canonical UV template to author it correctly (link below).
+      const EYESHADOW_TEX_URL =
+        "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/canonical_face_model_uv_visualization.png";
+      // ^ placeholder so the demo runs — swap for your eyeshadow.png
+
+      new THREE.TextureLoader().load(EYESHADOW_TEX_URL, (tex) => {
+        faceMesh.material.map = tex;
+        faceMesh.material.needsUpdate = true;
+      });
+
+      scene.add(faceMesh);
+
+      // Lifecycle
+      const start = async () => {
+        await mindarThree.start();
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+        });
+      };
+      const stop = async () => {
+        await mindarThree.stop();
+        renderer.setAnimationLoop(null);
+      };
+
+      document.querySelector('#start').addEventListener('click', start);
+      document.querySelector('#stop').addEventListener('click', stop);
+    </script>
+  </body>
+</html>
