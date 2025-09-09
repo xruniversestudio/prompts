@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>برومبت تمثال شخصية</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+      background:linear-gradient(90deg,#b40f8f 0%,#2c1d7c 100%);
+      min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
+      padding:20px;color:#fff;direction:rtl
+    }
+    .logo{position:fixed;top:20px;right:20px;z-index:100}
+    .logo img{width:60px;height:60px;object-fit:contain}
+
+    .container{
+      background:rgba(255,255,255,.15);
+      backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);
+      border:1px solid rgba(255,255,255,.3);border-radius:20px;
+      padding:25px;width:100%;max-width:900px;margin-top:80px;
+      box-shadow:0 8px 24px rgba(0,0,0,.4)
+    }
+
+    .header{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      padding:15px;background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.05));
+      border-radius:12px;margin-bottom:16px;position:sticky;top:0;z-index:10
+    }
+    .header h2{
+      font-size:22px;background:linear-gradient(90deg,#fff,#ddd);
+      -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap
+    }
+
+    .tabs{
+      display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px
+    }
+    .tab-btn{
+      background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+      color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:14px;
+      transition:.25s;user-select:none
+    }
+    .tab-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
+    .tab-btn.active{background:#ffffff; color:#2c1d7c; border-color:transparent; font-weight:600}
+
+    .controls{
+      display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px
+    }
+    .copy-btn,.select-btn{
+      background-color:rgba(255,255,255,.25);
+      border:1px solid rgba(255,255,255,.4);
+      color:white;padding:8px 16px;border-radius:10px;cursor:pointer;
+      transition:all .3s;font-size:14px
+    }
+    .copy-btn:hover,.select-btn:hover{background-color:rgba(255,255,255,.35);transform:translateY(-2px)}
+
+    .text{
+      font-size:16px;line-height:1.8;white-space:pre-wrap;padding:10px 12px;
+      border:1px dashed rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.06)
+    }
+
+    .copied{
+      position:fixed;top:20px;right:100px;background-color:rgba(255,255,255,.25);
+      padding:8px 16px;border-radius:6px;opacity:0;transition:opacity .3s
+    }
+    .copied.show{opacity:1}
+
+    @media (max-width: 768px){
+      .container{padding:15px;margin-top:70px}
+      .header h2{font-size:18px}
+      .logo img{width:50px;height:50px}
+      .text{font-size:14px}
+    }
+    @media (max-width: 480px){
+      .header{flex-direction:column;gap:10px}
+      .header h2{text-align:center}
+    }
+  </style>
+</head>
+<body>
+  <div class="logo"><!-- ضع شعارك هنا إن رغبت --></div>
+
+  <div class="container">
+    <div class="header">
+      <h2>برومبت تصميم بالذكاء الاصطناعي</h2>
+      <button class="copy-btn" id="copyButton" aria-label="نسخ النص الحالي">نسخ النص</button>
+    </div>
+
+    <!-- تبويبات البرومبتات -->
+    <div class="tabs" role="tablist" aria-label="اختيار البرومبت">
+    
+      <button class="tab-btn" data-key="statue-ar" role="tab" aria-selected="false">تمثال 1/7 (عربي)</button>
+      <button class="tab-btn" data-key="statue-en" role="tab" aria-selected="false">Statue 1/7 (English)</button>
+    </div>
+
+    <!-- أدوات مساعدة بسيطة -->
+    <div class="controls">
+      <button class="select-btn" id="selectAll">تحديد الكل</button>
+    </div>
+
+    <!-- منطقة النص -->
+    <div class="text" id="textToCopy"></div>
+  </div>
+
+  <div class="copied" id="copiedMsg" role="status" aria-live="polite">تم النسخ بنجاح!</div>
+
+  <script>
+    // محتوى البرومبتات
+    const PROMPTS = {
+      
+      "statue-ar": `تمثال واقعي للغاية بنسبة 1/7 مصنوع من الراتنج، يعتمد على [REFERENCE IMAGE]، ويحافظ على ملامح الوجه الحقيقية، وتسريحة الشعر، والجسم كما هو في الصورة المرجعية.  
+يجب أن يكون للتمثال نسيج جلدي طبيعي، مسام دقيقة، طلاء واقعي، وانعكاسات ضوئية ناعمة، بحيث يتجنب مظهر اللعبة البلاستيكية.  
+
+الشخصية ترتدي [OUTFIT DETAILS]، في وضعية [POSE DETAILS]، وتقف على قاعدة أكريليك شفافة فوق مكتب خشبي.  
+خلفها شاشة كمبيوتر تعرض عملية النمذجة الثلاثية الأبعاد لنفس الشخصية.  
+
+هي [JOB / HOBBY DESCRIPTION]، لذلك فهي محاطة بعناصر مرتبطة بمهنتها أو هواياتها.  
+بجانب التمثال، ضع صندوق تغليف أكبر يحتوي على صورة مطبوعة واقعية للشخصية (مستخرجة من المرجع، لكن محدّثة بالملابس والوضعية المختارة).  
+
+المشهد في بيئة داخلية مع إضاءة سينمائية دافئة، وعمق مجال ضحل، وأسلوب تصوير منتجات واقعي بعدسة ماكرو احترافية.`,
+
+      "statue-en": `A highly realistic 1/7 scale resin statue based on [REFERENCE IMAGE], preserving the exact facial features, hairstyle, and body of the reference.  
+The statue should have natural skin texture, subtle pores, realistic paint finish, and soft light reflections, avoiding the look of a toy.  
+
+The character is wearing [OUTFIT DETAILS], posed [POSE DETAILS], and stands on a transparent acrylic base on a wooden desk.  
+Behind her, a monitor displays the 3D modeling process of the same character.  
+
+She is a [JOB / HOBBY DESCRIPTION], so she is surrounded by elements related to her profession and hobbies.  
+Next to the statue, add a larger packaging box with a realistic printed photo of the character (derived from the reference, but updated with the chosen outfit and pose).  
+
+The environment is indoors with cinematic warm studio lighting, shallow depth of field, and professional macro lens product-photography style.`
+    };
+
+    // عناصر DOM
+    const textEl = document.getElementById('textToCopy');
+    const copyBtn = document.getElementById('copyButton');
+    const copiedMsg = document.getElementById('copiedMsg');
+    const tabs = document.querySelectorAll('.tab-btn');
+    const selectAllBtn = document.getElementById('selectAll');
+
+    // تحميل أولي
+    let currentKey = 'surreal';
+    function renderPrompt(key){
+      currentKey = key;
+      textEl.textContent = PROMPTS[key];
+      tabs.forEach(btn=>{
+        const active = btn.dataset.key === key;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+    renderPrompt(currentKey);
+
+    // تبديل التبويب
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=> renderPrompt(btn.dataset.key));
+    });
+
+    // نسخ النص الحالي
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(textEl.textContent);
+        copiedMsg.classList.add('show');
+        setTimeout(()=>copiedMsg.classList.remove('show'), 2000);
+      }catch(err){
+        console.error('فشل في نسخ النص: ', err);
+        alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى');
+      }
+    });
+
+    // تحديد كل النص لتسهيل النسخ اليدوي
+    selectAllBtn.addEventListener('click', ()=>{
+      const range = document.createRange();
+      range.selectNodeContents(textEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  </script>
+</body>
+</html>
