@@ -83,13 +83,12 @@
 
   <div class="container">
     <div class="header">
-      <h2>برومبت تصميم بالذكاء الاصطناعي</h2>
+      <h2>برومبت تمثال شخصية 1/7</h2>
       <button class="copy-btn" id="copyButton" aria-label="نسخ النص الحالي">نسخ النص</button>
     </div>
 
     <!-- تبويبات البرومبتات -->
     <div class="tabs" role="tablist" aria-label="اختيار البرومبت">
-    
       <button class="tab-btn" data-key="statue-ar" role="tab" aria-selected="false">تمثال 1/7 (عربي)</button>
       <button class="tab-btn" data-key="statue-en" role="tab" aria-selected="false">Statue 1/7 (English)</button>
     </div>
@@ -108,26 +107,25 @@
   <script>
     // محتوى البرومبتات
     const PROMPTS = {
-      
-      "statue-ar": `تمثال واقعي للغاية بنسبة 1/7 مصنوع من الراتنج، يعتمد على [REFERENCE IMAGE]، ويحافظ على ملامح الوجه الحقيقية، وتسريحة الشعر، والجسم كما هو في الصورة المرجعية.  
-يجب أن يكون للتمثال نسيج جلدي طبيعي، مسام دقيقة، طلاء واقعي، وانعكاسات ضوئية ناعمة، بحيث يتجنب مظهر اللعبة البلاستيكية.  
+      "statue-ar": `تمثال واقعي للغاية بنسبة 1/7 مصنوع من الراتنج، يعتمد على [الصورة المرجعية]، ويحافظ على ملامح الوجه الحقيقية، وتسريحة الشعر، وهيئة الجسم كما هي في المرجع.
+يجب أن يمتلك التمثال نسيج جلد طبيعي، مسامًا دقيقة، طلاءً واقعيًا، وانعكاسات ضوئية ناعمة، لتجنّب مظهر اللعبة البلاستيكية.
 
-الشخصية ترتدي [OUTFIT DETAILS]، في وضعية [POSE DETAILS]، وتقف على قاعدة أكريليك شفافة فوق مكتب خشبي.  
-خلفها شاشة كمبيوتر تعرض عملية النمذجة الثلاثية الأبعاد لنفس الشخصية.  
+الشخصية ترتدي [تفاصيل_الملابس]، في وضعية [تفاصيل_الوضعية]، وتقف على قاعدة أكريليك شفافة فوق مكتب خشبي.
+خلفها شاشة كمبيوتر تعرض عملية النمذجة ثلاثية الأبعاد للشخصية نفسها.
 
-هي [JOB / HOBBY DESCRIPTION]، لذلك فهي محاطة بعناصر مرتبطة بمهنتها أو هواياتها.  
-بجانب التمثال، ضع صندوق تغليف أكبر يحتوي على صورة مطبوعة واقعية للشخصية (مستخرجة من المرجع، لكن محدّثة بالملابس والوضعية المختارة).  
+هي [المهنة/الهواية]، لذا تُحاط بعناصر بصرية مرتبطة بمجالها المهني أو هواياتها.
+إلى جانب التمثال، ضع صندوق تغليف أكبر يضم صورة مطبوعة واقعية للشخصية (مأخوذة من المرجع، لكن محدّثة بالملابس والوضعية المختارتين).
 
-المشهد في بيئة داخلية مع إضاءة سينمائية دافئة، وعمق مجال ضحل، وأسلوب تصوير منتجات واقعي بعدسة ماكرو احترافية.`,
+المشهد في بيئة داخلية بإضاءة سينمائية دافئة، وعمق مجال ضحل، وأسلوب تصوير منتجات واقعي بعدسة ماكرو احترافية.`,
 
-      "statue-en": `A highly realistic 1/7 scale resin statue based on [REFERENCE IMAGE], preserving the exact facial features, hairstyle, and body of the reference.  
-The statue should have natural skin texture, subtle pores, realistic paint finish, and soft light reflections, avoiding the look of a toy.  
+      "statue-en": `A highly realistic 1/7 scale resin statue based on [REFERENCE IMAGE], preserving the exact facial features, hairstyle, and body of the reference.
+The statue should have natural skin texture, subtle pores, realistic paint finish, and soft light reflections, avoiding the look of a toy.
 
-The character is wearing [OUTFIT DETAILS], posed [POSE DETAILS], and stands on a transparent acrylic base on a wooden desk.  
-Behind her, a monitor displays the 3D modeling process of the same character.  
+The character is wearing [OUTFIT DETAILS], posed [POSE DETAILS], and stands on a transparent acrylic base on a wooden desk.
+Behind her, a monitor displays the 3D modeling process of the same character.
 
-She is a [JOB / HOBBY DESCRIPTION], so she is surrounded by elements related to her profession and hobbies.  
-Next to the statue, add a larger packaging box with a realistic printed photo of the character (derived from the reference, but updated with the chosen outfit and pose).  
+She is a [JOB / HOBBY DESCRIPTION], so she is surrounded by elements related to her profession and hobbies.
+Next to the statue, add a larger packaging box with a realistic printed photo of the character (derived from the reference, but updated with the chosen outfit and pose).
 
 The environment is indoors with cinematic warm studio lighting, shallow depth of field, and professional macro lens product-photography style.`
     };
@@ -139,8 +137,8 @@ The environment is indoors with cinematic warm studio lighting, shallow depth of
     const tabs = document.querySelectorAll('.tab-btn');
     const selectAllBtn = document.getElementById('selectAll');
 
-    // تحميل أولي
-    let currentKey = 'surreal';
+    // تحميل أولي — اجعل الافتراضي التبويب العربي
+    let currentKey = 'statue-ar';
     function renderPrompt(key){
       currentKey = key;
       textEl.textContent = PROMPTS[key];
