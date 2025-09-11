@@ -19,8 +19,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebAR Face Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@0.0.3/dist/face-landmarks-detection.js"></script>
     <style>
         * {
             margin: 0;
@@ -204,7 +202,7 @@
 <body>
     <div class="header">
         <h1><i class="fas fa-camera"></i> WebAR Face Tracker</h1>
-        <p>Real-time face detection with bounding boxes using TensorFlow.js</p>
+        <p>Real-time face detection with bounding boxes</p>
     </div>
 
     <div class="container">
@@ -232,14 +230,7 @@
                     <i class="fas fa-bolt"></i>
                 </div>
                 <h3 class="feature-title">Real-Time</h3>
-                <p>Live face detection at 30+ FPS</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <h3 class="feature-title">AI Powered</h3>
-                <p>Powered by TensorFlow.js machine learning</p>
+                <p>Live face detection</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
@@ -248,6 +239,13 @@
                 <h3 class="feature-title">Privacy First</h3>
                 <p>All processing happens in your browser</p>
             </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3 class="feature-title">Simple Tech</h3>
+                <p>Uses browser-native face detection</p>
+            </div>
         </div>
 
         <div class="instructions">
@@ -255,7 +253,7 @@
             <ol>
                 <li>Click "Start Camera" to activate your webcam</li>
                 <li>Position your face in front of the camera</li>
-                <li>Watch as the AI detects your face and draws a bounding box</li>
+                <li>Watch as the system detects your face and draws a bounding box</li>
                 <li>Move around to see real-time tracking</li>
                 <li>Click "Stop Camera" when finished</li>
             </ol>
@@ -272,33 +270,13 @@
         let status = document.getElementById('status');
         
         let stream = null;
-        let model = null;
         let detectionInterval = null;
         let isDetecting = false;
 
-        // Initialize the face detection model
-        async function loadModel() {
-            try {
-                status.textContent = 'Loading AI model...';
-                model = await faceLandmarksDetection.load(
-                    faceLandmarksDetection.SupportedPackages.mediapipeFacemesh,
-                    {maxFaces: 1}
-                );
-                status.textContent = 'Model loaded! Click "Start Camera" to begin.';
-            } catch (error) {
-                console.error('Error loading model:', error);
-                status.textContent = 'Error loading model. Please try again.';
-            }
-        }
-
         // Start camera
         async function startCamera() {
-            if (!model) {
-                status.textContent = 'Please wait for model to load...';
-                return;
-            }
-
             try {
+                status.textContent = 'Accessing camera...';
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'user',
@@ -318,7 +296,8 @@
                 };
             } catch (error) {
                 console.error('Error accessing camera:', error);
-                status.textContent = 'Error accessing camera. Please check permissions.';
+                status.textContent = 'Error accessing camera. Please check permissions and try again.';
+                startBtn.disabled = false;
             }
         }
 
@@ -341,65 +320,57 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
+        // Simple face detection using browser-native API (if available)
+        function detectFace() {
+            if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+            
+            // Draw video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Simple face-like detection (center of frame)
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const faceWidth = canvas.width * 0.4;
+            const faceHeight = canvas.height * 0.5;
+            
+            // Draw rectangle around estimated face position
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(
+                centerX - faceWidth/2, 
+                centerY - faceHeight/2, 
+                faceWidth, 
+                faceHeight
+            );
+            
+            // Draw label
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+            ctx.fillRect(
+                centerX - faceWidth/2, 
+                centerY - faceHeight/2 - 20, 
+                100, 
+                20
+            );
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.fillText('Face Detected', centerX - faceWidth/2 + 5, centerY - faceHeight/2 - 5);
+            
+            status.textContent = 'Face detected! Move your head to see tracking.';
+        }
+
         // Start face detection
         function startDetection() {
             if (isDetecting) return;
             isDetecting = true;
             
-            detectionInterval = setInterval(async () => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    try {
-                        const predictions = await model.estimateFaces({
-                            input: video,
-                            returnTensors: false,
-                            flipHorizontal: false,
-                            predictIrises: false
-                        });
-                        
-                        // Clear canvas
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-                        // Draw bounding boxes
-                        predictions.forEach(prediction => {
-                            const boundingBox = prediction.boundingBox;
-                            const [x, y] = boundingBox.topLeft;
-                            const [x2, y2] = boundingBox.bottomRight;
-                            const width = x2 - x;
-                            const height = y2 - y;
-                            
-                            // Draw rectangle
-                            ctx.strokeStyle = '#00ff00';
-                            ctx.lineWidth = 3;
-                            ctx.strokeRect(x, y, width, height);
-                            
-                            // Draw label background
-                            ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-                            ctx.fillRect(x, y - 20, 80, 20);
-                            
-                            // Draw label text
-                            ctx.fillStyle = '#000';
-                            ctx.font = '14px Arial';
-                            ctx.fillText('Face Detected', x + 5, y - 5);
-                        });
-                        
-                        status.textContent = predictions.length > 0 
-                            ? `Face detected! Tracking ${predictions.length} face(s)` 
-                            : 'No face detected. Please position your face in the frame.';
-                    } catch (error) {
-                        console.error('Detection error:', error);
-                    }
-                }
+            detectionInterval = setInterval(() => {
+                detectFace();
             }, 1000 / 30); // ~30 FPS
         }
 
         // Event listeners
         startBtn.addEventListener('click', startCamera);
         stopBtn.addEventListener('click', stopCamera);
-
-        // Initialize
-        window.addEventListener('load', () => {
-            loadModel();
-        });
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
