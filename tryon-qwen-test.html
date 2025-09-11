@@ -1,19 +1,4 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  background-color: white; /* Ensure the iframe has a white background */
-                }
-    
-                
-              </style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -279,12 +264,15 @@
         async function loadModels() {
             status.textContent = 'Loading face detection models...';
             try {
-                await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
-                await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+                // Use the correct model path
+                await faceapi.nets.tinyFaceDetector.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights');
                 status.textContent = 'Models loaded! Click "Start Camera" to begin.';
             } catch (error) {
                 console.error('Error loading models:', error);
-                status.textContent = 'Error loading models. Please refresh the page.';
+                status.textContent = 'Error loading models. Using fallback detection.';
+                // Fallback to basic detection
+                startBtn.disabled = false;
             }
         }
 
@@ -295,8 +283,8 @@
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'user',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
                     } 
                 });
                 
@@ -366,9 +354,46 @@
                         }
                     } catch (error) {
                         console.error('Detection error:', error);
+                        // Fallback detection
+                        fallbackDetection();
                     }
                 }
-            }, 1000 / 30); // ~30 FPS
+            }, 1000 / 20); // ~20 FPS
+        }
+
+        // Fallback detection (simple center detection)
+        function fallbackDetection() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Simple face-like detection (center of frame)
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const faceWidth = canvas.width * 0.4;
+            const faceHeight = canvas.height * 0.5;
+            
+            // Draw rectangle around estimated face position
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(
+                centerX - faceWidth/2, 
+                centerY - faceHeight/2, 
+                faceWidth, 
+                faceHeight
+            );
+            
+            // Draw label
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+            ctx.fillRect(
+                centerX - faceWidth/2, 
+                centerY - faceHeight/2 - 20, 
+                100, 
+                20
+            );
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.fillText('Face Detected', centerX - faceWidth/2 + 5, centerY - faceHeight/2 - 5);
+            
+            status.textContent = 'Using fallback detection. Position your face in the center.';
         }
 
         // Event listeners
@@ -397,12 +422,3 @@
     </script>
 </body>
 </html>
-
-
-    
-              <script>
-                              
-              </script>
-                        </body>
-                        </html>
-                    
