@@ -14,11 +14,11 @@
                         </head>
                         <body>
                             <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR Face Tracker with Full Face Mask</title>
+    <title>تأثير المكياج الافتراضي</title>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         * {
@@ -29,25 +29,28 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            background: linear-gradient(135deg, #ff9a9e, #fad0c4, #a1c4fd);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px;
-            color: white;
+            direction: rtl;
+            color: #333;
         }
 
         .header {
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
+            width: 100%;
         }
 
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            color: #8b4513;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .header p {
@@ -55,6 +58,7 @@
             opacity: 0.9;
             max-width: 600px;
             margin: 0 auto;
+            color: #666;
         }
 
         .container {
@@ -72,13 +76,13 @@
             max-width: 800px;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            background: #000;
         }
 
         #video {
             width: 100%;
             display: block;
-            background: #000;
         }
 
         #canvas {
@@ -95,6 +99,8 @@
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
+            width: 100%;
+            max-width: 800px;
         }
 
         .btn {
@@ -122,42 +128,49 @@
             box-shadow: none;
         }
 
-        .mask-selector {
+        .makeup-selector {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 25px;
             border-radius: 50px;
             backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
-        .mask-option {
-            width: 30px;
-            height: 30px;
+        .makeup-option {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
         }
 
-        .mask-option:hover {
+        .makeup-option:hover {
             transform: scale(1.2);
         }
 
-        .mask-option.active {
-            border-color: white;
+        .makeup-option.active {
+            border-color: #ff6b6b;
             transform: scale(1.2);
         }
 
         .status {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.9);
             padding: 15px 30px;
             border-radius: 50px;
             font-size: 1.1rem;
             text-align: center;
             backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             min-width: 300px;
+            color: #333;
         }
 
         .features {
@@ -166,52 +179,57 @@
             flex-wrap: wrap;
             justify-content: center;
             margin-top: 20px;
+            width: 100%;
         }
 
         .feature-card {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.8);
             padding: 25px;
             border-radius: 15px;
             text-align: center;
             min-width: 250px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
 
         .feature-icon {
             font-size: 3rem;
             margin-bottom: 15px;
-            color: #ffa502;
+            color: #ff6b6b;
         }
 
         .feature-title {
             font-size: 1.4rem;
             margin-bottom: 10px;
+            color: #8b4513;
         }
 
         .instructions {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.8);
             padding: 25px;
             border-radius: 15px;
             max-width: 800px;
             margin-top: 20px;
             backdrop-filter: blur(10px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
 
         .instructions h2 {
             text-align: center;
             margin-bottom: 20px;
-            color: #ffa502;
+            color: #8b4513;
         }
 
         .instructions ol {
-            padding-left: 25px;
+            padding-right: 25px;
         }
 
         .instructions li {
             margin-bottom: 15px;
             font-size: 1.1rem;
             line-height: 1.6;
+            color: #555;
         }
 
         @media (max-width: 768px) {
@@ -231,13 +249,18 @@
             .controls {
                 flex-direction: column;
             }
+            
+            .makeup-selector {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><i class="fas fa-user-secret"></i> WebAR Face Tracker with Full Mask</h1>
-        <p>Real-time face detection with full face occluder mask</p>
+        <h1>💄 تأثير المكياج الافتراضي</h1>
+        <p>جرّب أنواع المكياج المختلفة على وجهك في الوقت الفعلي</p>
     </div>
 
     <div class="container">
@@ -248,23 +271,24 @@
 
         <div class="controls">
             <button id="startBtn" class="btn">
-                <i class="fas fa-play"></i> Start Camera
+                <i class="fas fa-play"></i> تشغيل الكاميرا
             </button>
             <button id="stopBtn" class="btn" disabled>
-                <i class="fas fa-stop"></i> Stop Camera
+                <i class="fas fa-stop"></i> إيقاف الكاميرا
             </button>
             
-            <div class="mask-selector">
-                <span>Mask:</span>
-                <div class="mask-option active" style="background: linear-gradient(45deg, #2c3e50, #34495e);" data-mask="black"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #8b0000, #a52a2a);" data-mask="red"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #1e90ff, #4169e1);" data-mask="blue"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #ffd700, #daa520);" data-mask="gold"></div>
+            <div class="makeup-selector">
+                <span>المكياج:</span>
+                <div class="makeup-option active" data-makeup="lips" style="background: linear-gradient(45deg, #ff6b6b, #ff8e8e);">💋</div>
+                <div class="makeup-option" data-makeup="eyes" style="background: linear-gradient(45deg, #4169e1, #6495ed);">👁️</div>
+                <div class="makeup-option" data-makeup="blush" style="background: linear-gradient(45deg, #ff69b4, #ffb6c1);">😊</div>
+                <div class="makeup-option" data-makeup="foundation" style="background: linear-gradient(45deg, #d2b48c, #deb887);">✨</div>
+                <div class="makeup-option" data-makeup="eyebrows" style="background: linear-gradient(45deg, #8b4513, #a0522d);">✏️</div>
             </div>
         </div>
 
         <div class="status" id="status">
-            Click "Start Camera" to begin face detection with full mask
+            اضغط على "تشغيل الكاميرا" لبدء تجربة المكياج الافتراضي
         </div>
 
         <div class="features">
@@ -272,34 +296,34 @@
                 <div class="feature-icon">
                     <i class="fas fa-bolt"></i>
                 </div>
-                <h3 class="feature-title">Real-Time</h3>
-                <p>Live face detection at 30+ FPS</p>
+                <h3 class="feature-title">في الوقت الفعلي</h3>
+                <p>رؤية التغييرات فوراً بسرعة 30 إطار في الثانية</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-robot"></i>
                 </div>
-                <h3 class="feature-title">AI Powered</h3>
-                <p>Powered by face-api.js machine learning</p>
+                <h3 class="feature-title">ذكاء اصطناعي</h3>
+                <p>تقنيات متقدمة للتعرف على الوجه</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
-                    <i class="fas fa-user-secret"></i>
+                    <i class="fas fa-palette"></i>
                 </div>
-                <h3 class="feature-title">Full Face Mask</h3>
-                <p>Complete face occlusion for privacy</p>
+                <h3 class="feature-title">ألوان متنوعة</h3>
+                <p>مجموعة واسعة من أنواع المكياج</p>
             </div>
         </div>
 
         <div class="instructions">
-            <h2>How It Works</h2>
+            <h2>كيفية الاستخدام</h2>
             <ol>
-                <li>Click "Start Camera" to activate your webcam</li>
-                <li>Position your face in front of the camera</li>
-                <li>Watch as the AI detects your face and applies a full face mask</li>
-                <li>Choose different mask styles using the color selector</li>
-                <li>Move around to see real-time tracking</li>
-                <li>Click "Stop Camera" when finished</li>
+                <li>اضغط على زر "تشغيل الكاميرا" لتفعيل الكاميرا الأمامية</li>
+                <li>ضع وجهك أمام الكاميرا وتأكد من الإضاءة الجيدة</li>
+                <li>شاهد كيف يتم تطبيق المكياج على وجهك آلياً</li>
+                <li>اختر أنواع المكياج المختلفة من خلال الأيقونات</li>
+                <li>حرك وجهك لترى التتبع في الوقت الفعلي</li>
+                <li>اضغط على "إيقاف الكاميرا" عند الانتهاء</li>
             </ol>
         </div>
     </div>
@@ -312,40 +336,40 @@
         let startBtn = document.getElementById('startBtn');
         let stopBtn = document.getElementById('stopBtn');
         let status = document.getElementById('status');
-        let maskOptions = document.querySelectorAll('.mask-option');
+        let makeupOptions = document.querySelectorAll('.makeup-option');
         
         let stream = null;
         let detectionInterval = null;
         let isDetecting = false;
-        let currentMask = 'black';
+        let currentMakeup = 'lips';
 
-        // Set up mask selection
-        maskOptions.forEach(option => {
+        // Set up makeup selection
+        makeupOptions.forEach(option => {
             option.addEventListener('click', () => {
-                maskOptions.forEach(opt => opt.classList.remove('active'));
+                makeupOptions.forEach(opt => opt.classList.remove('active'));
                 option.classList.add('active');
-                currentMask = option.dataset.mask;
+                currentMakeup = option.dataset.makeup;
             });
         });
 
         // Load face detection models
         async function loadModels() {
-            status.textContent = 'Loading face detection models...';
+            status.textContent = 'جاري تحميل نماذج التعرف على الوجه...';
             try {
                 // Use the correct model path
                 await faceapi.nets.tinyFaceDetector.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights');
                 await faceapi.nets.faceLandmark68Net.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights');
-                status.textContent = 'Models loaded! Click "Start Camera" to begin.';
+                status.textContent = 'تم تحميل النماذج! اضغط على "تشغيل الكاميرا" للبدء.';
             } catch (error) {
                 console.error('Error loading models:', error);
-                status.textContent = 'Error loading models. Using fallback detection.';
+                status.textContent = 'خطأ في تحميل النماذج. استخدام الوضع البديل.';
             }
         }
 
         // Start camera
         async function startCamera() {
             try {
-                status.textContent = 'Accessing camera...';
+                status.textContent = 'جاري الوصول إلى الكاميرا...';
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'user',
@@ -360,12 +384,12 @@
                     canvas.height = video.videoHeight;
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
-                    status.textContent = 'Camera active. Starting face detection with full mask...';
+                    status.textContent = 'الكاميرا نشطة. جاري بدء تطبيق المكياج...';
                     startDetection();
                 };
             } catch (error) {
                 console.error('Error accessing camera:', error);
-                status.textContent = 'Error accessing camera. Please check permissions and try again.';
+                status.textContent = 'خطأ في الوصول إلى الكاميرا. تحقق من الأذونات وحاول مرة أخرى.';
                 startBtn.disabled = false;
             }
         }
@@ -383,94 +407,143 @@
             isDetecting = false;
             startBtn.disabled = false;
             stopBtn.disabled = true;
-            status.textContent = 'Camera stopped. Click "Start Camera" to begin again.';
+            status.textContent = 'تم إيقاف الكاميرا. اضغط على "تشغيل الكاميرا" للبدء مرة أخرى.';
             
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Draw full face mask
-        function drawFullFaceMask(detection) {
+        // Apply lipstick
+        function applyLipstick(landmarks) {
+            const mouth = landmarks.getMouth();
+            if (mouth.length < 12) return;
+            
+            // Get upper and lower lip points
+            const upperLip = mouth.slice(0, 7);
+            const lowerLip = mouth.slice(6, 12);
+            
+            // Draw upper lip
+            ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(upperLip[0].x, upperLip[0].y);
+            for (let i = 1; i < upperLip.length; i++) {
+                ctx.lineTo(upperLip[i].x, upperLip[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw lower lip
+            ctx.beginPath();
+            ctx.moveTo(lowerLip[0].x, lowerLip[0].y);
+            for (let i = 1; i < lowerLip.length; i++) {
+                ctx.lineTo(lowerLip[i].x, lowerLip[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Apply eyeshadow
+        function applyEyeshadow(landmarks) {
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            
+            if (leftEye.length < 6 || rightEye.length < 6) return;
+            
+            // Draw left eyeshadow
+            ctx.fillStyle = 'rgba(65, 105, 225, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(leftEye[0].x, leftEye[0].y);
+            for (let i = 1; i < leftEye.length; i++) {
+                ctx.lineTo(leftEye[i].x, leftEye[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw right eyeshadow
+            ctx.beginPath();
+            ctx.moveTo(rightEye[0].x, rightEye[0].y);
+            for (let i = 1; i < rightEye.length; i++) {
+                ctx.lineTo(rightEye[i].x, rightEye[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Apply blush
+        function applyBlush(landmarks) {
+            const nose = landmarks.getNose();
+            if (nose.length < 5) return;
+            
+            const noseTip = nose[2];
+            
+            // Draw left blush
+            ctx.fillStyle = 'rgba(255, 105, 180, 0.4)';
+            ctx.beginPath();
+            ctx.arc(noseTip.x - 30, noseTip.y + 10, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw right blush
+            ctx.beginPath();
+            ctx.arc(noseTip.x + 30, noseTip.y + 10, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Apply foundation
+        function applyFoundation(detection) {
             const box = detection.detection.box;
             
-            // Calculate mask dimensions (slightly larger than face box)
-            const maskWidth = box.width * 1.1;
-            const maskHeight = box.height * 1.1;
-            const maskX = box.x - (maskWidth - box.width) / 2;
-            const maskY = box.y - (maskHeight - box.height) / 3;
+            // Draw foundation (light skin tone)
+            ctx.fillStyle = 'rgba(210, 180, 140, 0.3)';
+            ctx.fillRect(box.x, box.y, box.width, box.height);
+        }
+
+        // Apply eyebrows
+        function applyEyebrows(landmarks) {
+            const leftBrow = landmarks.getLeft eyebrow();
+            const rightBrow = landmarks.getRight eyebrow();
             
-            // Set mask color based on selection
-            let maskColor, borderColor;
-            switch(currentMask) {
-                case 'red':
-                    maskColor = 'rgba(139, 0, 0, 0.9)';
-                    borderColor = '#8b0000';
-                    break;
-                case 'blue':
-                    maskColor = 'rgba(30, 144, 255, 0.9)';
-                    borderColor = '#1e90ff';
-                    break;
-                case 'gold':
-                    maskColor = 'rgba(255, 215, 0, 0.9)';
-                    borderColor = '#ffd700';
-                    break;
-                default: // black
-                    maskColor = 'rgba(44, 62, 80, 0.9)';
-                    borderColor = '#2c3e50';
-            }
+            if (leftBrow.length < 5 || rightBrow.length < 5) return;
             
-            // Draw full face mask (rounded rectangle)
-            const radius = 20;
-            ctx.fillStyle = maskColor;
-            ctx.strokeStyle = borderColor;
+            // Draw left eyebrow
+            ctx.strokeStyle = 'rgba(139, 69, 19, 0.8)';
             ctx.lineWidth = 3;
-            
             ctx.beginPath();
-            ctx.moveTo(maskX + radius, maskY);
-            ctx.lineTo(maskX + maskWidth - radius, maskY);
-            ctx.quadraticCurveTo(maskX + maskWidth, maskY, maskX + maskWidth, maskY + radius);
-            ctx.lineTo(maskX + maskWidth, maskY + maskHeight - radius);
-            ctx.quadraticCurveTo(maskX + maskWidth, maskY + maskHeight, maskX + maskWidth - radius, maskY + maskHeight);
-            ctx.lineTo(maskX + radius, maskY + maskHeight);
-            ctx.quadraticCurveTo(maskX, maskY + maskHeight, maskX, maskY + maskHeight - radius);
-            ctx.lineTo(maskX, maskY + radius);
-            ctx.quadraticCurveTo(maskX, maskY, maskX + radius, maskY);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(leftBrow[0].x, leftBrow[0].y);
+            for (let i = 1; i < leftBrow.length; i++) {
+                ctx.lineTo(leftBrow[i].x, leftBrow[i].y);
+            }
             ctx.stroke();
             
-            // Draw eye holes
-            const eyeRadius = Math.min(maskWidth * 0.1, maskHeight * 0.1);
-            const eyeY = maskY + maskHeight * 0.35;
-            const leftEyeX = maskX + maskWidth * 0.3;
-            const rightEyeX = maskX + maskWidth * 0.7;
-            
-            // Left eye hole
+            // Draw right eyebrow
             ctx.beginPath();
-            ctx.arc(leftEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fill();
+            ctx.moveTo(rightBrow[0].x, rightBrow[0].y);
+            for (let i = 1; i < rightBrow.length; i++) {
+                ctx.lineTo(rightBrow[i].x, rightBrow[i].y);
+            }
+            ctx.stroke();
+        }
+
+        // Apply selected makeup
+        function applyMakeup(detection) {
+            const landmarks = detection.landmarks;
             
-            // Right eye hole
-            ctx.beginPath();
-            ctx.arc(rightEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fill();
-            
-            // Draw mouth slot
-            const mouthWidth = maskWidth * 0.4;
-            const mouthHeight = maskHeight * 0.1;
-            const mouthX = maskX + (maskWidth - mouthWidth) / 2;
-            const mouthY = maskY + maskHeight * 0.7;
-            
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.beginPath();
-            ctx.moveTo(mouthX, mouthY);
-            ctx.lineTo(mouthX + mouthWidth, mouthY);
-            ctx.lineTo(mouthX + mouthWidth, mouthY + mouthHeight);
-            ctx.lineTo(mouthX, mouthY + mouthHeight);
-            ctx.closePath();
-            ctx.fill();
+            switch(currentMakeup) {
+                case 'lips':
+                    applyLipstick(landmarks);
+                    break;
+                case 'eyes':
+                    applyEyeshadow(landmarks);
+                    break;
+                case 'blush':
+                    applyBlush(landmarks);
+                    break;
+                case 'foundation':
+                    applyFoundation(detection);
+                    break;
+                case 'eyebrows':
+                    applyEyebrows(landmarks);
+                    break;
+            }
         }
 
         // Start face detection
@@ -481,7 +554,7 @@
             detectionInterval = setInterval(async () => {
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     try {
-                        // Detect faces
+                        // Detect faces with landmarks
                         const detections = await faceapi.detectAllFaces(
                             video, 
                             new faceapi.TinyFaceDetectorOptions()
@@ -493,15 +566,15 @@
                         // Draw video frame
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         
-                        // Draw full face masks
+                        // Apply makeup
                         if (detections.length > 0) {
                             detections.forEach(detection => {
-                                drawFullFaceMask(detection);
+                                applyMakeup(detection);
                             });
                             
-                            status.textContent = `Face detected! Tracking ${detections.length} face(s) with full mask`;
+                            status.textContent = `تم اكتشاف الوجه! تطبيق مكياج ${getMakeupName(currentMakeup)}`;
                         } else {
-                            status.textContent = 'No face detected. Please position your face in the frame.';
+                            status.textContent = 'لم يتم اكتشاف وجه. ضع وجهك أمام الكاميرا.';
                         }
                     } catch (error) {
                         console.error('Detection error:', error);
@@ -511,6 +584,18 @@
                     }
                 }
             }, 1000 / 20); // ~20 FPS
+        }
+
+        // Get makeup name in Arabic
+        function getMakeupName(makeupType) {
+            switch(makeupType) {
+                case 'lips': return 'الأحمر';
+                case 'eyes': return 'ظلال العيون';
+                case 'blush': return ' Rouge';
+                case 'foundation': return 'البودرة';
+                case 'eyebrows': return 'الحواجب';
+                default: return 'المكياج';
+            }
         }
 
         // Event listeners
