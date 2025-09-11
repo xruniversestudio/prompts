@@ -1,9 +1,24 @@
-<!DOCTYPE html>
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  background-color: white; /* Ensure the iframe has a white background */
+                }
+    
+                
+              </style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR Face Tracker</title>
+    <title>WebAR Face Tracker with Mask</title>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         * {
@@ -79,6 +94,7 @@
             gap: 20px;
             flex-wrap: wrap;
             justify-content: center;
+            align-items: center;
         }
 
         .btn {
@@ -104,6 +120,34 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .mask-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .mask-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .mask-option:hover {
+            transform: scale(1.2);
+        }
+
+        .mask-option.active {
+            border-color: white;
+            transform: scale(1.2);
         }
 
         .status {
@@ -183,13 +227,17 @@
                 padding: 12px 25px;
                 font-size: 1rem;
             }
+            
+            .controls {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><i class="fas fa-camera"></i> WebAR Face Tracker</h1>
-        <p>Real-time face detection with bounding boxes using face-api.js</p>
+        <h1><i class="fas fa-mask"></i> WebAR Face Tracker with Mask</h1>
+        <p>Real-time face detection with virtual masks using face-api.js</p>
     </div>
 
     <div class="container">
@@ -205,10 +253,18 @@
             <button id="stopBtn" class="btn" disabled>
                 <i class="fas fa-stop"></i> Stop Camera
             </button>
+            
+            <div class="mask-selector">
+                <span>Mask:</span>
+                <div class="mask-option active" style="background: linear-gradient(45deg, #ff0000, #8b0000);" data-mask="surgical"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #1e90ff, #00008b);" data-mask="blue"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #32cd32, #006400);" data-mask="green"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #ffd700, #ff8c00);" data-mask="gold"></div>
+            </div>
         </div>
 
         <div class="status" id="status">
-            Click "Start Camera" to begin face detection
+            Click "Start Camera" to begin face detection with mask
         </div>
 
         <div class="features">
@@ -228,10 +284,10 @@
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
-                    <i class="fas fa-shield-alt"></i>
+                    <i class="fas fa-mask"></i>
                 </div>
-                <h3 class="feature-title">Privacy First</h3>
-                <p>All processing happens in your browser</p>
+                <h3 class="feature-title">Virtual Masks</h3>
+                <p>Multiple mask styles to choose from</p>
             </div>
         </div>
 
@@ -240,7 +296,8 @@
             <ol>
                 <li>Click "Start Camera" to activate your webcam</li>
                 <li>Position your face in front of the camera</li>
-                <li>Watch as the AI detects your face and draws a bounding box</li>
+                <li>Watch as the AI detects your face and applies a virtual mask</li>
+                <li>Choose different mask styles using the color selector</li>
                 <li>Move around to see real-time tracking</li>
                 <li>Click "Stop Camera" when finished</li>
             </ol>
@@ -255,10 +312,21 @@
         let startBtn = document.getElementById('startBtn');
         let stopBtn = document.getElementById('stopBtn');
         let status = document.getElementById('status');
+        let maskOptions = document.querySelectorAll('.mask-option');
         
         let stream = null;
         let detectionInterval = null;
         let isDetecting = false;
+        let currentMask = 'surgical';
+
+        // Set up mask selection
+        maskOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                maskOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                currentMask = option.dataset.mask;
+            });
+        });
 
         // Load face detection models
         async function loadModels() {
@@ -271,8 +339,6 @@
             } catch (error) {
                 console.error('Error loading models:', error);
                 status.textContent = 'Error loading models. Using fallback detection.';
-                // Fallback to basic detection
-                startBtn.disabled = false;
             }
         }
 
@@ -294,7 +360,7 @@
                     canvas.height = video.videoHeight;
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
-                    status.textContent = 'Camera active. Starting face detection...';
+                    status.textContent = 'Camera active. Starting face detection with mask...';
                     startDetection();
                 };
             } catch (error) {
@@ -323,6 +389,85 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
+        // Draw mask on face
+        function drawMask(landmarks) {
+            const jawOutline = landmarks.getJawOutline();
+            const nose = landmarks.getNose();
+            const mouth = landmarks.getMouth();
+            
+            if (jawOutline.length < 17 || nose.length < 5 || mouth.length < 12) return;
+            
+            // Get key points for mask placement
+            const leftJaw = jawOutline[0];
+            const rightJaw = jawOutline[16];
+            const noseTip = nose[2];
+            const upperLip = mouth[0];
+            const lowerLip = mouth[6];
+            
+            // Calculate mask dimensions
+            const maskWidth = Math.abs(rightJaw.x - leftJaw.x) * 1.2;
+            const maskHeight = Math.abs(lowerLip.y - noseTip.y) * 1.3;
+            const maskX = noseTip.x - maskWidth / 2;
+            const maskY = noseTip.y - maskHeight * 0.3;
+            
+            // Set mask color based on selection
+            let maskColor, borderColor;
+            switch(currentMask) {
+                case 'blue':
+                    maskColor = 'rgba(30, 144, 255, 0.7)';
+                    borderColor = '#1e90ff';
+                    break;
+                case 'green':
+                    maskColor = 'rgba(50, 205, 50, 0.7)';
+                    borderColor = '#32cd32';
+                    break;
+                case 'gold':
+                    maskColor = 'rgba(255, 215, 0, 0.7)';
+                    borderColor = '#ffd700';
+                    break;
+                default: // surgical
+                    maskColor = 'rgba(255, 0, 0, 0.7)';
+                    borderColor = '#ff0000';
+            }
+            
+            // Draw mask
+            ctx.fillStyle = maskColor;
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 2;
+            
+            // Draw mask shape (rounded rectangle)
+            const radius = 15;
+            ctx.beginPath();
+            ctx.moveTo(maskX + radius, maskY);
+            ctx.lineTo(maskX + maskWidth - radius, maskY);
+            ctx.quadraticCurveTo(maskX + maskWidth, maskY, maskX + maskWidth, maskY + radius);
+            ctx.lineTo(maskX + maskWidth, maskY + maskHeight - radius);
+            ctx.quadraticCurveTo(maskX + maskWidth, maskY + maskHeight, maskX + maskWidth - radius, maskY + maskHeight);
+            ctx.lineTo(maskX + radius, maskY + maskHeight);
+            ctx.quadraticCurveTo(maskX, maskY + maskHeight, maskX, maskY + maskHeight - radius);
+            ctx.lineTo(maskX, maskY + radius);
+            ctx.quadraticCurveTo(maskX, maskY, maskX + radius, maskY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw mask strings
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+            ctx.lineWidth = 1;
+            
+            // Left string
+            ctx.beginPath();
+            ctx.moveTo(leftJaw.x - 10, leftJaw.y);
+            ctx.lineTo(maskX, maskY + maskHeight * 0.3);
+            ctx.stroke();
+            
+            // Right string
+            ctx.beginPath();
+            ctx.moveTo(rightJaw.x + 10, rightJaw.y);
+            ctx.lineTo(maskX + maskWidth, maskY + maskHeight * 0.3);
+            ctx.stroke();
+        }
+
         // Start face detection
         function startDetection() {
             if (isDetecting) return;
@@ -331,7 +476,7 @@
             detectionInterval = setInterval(async () => {
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     try {
-                        // Detect faces
+                        // Detect faces with landmarks
                         const detections = await faceapi.detectAllFaces(
                             video, 
                             new faceapi.TinyFaceDetectorOptions()
@@ -340,60 +485,27 @@
                         // Clear canvas
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         
-                        // Draw detections
+                        // Draw video frame
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        // Draw masks
                         if (detections.length > 0) {
-                            // Draw bounding boxes
-                            faceapi.draw.drawDetections(canvas, detections);
+                            detections.forEach(detection => {
+                                drawMask(detection.landmarks);
+                            });
                             
-                            // Draw landmarks
-                            faceapi.draw.drawFaceLandmarks(canvas, detections);
-                            
-                            status.textContent = `Face detected! Tracking ${detections.length} face(s)`;
+                            status.textContent = `Face detected! Tracking ${detections.length} face(s) with mask`;
                         } else {
                             status.textContent = 'No face detected. Please position your face in the frame.';
                         }
                     } catch (error) {
                         console.error('Detection error:', error);
-                        // Fallback detection
-                        fallbackDetection();
+                        // Draw video frame only
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     }
                 }
             }, 1000 / 20); // ~20 FPS
-        }
-
-        // Fallback detection (simple center detection)
-        function fallbackDetection() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Simple face-like detection (center of frame)
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const faceWidth = canvas.width * 0.4;
-            const faceHeight = canvas.height * 0.5;
-            
-            // Draw rectangle around estimated face position
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(
-                centerX - faceWidth/2, 
-                centerY - faceHeight/2, 
-                faceWidth, 
-                faceHeight
-            );
-            
-            // Draw label
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-            ctx.fillRect(
-                centerX - faceWidth/2, 
-                centerY - faceHeight/2 - 20, 
-                100, 
-                20
-            );
-            ctx.fillStyle = '#000';
-            ctx.font = '14px Arial';
-            ctx.fillText('Face Detected', centerX - faceWidth/2 + 5, centerY - faceHeight/2 - 5);
-            
-            status.textContent = 'Using fallback detection. Position your face in the center.';
         }
 
         // Event listeners
@@ -422,3 +534,12 @@
     </script>
 </body>
 </html>
+
+
+    
+              <script>
+                              
+              </script>
+                        </body>
+                        </html>
+                    
