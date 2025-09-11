@@ -18,7 +18,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR Face Tracker with Mask</title>
+    <title>WebAR Face Tracker with Full Face Mask</title>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         * {
@@ -236,8 +236,8 @@
 </head>
 <body>
     <div class="header">
-        <h1><i class="fas fa-mask"></i> WebAR Face Tracker with Mask</h1>
-        <p>Real-time face detection with virtual masks using face-api.js</p>
+        <h1><i class="fas fa-user-secret"></i> WebAR Face Tracker with Full Mask</h1>
+        <p>Real-time face detection with full face occluder mask</p>
     </div>
 
     <div class="container">
@@ -256,15 +256,15 @@
             
             <div class="mask-selector">
                 <span>Mask:</span>
-                <div class="mask-option active" style="background: linear-gradient(45deg, #ff0000, #8b0000);" data-mask="surgical"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #1e90ff, #00008b);" data-mask="blue"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #32cd32, #006400);" data-mask="green"></div>
-                <div class="mask-option" style="background: linear-gradient(45deg, #ffd700, #ff8c00);" data-mask="gold"></div>
+                <div class="mask-option active" style="background: linear-gradient(45deg, #2c3e50, #34495e);" data-mask="black"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #8b0000, #a52a2a);" data-mask="red"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #1e90ff, #4169e1);" data-mask="blue"></div>
+                <div class="mask-option" style="background: linear-gradient(45deg, #ffd700, #daa520);" data-mask="gold"></div>
             </div>
         </div>
 
         <div class="status" id="status">
-            Click "Start Camera" to begin face detection with mask
+            Click "Start Camera" to begin face detection with full mask
         </div>
 
         <div class="features">
@@ -284,10 +284,10 @@
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
-                    <i class="fas fa-mask"></i>
+                    <i class="fas fa-user-secret"></i>
                 </div>
-                <h3 class="feature-title">Virtual Masks</h3>
-                <p>Multiple mask styles to choose from</p>
+                <h3 class="feature-title">Full Face Mask</h3>
+                <p>Complete face occlusion for privacy</p>
             </div>
         </div>
 
@@ -296,7 +296,7 @@
             <ol>
                 <li>Click "Start Camera" to activate your webcam</li>
                 <li>Position your face in front of the camera</li>
-                <li>Watch as the AI detects your face and applies a virtual mask</li>
+                <li>Watch as the AI detects your face and applies a full face mask</li>
                 <li>Choose different mask styles using the color selector</li>
                 <li>Move around to see real-time tracking</li>
                 <li>Click "Stop Camera" when finished</li>
@@ -317,7 +317,7 @@
         let stream = null;
         let detectionInterval = null;
         let isDetecting = false;
-        let currentMask = 'surgical';
+        let currentMask = 'black';
 
         // Set up mask selection
         maskOptions.forEach(option => {
@@ -360,7 +360,7 @@
                     canvas.height = video.videoHeight;
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
-                    status.textContent = 'Camera active. Starting face detection with mask...';
+                    status.textContent = 'Camera active. Starting face detection with full mask...';
                     startDetection();
                 };
             } catch (error) {
@@ -389,54 +389,42 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Draw mask on face
-        function drawMask(landmarks) {
-            const jawOutline = landmarks.getJawOutline();
-            const nose = landmarks.getNose();
-            const mouth = landmarks.getMouth();
+        // Draw full face mask
+        function drawFullFaceMask(detection) {
+            const box = detection.detection.box;
             
-            if (jawOutline.length < 17 || nose.length < 5 || mouth.length < 12) return;
-            
-            // Get key points for mask placement
-            const leftJaw = jawOutline[0];
-            const rightJaw = jawOutline[16];
-            const noseTip = nose[2];
-            const upperLip = mouth[0];
-            const lowerLip = mouth[6];
-            
-            // Calculate mask dimensions
-            const maskWidth = Math.abs(rightJaw.x - leftJaw.x) * 1.2;
-            const maskHeight = Math.abs(lowerLip.y - noseTip.y) * 1.3;
-            const maskX = noseTip.x - maskWidth / 2;
-            const maskY = noseTip.y - maskHeight * 0.3;
+            // Calculate mask dimensions (slightly larger than face box)
+            const maskWidth = box.width * 1.1;
+            const maskHeight = box.height * 1.1;
+            const maskX = box.x - (maskWidth - box.width) / 2;
+            const maskY = box.y - (maskHeight - box.height) / 3;
             
             // Set mask color based on selection
             let maskColor, borderColor;
             switch(currentMask) {
+                case 'red':
+                    maskColor = 'rgba(139, 0, 0, 0.9)';
+                    borderColor = '#8b0000';
+                    break;
                 case 'blue':
-                    maskColor = 'rgba(30, 144, 255, 0.7)';
+                    maskColor = 'rgba(30, 144, 255, 0.9)';
                     borderColor = '#1e90ff';
                     break;
-                case 'green':
-                    maskColor = 'rgba(50, 205, 50, 0.7)';
-                    borderColor = '#32cd32';
-                    break;
                 case 'gold':
-                    maskColor = 'rgba(255, 215, 0, 0.7)';
+                    maskColor = 'rgba(255, 215, 0, 0.9)';
                     borderColor = '#ffd700';
                     break;
-                default: // surgical
-                    maskColor = 'rgba(255, 0, 0, 0.7)';
-                    borderColor = '#ff0000';
+                default: // black
+                    maskColor = 'rgba(44, 62, 80, 0.9)';
+                    borderColor = '#2c3e50';
             }
             
-            // Draw mask
+            // Draw full face mask (rounded rectangle)
+            const radius = 20;
             ctx.fillStyle = maskColor;
             ctx.strokeStyle = borderColor;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             
-            // Draw mask shape (rounded rectangle)
-            const radius = 15;
             ctx.beginPath();
             ctx.moveTo(maskX + radius, maskY);
             ctx.lineTo(maskX + maskWidth - radius, maskY);
@@ -451,21 +439,38 @@
             ctx.fill();
             ctx.stroke();
             
-            // Draw mask strings
-            ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
-            ctx.lineWidth = 1;
+            // Draw eye holes
+            const eyeRadius = Math.min(maskWidth * 0.1, maskHeight * 0.1);
+            const eyeY = maskY + maskHeight * 0.35;
+            const leftEyeX = maskX + maskWidth * 0.3;
+            const rightEyeX = maskX + maskWidth * 0.7;
             
-            // Left string
+            // Left eye hole
             ctx.beginPath();
-            ctx.moveTo(leftJaw.x - 10, leftJaw.y);
-            ctx.lineTo(maskX, maskY + maskHeight * 0.3);
-            ctx.stroke();
+            ctx.arc(leftEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fill();
             
-            // Right string
+            // Right eye hole
             ctx.beginPath();
-            ctx.moveTo(rightJaw.x + 10, rightJaw.y);
-            ctx.lineTo(maskX + maskWidth, maskY + maskHeight * 0.3);
-            ctx.stroke();
+            ctx.arc(rightEyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fill();
+            
+            // Draw mouth slot
+            const mouthWidth = maskWidth * 0.4;
+            const mouthHeight = maskHeight * 0.1;
+            const mouthX = maskX + (maskWidth - mouthWidth) / 2;
+            const mouthY = maskY + maskHeight * 0.7;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(mouthX, mouthY);
+            ctx.lineTo(mouthX + mouthWidth, mouthY);
+            ctx.lineTo(mouthX + mouthWidth, mouthY + mouthHeight);
+            ctx.lineTo(mouthX, mouthY + mouthHeight);
+            ctx.closePath();
+            ctx.fill();
         }
 
         // Start face detection
@@ -476,7 +481,7 @@
             detectionInterval = setInterval(async () => {
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     try {
-                        // Detect faces with landmarks
+                        // Detect faces
                         const detections = await faceapi.detectAllFaces(
                             video, 
                             new faceapi.TinyFaceDetectorOptions()
@@ -488,13 +493,13 @@
                         // Draw video frame
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         
-                        // Draw masks
+                        // Draw full face masks
                         if (detections.length > 0) {
                             detections.forEach(detection => {
-                                drawMask(detection.landmarks);
+                                drawFullFaceMask(detection);
                             });
                             
-                            status.textContent = `Face detected! Tracking ${detections.length} face(s) with mask`;
+                            status.textContent = `Face detected! Tracking ${detections.length} face(s) with full mask`;
                         } else {
                             status.textContent = 'No face detected. Please position your face in the frame.';
                         }
