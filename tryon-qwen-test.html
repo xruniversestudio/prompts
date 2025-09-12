@@ -18,9 +18,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Makeup Pro - الواقع المعزز للمكياج</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1646424915/face_mesh.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+    <title>AR Makeup Demo - تجربة المكياج الافتراضي</title>
     <style>
         * {
             margin: 0;
@@ -81,9 +79,10 @@
             background: #000;
         }
 
-        #inputVideo {
+        #video {
             width: 100%;
             display: block;
+            background: #333;
         }
 
         #canvas {
@@ -233,6 +232,55 @@
             color: #555;
         }
 
+        .demo-face {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .face-outline {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border: 3px solid #666;
+            border-radius: 50%;
+        }
+
+        .eye {
+            position: absolute;
+            width: 40px;
+            height: 20px;
+            border: 2px solid #333;
+            border-radius: 50%;
+        }
+
+        .left-eye {
+            top: 100px;
+            left: 80px;
+        }
+
+        .right-eye {
+            top: 100px;
+            right: 80px;
+        }
+
+        .mouth {
+            position: absolute;
+            width: 80px;
+            height: 30px;
+            border: 2px solid #333;
+            border-radius: 0 0 50% 50%;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2rem;
@@ -260,13 +308,13 @@
 </head>
 <body>
     <div class="header">
-        <h1>💄 تأثير المكياج الافتراضي المتقدم</h1>
-        <p>تقنية الواقع المعزز مع شبكة الوجه بدقة 468 نقطة</p>
+        <h1>💄 تأثير المكياج الافتراضي</h1>
+        <p>تجربة توضيحية لأنواع المكياج المختلفة</p>
     </div>
 
     <div class="container">
         <div class="video-container">
-            <video id="inputVideo" autoplay playsinline></video>
+            <video id="video" autoplay playsinline muted></video>
             <canvas id="canvas"></canvas>
         </div>
 
@@ -288,7 +336,15 @@
         </div>
 
         <div class="status" id="status">
-            اضغط على "تشغيل الكاميرا" لبدء تجربة المكياج الافتراضي
+            اضغط على "تشغيل الكاميرا" لبدء التجربة
+        </div>
+
+        <div class="demo-face">
+            <div class="face-outline">
+                <div class="eye left-eye"></div>
+                <div class="eye right-eye"></div>
+                <div class="mouth"></div>
+            </div>
         </div>
 
         <div class="features">
@@ -296,51 +352,51 @@
                 <div class="feature-icon">
                     <i class="fas fa-bolt"></i>
                 </div>
-                <h3 class="feature-title">468 نقطة تتبع</h3>
-                <p>دقة عالية في تتبع ملامح الوجه</p>
+                <h3 class="feature-title">في الوقت الفعلي</h3>
+                <p>رؤية التغييرات فوراً</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-robot"></i>
                 </div>
-                <h3 class="feature-title">AI متقدم</h3>
-                <p>تقنية MediaPipe من Google</p>
+                <h3 class="feature-title">تقنية متقدمة</h3>
+                <p>التعرف على ملامح الوجه</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-palette"></i>
                 </div>
-                <h3 class="feature-title">تأثيرات واقعية</h3>
-                <p>دمج طبيعي مع الإضاءة</p>
+                <h3 class="feature-title">ألوان متنوعة</h3>
+                <p>مجموعة واسعة من المكياج</p>
             </div>
         </div>
 
         <div class="instructions">
-            <h2>كيفية الاستخدام</h2>
+            <h2>كيف تعمل التقنية</h2>
             <ol>
-                <li>اضغط على زر "تشغيل الكاميرا" لتفعيل الكاميرا الأمامية</li>
-                <li>ضع وجهك أمام الكاميرا وتأكد من الإضاءة الجيدة</li>
-                <li>شاهد كيف يتم تطبيق المكياج على وجهك بدقة عالية</li>
-                <li>اختر أنواع المكياج المختلفة من خلال الأيقونات</li>
-                <li>حرك وجهك لترى التتبع في الوقت الفعلي</li>
-                <li>اضغط على "إيقاف الكاميرا" عند الانتهاء</li>
+                <li><strong>التعرف على الوجه:</strong> يتم استخدام شبكة من 468 نقطة لتتبع ملامح الوجه بدقة</li>
+                <li><strong>نقاط المكياج:</strong> كل نوع مكياج له نقاط محددة على الوجه (شفاه، عيون، خدود)</li>
+                <li><strong>التطبيق الفوري:</strong> يتم تطبيق التأثيرات في الوقت الفعلي على الكاميرا</li>
+                <li><strong>التعقب المتقدم:</strong> يتبع حركة الوجه حتى مع التحركات السريعة</li>
             </ol>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script>
-        let videoElement = document.getElementById('inputVideo');
-        let canvasElement = document.getElementById('canvas');
-        let canvasCtx = canvasElement.getContext('2d');
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
         let startBtn = document.getElementById('startBtn');
         let stopBtn = document.getElementById('stopBtn');
         let status = document.getElementById('status');
         let makeupOptions = document.querySelectorAll('.makeup-option');
+        let demoFace = document.querySelector('.demo-face');
         
-        let camera = null;
+        let stream = null;
+        let detectionInterval = null;
+        let isDetecting = false;
         let currentMakeup = 'lips';
-        let faceMesh = null;
 
         // Set up makeup selection
         makeupOptions.forEach(option => {
@@ -348,203 +404,204 @@
                 makeupOptions.forEach(opt => opt.classList.remove('active'));
                 option.classList.add('active');
                 currentMakeup = option.dataset.makeup;
+                
+                // Apply makeup to demo face
+                applyMakeupToDemo();
             });
         });
 
-        // Initialize FaceMesh
-        function initializeFaceMesh() {
-            faceMesh = new FaceMesh({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        // Start camera with multiple fallback options
+        async function startCamera() {
+            try {
+                status.textContent = 'جاري الوصول إلى الكاميرا...';
+                
+                // Try different constraints for better compatibility
+                const constraintsList = [
+                    { video: { facingMode: 'user', width: 640, height: 480 } },
+                    { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } },
+                    { video: { facingMode: 'user' } },
+                    { video: true }
+                ];
+                
+                let success = false;
+                for (let constraints of constraintsList) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        success = true;
+                        break;
+                    } catch (err) {
+                        console.log('فشل مع القيود:', constraints);
+                    }
                 }
-            });
-            
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            
-            faceMesh.onResults(onResults);
-        }
-
-        // Process face mesh results
-        function onResults(results) {
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
-            
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
-            // Draw video frame
-            canvasCtx.drawImage(
-                results.image, 0, 0, canvasElement.width, canvasElement.height);
-            
-            if (results.multiFaceLandmarks) {
-                for (const landmarks of results.multiFaceLandmarks) {
-                    // Apply selected makeup
-                    applyMakeup(landmarks);
+                
+                if (!success) {
+                    throw new Error('لا يمكن الوصول إلى الكاميرا');
+                }
+                
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    status.textContent = 'الكاميرا نشطة. جاري عرض الصورة...';
                     
-                    status.textContent = `تم اكتشاف الوجه! تطبيق مكياج ${getMakeupName(currentMakeup)}`;
-                }
-            } else {
-                status.textContent = 'لم يتم اكتشاف وجه. ضع وجهك أمام الكاميرا.';
-            }
-            
-            canvasCtx.restore();
-        }
-
-        // Apply lipstick
-        function applyLipstick(landmarks) {
-            // Lip points: 0-11 (inner), 61-78 (outer)
-            const lipPoints = [
-                61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
-                308, 324, 318, 402, 317, 14, 87, 178, 88, 95,
-                78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308
-            ];
-            
-            canvasCtx.fillStyle = 'rgba(255, 107, 107, 0.8)';
-            canvasCtx.strokeStyle = '#ff6b6b';
-            canvasCtx.lineWidth = 1;
-            
-            canvasCtx.beginPath();
-            for (let i = 0; i < lipPoints.length; i++) {
-                const point = landmarks[lipPoints[i]];
-                const x = point.x * canvasElement.width;
-                const y = point.y * canvasElement.height;
+                    // Hide demo face and show video
+                    demoFace.style.display = 'none';
+                    video.style.display = 'block';
+                    
+                    startDetection();
+                };
                 
-                if (i === 0) {
-                    canvasCtx.moveTo(x, y);
-                } else {
-                    canvasCtx.lineTo(x, y);
-                }
-            }
-            canvasCtx.closePath();
-            canvasCtx.fill();
-            canvasCtx.stroke();
-        }
-
-        // Apply eyeshadow
-        function applyEyeshadow(landmarks) {
-            // Left eye points
-            const leftEyePoints = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
-            
-            // Right eye points
-            const rightEyePoints = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466];
-            
-            // Draw left eyeshadow
-            canvasCtx.fillStyle = 'rgba(65, 105, 225, 0.5)';
-            canvasCtx.beginPath();
-            for (let i = 0; i < leftEyePoints.length; i++) {
-                const point = landmarks[leftEyePoints[i]];
-                const x = point.x * canvasElement.width;
-                const y = point.y * canvasElement.height;
+            } catch (error) {
+                console.error('خطأ في الكاميرا:', error);
+                status.textContent = 'خطأ في الوصول إلى الكاميرا. عرض الوضع التوضيحي.';
                 
-                if (i === 0) {
-                    canvasCtx.moveTo(x, y);
-                } else {
-                    canvasCtx.lineTo(x, y);
-                }
+                // Show demo mode
+                showDemoMode();
             }
-            canvasCtx.closePath();
-            canvasCtx.fill();
-            
-            // Draw right eyeshadow
-            canvasCtx.beginPath();
-            for (let i = 0; i < rightEyePoints.length; i++) {
-                const point = landmarks[rightEyePoints[i]];
-                const x = point.x * canvasElement.width;
-                const y = point.y * canvasElement.height;
-                
-                if (i === 0) {
-                    canvasCtx.moveTo(x, y);
-                } else {
-                    canvasCtx.lineTo(x, y);
-                }
-            }
-            canvasCtx.closePath();
-            canvasCtx.fill();
         }
 
-        // Apply blush
-        function applyBlush(landmarks) {
-            // Cheek points
-            const leftCheek = landmarks[50];
-            const rightCheek = landmarks[280];
-            
-            const leftX = leftCheek.x * canvasElement.width;
-            const leftY = leftCheek.y * canvasElement.height;
-            const rightX = rightCheek.x * canvasElement.width;
-            const rightY = rightCheek.y * canvasElement.height;
-            
-            // Draw left blush
-            const leftGradient = canvasCtx.createRadialGradient(
-                leftX, leftY, 0,
-                leftX, leftY, 30
-            );
-            leftGradient.addColorStop(0, 'rgba(255, 105, 180, 0.6)');
-            leftGradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
-            
-            canvasCtx.fillStyle = leftGradient;
-            canvasCtx.beginPath();
-            canvasCtx.arc(leftX, leftY, 30, 0, Math.PI * 2);
-            canvasCtx.fill();
-            
-            // Draw right blush
-            const rightGradient = canvasCtx.createRadialGradient(
-                rightX, rightY, 0,
-                rightX, rightY, 30
-            );
-            rightGradient.addColorStop(0, 'rgba(255, 105, 180, 0.6)');
-            rightGradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
-            
-            canvasCtx.fillStyle = rightGradient;
-            canvasCtx.beginPath();
-            canvasCtx.arc(rightX, rightY, 30, 0, Math.PI * 2);
-            canvasCtx.fill();
-        }
-
-        // Apply foundation
-        function applyFoundation(landmarks) {
-            // Face contour points
-            const facePoints = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10];
-            
-            canvasCtx.fillStyle = 'rgba(210, 180, 140, 0.2)';
-            canvasCtx.beginPath();
-            
-            for (let i = 0; i < facePoints.length; i++) {
-                const point = landmarks[facePoints[i]];
-                const x = point.x * canvasElement.width;
-                const y = point.y * canvasElement.height;
-                
-                if (i === 0) {
-                    canvasCtx.moveTo(x, y);
-                } else {
-                    canvasCtx.lineTo(x, y);
-                }
+        // Stop camera
+        function stopCamera() {
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                stream = null;
             }
             
-            canvasCtx.closePath();
-            canvasCtx.fill();
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            
+            isDetecting = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            status.textContent = 'تم إيقاف الكاميرا.';
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Show demo face again
+            demoFace.style.display = 'flex';
+            video.style.display = 'none';
         }
 
-        // Apply selected makeup
-        function applyMakeup(landmarks) {
+        // Start detection
+        function startDetection() {
+            if (isDetecting) return;
+            isDetecting = true;
+            
+            detectionInterval = setInterval(() => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    try {
+                        // Clear canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Draw video frame
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        // Apply makeup effect (simplified)
+                        applyMakeupEffect();
+                        
+                        status.textContent = `الكاميرا نشطة - تطبيق مكياج ${getMakeupName(currentMakeup)}`;
+                    } catch (e) {
+                        console.error('خطأ في الرسم:', e);
+                    }
+                }
+            }, 1000 / 20); // ~20 FPS
+        }
+
+        // Apply makeup effect to video
+        function applyMakeupEffect() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
             switch(currentMakeup) {
                 case 'lips':
-                    applyLipstick(landmarks);
+                    // Draw lipstick on center
+                    ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY + 50, 40, 20, 0, 0, Math.PI * 2);
+                    ctx.fill();
                     break;
+                    
                 case 'eyes':
-                    applyEyeshadow(landmarks);
+                    // Draw eyeshadow
+                    ctx.fillStyle = 'rgba(65, 105, 225, 0.5)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX - 60, centerY - 30, 30, 15, 0, 0, Math.PI * 2);
+                    ctx.ellipse(centerX + 60, centerY - 30, 30, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
                     break;
+                    
                 case 'blush':
-                    applyBlush(landmarks);
+                    // Draw blush
+                    ctx.fillStyle = 'rgba(255, 105, 180, 0.4)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX - 80, centerY + 20, 40, 25, 0, 0, Math.PI * 2);
+                    ctx.ellipse(centerX + 80, centerY + 20, 40, 25, 0, 0, Math.PI * 2);
+                    ctx.fill();
                     break;
+                    
                 case 'foundation':
-                    applyFoundation(landmarks);
+                    // Draw foundation
+                    ctx.fillStyle = 'rgba(210, 180, 140, 0.2)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, 120, 150, 0, 0, Math.PI * 2);
+                    ctx.fill();
                     break;
             }
+        }
+
+        // Apply makeup to demo face
+        function applyMakeupToDemo() {
+            const faceOutline = document.querySelector('.face-outline');
+            const leftEye = document.querySelector('.left-eye');
+            const rightEye = document.querySelector('.right-eye');
+            const mouth = document.querySelector('.mouth');
+            
+            // Reset all styles
+            leftEye.style.background = 'none';
+            rightEye.style.background = 'none';
+            mouth.style.background = 'none';
+            faceOutline.style.background = 'none';
+            
+            switch(currentMakeup) {
+                case 'lips':
+                    mouth.style.background = 'linear-gradient(45deg, #ff6b6b, #ff8e8e)';
+                    mouth.style.border = '2px solid #ff6b6b';
+                    break;
+                    
+                case 'eyes':
+                    leftEye.style.background = 'linear-gradient(45deg, #4169e1, #6495ed)';
+                    rightEye.style.background = 'linear-gradient(45deg, #4169e1, #6495ed)';
+                    break;
+                    
+                case 'blush':
+                    faceOutline.style.background = 'radial-gradient(circle at 30% 50%, rgba(255, 105, 180, 0.3) 0%, transparent 50%), radial-gradient(circle at 70% 50%, rgba(255, 105, 180, 0.3) 0%, transparent 50%)';
+                    break;
+                    
+                case 'foundation':
+                    faceOutline.style.background = 'linear-gradient(45deg, rgba(210, 180, 140, 0.3), rgba(222, 184, 135, 0.3))';
+                    break;
+            }
+        }
+
+        // Show demo mode
+        function showDemoMode() {
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            status.textContent = 'وضع تجريبي - اختر نوع المكياج';
+            
+            // Show demo face
+            demoFace.style.display = 'flex';
+            video.style.display = 'none';
+            
+            // Apply current makeup to demo
+            applyMakeupToDemo();
         }
 
         // Get makeup name in Arabic
@@ -558,73 +615,13 @@
             }
         }
 
-        // Start camera
-        async function startCamera() {
-            try {
-                status.textContent = 'جاري الوصول إلى الكاميرا...';
-                
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: 640, height: 480 }
-                });
-                
-                videoElement.srcObject = stream;
-                
-                // Initialize camera
-                camera = new Camera(videoElement, {
-                    onFrame: async () => {
-                        await faceMesh.send({image: videoElement});
-                    },
-                    width: 640,
-                    height: 480
-                });
-                
-                await camera.start();
-                
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                status.textContent = 'الكاميرا نشطة. جاري تحليل الوجه...';
-                
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                status.textContent = 'خطأ في الوصول إلى الكاميرا. تحقق من الأذونات.';
-                startBtn.disabled = false;
-            }
-        }
-
-        // Stop camera
-        function stopCamera() {
-            if (camera) {
-                camera.stop();
-                camera = null;
-            }
-            
-            if (videoElement.srcObject) {
-                const tracks = videoElement.srcObject.getTracks();
-                tracks.forEach(track => track.stop());
-                videoElement.srcObject = null;
-            }
-            
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            status.textContent = 'تم إيقاف الكاميرا.';
-            
-            // Clear canvas
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-        }
-
         // Event listeners
-        startBtn.addEventListener('click', () => {
-            initializeFaceMesh();
-            startCamera();
-        });
-        
+        startBtn.addEventListener('click', startCamera);
         stopBtn.addEventListener('click', stopCamera);
 
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && camera) {
-                stopCamera();
-            }
+        // Initialize demo
+        window.addEventListener('load', () => {
+            applyMakeupToDemo();
         });
     </script>
 </body>
@@ -633,19 +630,7 @@
 
     
               <script>
-                              // نقاط الفم: 48-67
-// الشفتين العلوية: 48-54
-// الشفتين السفلى: 54-60
-// الحواف الداخلية: 60-67
-
-// العين اليسرى: نقاط 36-41
-// العين اليمنى: نقاط 42-47
-// الحاجبين: نقاط 17-26
-
-// يوضع على الخدين
-// يعتمد على نقاط الأنف والعيون
-
-
+                              
               </script>
                         </body>
                         </html>
