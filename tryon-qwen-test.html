@@ -18,7 +18,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأثير المكياج الافتراضي</title>
+    <title>AR Makeup Pro - الواقع المعزز للمكياج</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1646424915/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -79,7 +81,7 @@
             background: #000;
         }
 
-        #video {
+        #inputVideo {
             width: 100%;
             display: block;
         }
@@ -258,13 +260,13 @@
 </head>
 <body>
     <div class="header">
-        <h1>💄 تأثير المكياج الافتراضي</h1>
-        <p>جرّب أنواع المكياج المختلفة على وجهك في الوقت الفعلي</p>
+        <h1>💄 تأثير المكياج الافتراضي المتقدم</h1>
+        <p>تقنية الواقع المعزز مع شبكة الوجه بدقة 468 نقطة</p>
     </div>
 
     <div class="container">
         <div class="video-container">
-            <video id="video" autoplay playsinline></video>
+            <video id="inputVideo" autoplay playsinline></video>
             <canvas id="canvas"></canvas>
         </div>
 
@@ -294,22 +296,22 @@
                 <div class="feature-icon">
                     <i class="fas fa-bolt"></i>
                 </div>
-                <h3 class="feature-title">في الوقت الفعلي</h3>
-                <p>رؤية التغييرات فوراً بسرعة 30 إطار في الثانية</p>
+                <h3 class="feature-title">468 نقطة تتبع</h3>
+                <p>دقة عالية في تتبع ملامح الوجه</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-robot"></i>
                 </div>
-                <h3 class="feature-title">ذكاء اصطناعي</h3>
-                <p>تقنيات متقدمة للتعرف على الوجه</p>
+                <h3 class="feature-title">AI متقدم</h3>
+                <p>تقنية MediaPipe من Google</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-palette"></i>
                 </div>
-                <h3 class="feature-title">ألوان متنوعة</h3>
-                <p>مجموعة واسعة من أنواع المكياج</p>
+                <h3 class="feature-title">تأثيرات واقعية</h3>
+                <p>دمج طبيعي مع الإضاءة</p>
             </div>
         </div>
 
@@ -318,7 +320,7 @@
             <ol>
                 <li>اضغط على زر "تشغيل الكاميرا" لتفعيل الكاميرا الأمامية</li>
                 <li>ضع وجهك أمام الكاميرا وتأكد من الإضاءة الجيدة</li>
-                <li>شاهد كيف يتم تطبيق المكياج على وجهك آلياً</li>
+                <li>شاهد كيف يتم تطبيق المكياج على وجهك بدقة عالية</li>
                 <li>اختر أنواع المكياج المختلفة من خلال الأيقونات</li>
                 <li>حرك وجهك لترى التتبع في الوقت الفعلي</li>
                 <li>اضغط على "إيقاف الكاميرا" عند الانتهاء</li>
@@ -328,18 +330,17 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script>
-        let video = document.getElementById('video');
-        let canvas = document.getElementById('canvas');
-        let ctx = canvas.getContext('2d');
+        let videoElement = document.getElementById('inputVideo');
+        let canvasElement = document.getElementById('canvas');
+        let canvasCtx = canvasElement.getContext('2d');
         let startBtn = document.getElementById('startBtn');
         let stopBtn = document.getElementById('stopBtn');
         let status = document.getElementById('status');
         let makeupOptions = document.querySelectorAll('.makeup-option');
         
-        let stream = null;
-        let detectionInterval = null;
-        let isDetecting = false;
+        let camera = null;
         let currentMakeup = 'lips';
+        let faceMesh = null;
 
         // Set up makeup selection
         makeupOptions.forEach(option => {
@@ -350,185 +351,200 @@
             });
         });
 
-        // Start camera with fallback options
-        async function startCamera() {
-            try {
-                status.textContent = 'جاري الوصول إلى الكاميرا...';
-                
-                // Try different constraints for better compatibility
-                const constraints = [
-                    { video: { facingMode: 'user', width: 640, height: 480 } },
-                    { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } },
-                    { video: { facingMode: 'user' } },
-                    { video: true }
-                ];
-                
-                let success = false;
-                for (let constraint of constraints) {
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia(constraint);
-                        success = true;
-                        break;
-                    } catch (err) {
-                        console.log('Failed with constraint:', constraint);
-                    }
+        // Initialize FaceMesh
+        function initializeFaceMesh() {
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
                 }
-                
-                if (!success) {
-                    throw new Error('Could not access camera with any constraints');
-                }
-                
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                    status.textContent = 'الكاميرا نشطة. جاري بدء تطبيق المكياج...';
-                    startDetection();
-                };
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                status.textContent = 'خطأ في الوصول إلى الكاميرا. تأكد من السماح بالوصول وحاول مرة أخرى.';
-                startBtn.disabled = false;
-                
-                // Show demo mode
-                showDemoMode();
-            }
+            });
+            
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            faceMesh.onResults(onResults);
         }
 
-        // Show demo mode when camera fails
-        function showDemoMode() {
-            status.textContent = 'عرض تجريبي - ضع وجهك أمام الكاميرا عندما تكون جاهزاً';
+        // Process face mesh results
+        function onResults(results) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
             
-            // Draw demo face
-            canvas.width = 800;
-            canvas.height = 600;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
-            // Draw demo face outline
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(400, 300, 150, 0, Math.PI * 2);
-            ctx.stroke();
+            // Draw video frame
+            canvasCtx.drawImage(
+                results.image, 0, 0, canvasElement.width, canvasElement.height);
             
-            // Draw eyes
-            ctx.beginPath();
-            ctx.arc(350, 270, 20, 0, Math.PI * 2);
-            ctx.arc(450, 270, 20, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // Draw mouth
-            ctx.beginPath();
-            ctx.arc(400, 350, 40, 0, Math.PI);
-            ctx.stroke();
-            
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-        }
-
-        // Stop camera
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
+            if (results.multiFaceLandmarks) {
+                for (const landmarks of results.multiFaceLandmarks) {
+                    // Apply selected makeup
+                    applyMakeup(landmarks);
+                    
+                    status.textContent = `تم اكتشاف الوجه! تطبيق مكياج ${getMakeupName(currentMakeup)}`;
+                }
+            } else {
+                status.textContent = 'لم يتم اكتشاف وجه. ضع وجهك أمام الكاميرا.';
             }
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-                detectionInterval = null;
-            }
-            isDetecting = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            status.textContent = 'تم إيقاف الكاميرا. اضغط على "تشغيل الكاميرا" للبدء مرة أخرى.';
             
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.restore();
         }
 
         // Apply lipstick
-        function applyLipstick() {
-            // Draw lipstick on demo face
-            ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
-            ctx.beginPath();
-            ctx.arc(400, 350, 35, 0, Math.PI);
-            ctx.fill();
+        function applyLipstick(landmarks) {
+            // Lip points: 0-11 (inner), 61-78 (outer)
+            const lipPoints = [
+                61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
+                308, 324, 318, 402, 317, 14, 87, 178, 88, 95,
+                78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308
+            ];
+            
+            canvasCtx.fillStyle = 'rgba(255, 107, 107, 0.8)';
+            canvasCtx.strokeStyle = '#ff6b6b';
+            canvasCtx.lineWidth = 1;
+            
+            canvasCtx.beginPath();
+            for (let i = 0; i < lipPoints.length; i++) {
+                const point = landmarks[lipPoints[i]];
+                const x = point.x * canvasElement.width;
+                const y = point.y * canvasElement.height;
+                
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+            }
+            canvasCtx.closePath();
+            canvasCtx.fill();
+            canvasCtx.stroke();
         }
 
         // Apply eyeshadow
-        function applyEyeshadow() {
-            // Draw eyeshadow on demo face
-            ctx.fillStyle = 'rgba(65, 105, 225, 0.5)';
-            ctx.beginPath();
-            ctx.arc(350, 270, 25, 0, Math.PI * 2);
-            ctx.arc(450, 270, 25, 0, Math.PI * 2);
-            ctx.fill();
+        function applyEyeshadow(landmarks) {
+            // Left eye points
+            const leftEyePoints = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+            
+            // Right eye points
+            const rightEyePoints = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466];
+            
+            // Draw left eyeshadow
+            canvasCtx.fillStyle = 'rgba(65, 105, 225, 0.5)';
+            canvasCtx.beginPath();
+            for (let i = 0; i < leftEyePoints.length; i++) {
+                const point = landmarks[leftEyePoints[i]];
+                const x = point.x * canvasElement.width;
+                const y = point.y * canvasElement.height;
+                
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+            }
+            canvasCtx.closePath();
+            canvasCtx.fill();
+            
+            // Draw right eyeshadow
+            canvasCtx.beginPath();
+            for (let i = 0; i < rightEyePoints.length; i++) {
+                const point = landmarks[rightEyePoints[i]];
+                const x = point.x * canvasElement.width;
+                const y = point.y * canvasElement.height;
+                
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+            }
+            canvasCtx.closePath();
+            canvasCtx.fill();
         }
 
         // Apply blush
-        function applyBlush() {
-            // Draw blush on demo face
-            ctx.fillStyle = 'rgba(255, 105, 180, 0.4)';
-            ctx.beginPath();
-            ctx.arc(350, 320, 30, 0, Math.PI * 2);
-            ctx.arc(450, 320, 30, 0, Math.PI * 2);
-            ctx.fill();
+        function applyBlush(landmarks) {
+            // Cheek points
+            const leftCheek = landmarks[50];
+            const rightCheek = landmarks[280];
+            
+            const leftX = leftCheek.x * canvasElement.width;
+            const leftY = leftCheek.y * canvasElement.height;
+            const rightX = rightCheek.x * canvasElement.width;
+            const rightY = rightCheek.y * canvasElement.height;
+            
+            // Draw left blush
+            const leftGradient = canvasCtx.createRadialGradient(
+                leftX, leftY, 0,
+                leftX, leftY, 30
+            );
+            leftGradient.addColorStop(0, 'rgba(255, 105, 180, 0.6)');
+            leftGradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
+            
+            canvasCtx.fillStyle = leftGradient;
+            canvasCtx.beginPath();
+            canvasCtx.arc(leftX, leftY, 30, 0, Math.PI * 2);
+            canvasCtx.fill();
+            
+            // Draw right blush
+            const rightGradient = canvasCtx.createRadialGradient(
+                rightX, rightY, 0,
+                rightX, rightY, 30
+            );
+            rightGradient.addColorStop(0, 'rgba(255, 105, 180, 0.6)');
+            rightGradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
+            
+            canvasCtx.fillStyle = rightGradient;
+            canvasCtx.beginPath();
+            canvasCtx.arc(rightX, rightY, 30, 0, Math.PI * 2);
+            canvasCtx.fill();
         }
 
         // Apply foundation
-        function applyFoundation() {
-            // Draw foundation on demo face
-            ctx.fillStyle = 'rgba(210, 180, 140, 0.3)';
-            ctx.beginPath();
-            ctx.arc(400, 300, 140, 0, Math.PI * 2);
-            ctx.fill();
+        function applyFoundation(landmarks) {
+            // Face contour points
+            const facePoints = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10];
+            
+            canvasCtx.fillStyle = 'rgba(210, 180, 140, 0.2)';
+            canvasCtx.beginPath();
+            
+            for (let i = 0; i < facePoints.length; i++) {
+                const point = landmarks[facePoints[i]];
+                const x = point.x * canvasElement.width;
+                const y = point.y * canvasElement.height;
+                
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+            }
+            
+            canvasCtx.closePath();
+            canvasCtx.fill();
         }
 
         // Apply selected makeup
-        function applyMakeup() {
+        function applyMakeup(landmarks) {
             switch(currentMakeup) {
                 case 'lips':
-                    applyLipstick();
+                    applyLipstick(landmarks);
                     break;
                 case 'eyes':
-                    applyEyeshadow();
+                    applyEyeshadow(landmarks);
                     break;
                 case 'blush':
-                    applyBlush();
+                    applyBlush(landmarks);
                     break;
                 case 'foundation':
-                    applyFoundation();
+                    applyFoundation(landmarks);
                     break;
             }
-        }
-
-        // Start detection (simplified for demo)
-        function startDetection() {
-            if (isDetecting) return;
-            isDetecting = true;
-            
-            detectionInterval = setInterval(() => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Draw video frame
-                    try {
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        status.textContent = `الكاميرا نشطة - تطبيق مكياج ${getMakeupName(currentMakeup)}`;
-                    } catch (e) {
-                        // Fallback to showing camera feed without processing
-                        status.textContent = 'جاري عرض الكاميرا...';
-                    }
-                } else {
-                    status.textContent = 'جاري تجهيز الكاميرا...';
-                }
-                
-                // Apply makeup effect
-                applyMakeup();
-            }, 1000 / 20); // ~20 FPS
         }
 
         // Get makeup name in Arabic
@@ -542,22 +558,72 @@
             }
         }
 
+        // Start camera
+        async function startCamera() {
+            try {
+                status.textContent = 'جاري الوصول إلى الكاميرا...';
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: 640, height: 480 }
+                });
+                
+                videoElement.srcObject = stream;
+                
+                // Initialize camera
+                camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await faceMesh.send({image: videoElement});
+                    },
+                    width: 640,
+                    height: 480
+                });
+                
+                await camera.start();
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                status.textContent = 'الكاميرا نشطة. جاري تحليل الوجه...';
+                
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                status.textContent = 'خطأ في الوصول إلى الكاميرا. تحقق من الأذونات.';
+                startBtn.disabled = false;
+            }
+        }
+
+        // Stop camera
+        function stopCamera() {
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+            
+            if (videoElement.srcObject) {
+                const tracks = videoElement.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                videoElement.srcObject = null;
+            }
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            status.textContent = 'تم إيقاف الكاميرا.';
+            
+            // Clear canvas
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        }
+
         // Event listeners
-        startBtn.addEventListener('click', startCamera);
+        startBtn.addEventListener('click', () => {
+            initializeFaceMesh();
+            startCamera();
+        });
+        
         stopBtn.addEventListener('click', stopCamera);
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && isDetecting) {
+            if (document.hidden && camera) {
                 stopCamera();
-            }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (video.srcObject && video.videoWidth > 0) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
             }
         });
     </script>
@@ -567,7 +633,19 @@
 
     
               <script>
-                              
+                              // نقاط الفم: 48-67
+// الشفتين العلوية: 48-54
+// الشفتين السفلى: 54-60
+// الحواف الداخلية: 60-67
+
+// العين اليسرى: نقاط 36-41
+// العين اليمنى: نقاط 42-47
+// الحاجبين: نقاط 17-26
+
+// يوضع على الخدين
+// يعتمد على نقاط الأنف والعيون
+
+
               </script>
                         </body>
                         </html>
