@@ -1,9 +1,25 @@
-<!DOCTYPE html>
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  background-color: white; /* Ensure the iframe has a white background */
+                }
+    
+                
+              </style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>فتح الكاميرا</title>
+  <title>مكعب ثلاثي الأبعاد في الكاميرا</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -70,7 +86,7 @@
       display: none;
     }
 
-    video {
+    #canvas {
       width: 100%;
       max-width: 500px;
       border-radius: 10px;
@@ -102,8 +118,8 @@
 </head>
 <body>
   <div class="container">
-    <h1>فتح الكاميرا</h1>
-    <p>اضغط على الزر أدناه لفتح الكاميرا. سيتم عرض الصورة الحية مباشرة.</p>
+    <h1>مكعب ثلاثي الأبعاد في الكاميرا</h1>
+    <p>اضغط على الزر لفتح الكاميرا ورؤية مكعب ثلاثي الأبعاد يطفو أمامك.</p>
     
     <button class="open-camera-btn" id="openCamera">
       <i class="fas fa-camera"></i>
@@ -111,7 +127,7 @@
     </button>
     
     <div class="video-container" id="videoContainer">
-      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
       <div class="status" id="status">جاري تحميل الكاميرا...</div>
     </div>
   </div>
@@ -119,32 +135,96 @@
   <script>
     const openCameraBtn = document.getElementById('openCamera');
     const videoContainer = document.getElementById('videoContainer');
-    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
 
+    let scene, camera, renderer, cube;
+
+    // إعداد Three.js
+    function initScene() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+      camera.position.z = 5;
+
+      // إضاءة المشهد
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 1, 1);
+      scene.add(directionalLight);
+
+      // مكعب ثلاثي الأبعاد
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x00eaff,
+        transparent: true,
+        opacity: 0.9,
+        shininess: 100
+      });
+      cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+
+      // إعداد Renderer
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      renderer.setClearColor(0x000000, 0); // شفاف
+    }
+
+    // تشغيل التحديثات
+    function animate() {
+      requestAnimationFrame(animate);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+
+    // فتح الكاميرا
     openCameraBtn.addEventListener('click', async () => {
       try {
-        // إخفاء الزر وإظهار محتوى الكاميرا
+        // إخفاء الزر وإظهار حاوية الفيديو
         openCameraBtn.style.display = 'none';
-        
-        // إظهار حاوية الفيديو
         videoContainer.style.display = 'block';
         
+        // إعداد المشهد
+        initScene();
+        animate();
+
         // طلب الوصول إلى الكاميرا
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
-            facingMode: 'environment', // استخدم الكاميرا الخلفية إذا كانت متوفرة
+            facingMode: 'environment',
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }, 
           audio: false 
         });
-        
-        // عرض تدفق الكاميرا في العنصر video
+
+        // عرض الكاميرا في Canvas
+        const video = document.createElement('video');
         video.srcObject = stream;
-        status.textContent = 'الكاميرا تعمل بنجاح ✓';
+        video.play();
+
+        // استخدام WebGL لدمج الكاميرا مع المشهد
+        const texture = new THREE.VideoTexture(video);
+        const plane = new THREE.Mesh(
+          new THREE.PlaneGeometry(1, 1),
+          new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
+        );
+        plane.scale.set(2, 2, 2);
+        plane.position.z = -1;
+        scene.add(plane);
+
+        // تحديث حجم Canvas عند تغيير الحجم
+        window.addEventListener('resize', () => {
+          camera.aspect = canvas.clientWidth / canvas.clientHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        });
+
+        status.textContent = 'الكاميرا تعمل ✓';
         status.style.color = '#00ffaa';
-        
+
       } catch (error) {
         console.error('خطأ في فتح الكاميرا:', error);
         status.textContent = 'فشل في فتح الكاميرا: ' + error.message;
@@ -155,3 +235,12 @@
   </script>
 </body>
 </html>
+
+
+    
+              <script>
+                              
+              </script>
+                        </body>
+                        </html>
+                    
