@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebAR — زر يفتح الكاميرا (WebXR + A-Frame)</title>
+  <script src="https://unpkg.com/aframe@1.6.0/dist/aframe.min.js"></script>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#000; }
+    #ui {
+      position: fixed; inset: 0;
+      display: grid; place-items: end center;
+      pointer-events: none; /* يسمح بنقرات المشهد مع إبقاء الزر قابل للنقر */
+    }
+    #startAR {
+      pointer-events: auto;
+      margin: 24px; padding: 14px 18px;
+      font: 600 16px/1.1 system-ui, sans-serif;
+      border: 0; border-radius: 14px;
+      background: #00d18f; color: #00130e;
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      transition: transform .08s ease, opacity .2s ease;
+    }
+    #startAR:active { transform: scale(0.98); }
+    #msg {
+      position: fixed; top: 12px; left: 12px; right: 12px;
+      background: rgba(0,0,0,.55); color: #fff; padding: 10px 12px;
+      border-radius: 10px; font: 500 14px/1.4 system-ui,sans-serif;
+      backdrop-filter: blur(6px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- واجهة overlay لزر البدء والرسائل -->
+  <div id="ui">
+    <div id="msg">اضغط “ابدأ الواقع المعزز” لفتح الكاميرا وتشغيل تجربة AR.</div>
+    <button id="startAR" type="button">ابدأ الواقع المعزز</button>
+  </div>
+
+  <!-- مشهد A-Frame مع WebXR -->
+  <a-scene
+    renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true"
+    webxr="optionalFeatures: hit-test, dom-overlay, light-estimation; overlayElement: #ui"
+    xr-mode-ui="enabled: false"        <!-- نخفي زر A-Frame الافتراضي -->
+    embedded
+    device-orientation-permission-ui="enabled: false">
+
+    <!-- إضاءة مبدئية (سيتم تحسينها تلقائياً عند توفر light-estimation) -->
+    <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="0 1 0"></a-entity>
+
+    <!-- كاميرا -->
+    <a-entity camera look-controls wasd-controls="enabled:false"></a-entity>
+
+    <!-- عنصر افتراضي بسيط ليتأكد المستخدم أن كل شيء يعمل -->
+    <a-box id="demoBox" position="0 0 -0.5" depth="0.1" height="0.1" width="0.1"
+           color="#4cc3d9" visible="false">
+    </a-box>
+
+  </a-scene>
+
+  <script>
+    (function () {
+      const scene = document.querySelector('a-scene');
+      const startBtn = document.getElementById('startAR');
+      const msg = document.getElementById('msg');
+      const demoBox = document.getElementById('demoBox');
+
+      function setMessage(text) { msg.textContent = text; }
+
+      // كشف دعم WebXR للواقع المعزز
+      async function isARSupported() {
+        if (!('xr' in navigator)) return false;
+        try { return await navigator.xr.isSessionSupported('immersive-ar'); }
+        catch { return false; }
+      }
+
+      // بدء جلسة AR عند الضغط
+      startBtn.addEventListener('click', async () => {
+        if (!(await isARSupported())) {
+          setMessage('جهازك/متصفحك لا يدعم WebXR AR أو الصفحة ليست عبر HTTPS. جرّب Chrome على أندرويد أو خادم HTTPS.');
+          return;
+        }
+        try {
+          // A-Frame سيستدعي navigator.xr.requestSession('immersive-ar') داخلياً
+          await scene.enterVR(); // في وضع WebXR، enterVR() = دخول AR
+          startBtn.style.display = 'none';
+          setMessage('تم تشغيل الكاميرا. حرّك هاتفك حولك حتى يثبت التتبع.');
+        } catch (e) {
+          console.error(e);
+          setMessage('تعذّر بدء جلسة AR. تحقق من أذونات الكاميرا وإعدادات المتصفح.');
+        }
+      });
+
+      // عند الدخول إلى الجلسة/الخروج منها
+      scene.addEventListener('enter-vr', () => {
+        // نظهر الصندوق التجريبي أمام المستخدم للتأكد أن المشهد يعمل
+        demoBox.setAttribute('visible', true);
+      });
+
+      scene.addEventListener('exit-vr', () => {
+        demoBox.setAttribute('visible', false);
+        startBtn.style.display = 'inline-block';
+        setMessage('انتهت جلسة AR. يمكنك البدء مرة أخرى.');
+      });
+    })();
+  </script>
+</body>
+</html>
