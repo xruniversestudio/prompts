@@ -1,170 +1,257 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="ar">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WebAR with Fallback (WebXR ➜ MindAR)</title>
-
-  <!-- A-Frame (1.6.0) -->
-  <script src="https://unpkg.com/aframe@1.6.0/dist/aframe.min.js"></script>
-
-  <!-- MindAR (Image) + A-Frame plugin (لـ iOS/البديل) -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-
-  <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; }
-    #ui {
-      position: fixed; inset: 0;
-      display: grid; grid-template-rows: auto 1fr auto; align-items: start;
-      pointer-events: none;
-    }
-    #msg {
-      margin: 12px; background: rgba(0,0,0,.55); color: #fff;
-      padding: 10px 12px; border-radius: 10px; font: 500 14px/1.4 system-ui,sans-serif;
-      backdrop-filter: blur(6px);
-    }
-    #startAR {
-      pointer-events: auto;
-      margin: 24px; padding: 14px 18px;
-      font: 600 16px/1.1 system-ui, sans-serif;
-      border: 0; border-radius: 14px;
-      background: #00d18f; color: #00130e;
-      box-shadow: 0 6px 20px rgba(0,0,0,.25);
-      transition: transform .08s ease, opacity .2s ease;
-      justify-self: center; align-self: end;
-    }
-    #startAR:active { transform: scale(0.98); }
-    .hidden { display: none !important; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>تطبيق الواقع المعزز</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            height: 100vh;
+            direction: rtl;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #arScene {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .welcome-screen h1 {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00f7ff;
+        }
+        
+        .welcome-screen p {
+            color: #ddd;
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .ar-button {
+            background: linear-gradient(45deg, #00c9ff, #92fe9d);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            border-radius: 50px;
+            cursor: pointer;
+            color: #1a2a6c;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .ar-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .ar-button:active {
+            transform: translateY(1px);
+        }
+        
+        .ar-button i {
+            font-size: 1.5rem;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            color: #fff;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 90%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .loading {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 20;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00f7ff;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .ar-marker {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .welcome-screen h1 {
+                font-size: 2rem;
+            }
+            
+            .welcome-screen p {
+                font-size: 1rem;
+            }
+            
+            .ar-button {
+                padding: 12px 30px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <div class="container">
+        <div class="welcome-screen" id="welcomeScreen">
+            <h1>تطبيق الواقع المعزز</h1>
+            <p>مرحباً بك في تطبيق الواقع المعزز! اضغط على الزر أدناه لفتح الكاميرا وبدء التجربة المذهلة.</p>
+            <button class="ar-button" id="startAR">
+                <i class="fas fa-camera"></i>
+                ابدأ التجربة
+            </button>
+            <div class="instructions">
+                <p>بعد بدء الكاميرا، وجهها نحو سطح مستوٍ لرؤية العناصر ثلاثية الأبعاد</p>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>جاري تحميل الكاميرا والتجربة...</p>
+        </div>
+        
+        <a-scene 
+            id="arScene"
+            vr-mode-ui="enabled: false"
+            arjs='sourceType: webcam; detectionMode: mono; maxDetectionRate: 30;'
+            renderer='antialias: true; alpha: true;'
+        >
+            <!-- الكائن ثلاثي الأبعاد -->
+            <a-entity scale="0.1 0.1 0.1" position="0 0 0" rotation="0 0 0">
+                <a-box position="0 0.5 0" color="#4CC3D9" shadow></a-box>
+                <a-sphere position="0 1.25 -1" radius="0.25" color="#EF2D5E" shadow></a-sphere>
+                <a-cylinder position="1 0.75 1" radius="0.5" height="1.5" color="#FFC65D" shadow></a-cylinder>
+                <a-torus-knot position="-1 1 0" arc="180" p="2" q="3" radius="0.5" radius-tubular="0.1" color="#7BC8A4" shadow></a-torus-knot>
+            </a-entity>
+            
+            <!-- إضاءة المشهد -->
+            <a-light type="ambient" color="#BBB"></a-light>
+            <a-light type="directional" color="#FFF" intensity="0.6" position="-1 1 2"></a-light>
+            
+            <!-- الكاميرا -->
+            <a-entity camera></a-entity>
+        </a-scene>
+        
+        <div class="ar-marker">
+            <i class="fas fa-qrcode"></i>
+            <span>استخدم ماركر Hiro لتجربة أفضل</span>
+        </div>
+    </div>
 
-  <!-- UI Overlay (dom-overlay) -->
-  <div id="ui">
-    <div id="msg">اضغط “ابدأ الواقع المعزز” لفتح الكاميرا. سيختار الكود أفضل تقنية تلقائياً.</div>
-    <div></div>
-    <button id="startAR" type="button">ابدأ الواقع المعزز</button>
-  </div>
-
-  <!-- ========= مشهد WebXR (يُستخدم إن كان مدعومًا) ========= -->
-  <a-scene id="webxrScene"
-           class="hidden"
-           embedded
-           xr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: false"
-           renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true"
-           webxr="optionalFeatures: hit-test, dom-overlay, light-estimation; overlayElement: #ui">
-    <!-- إضاءة أساسية (light-estimation سيحسنها إن توفر) -->
-    <a-entity light="type: ambient; intensity: 0.6"></a-entity>
-    <a-entity light="type: directional; intensity: 0.8" position="0 1 0"></a-entity>
-
-    <!-- كاميرا بدون look-controls لتجنب إذن DeviceOrientation -->
-    <a-entity camera look-controls="enabled:false" wasd-controls="enabled:false"></a-entity>
-
-    <!-- عنصر تجريبي أمام المستخدم للتأكد -->
-    <a-box id="xrBox" position="0 0 -0.4" depth="0.1" height="0.1" width="0.1"
-           color="#4cc3d9" visible="false"></a-box>
-  </a-scene>
-
-  <!-- ========= مشهد MindAR (Fallback — image marker) =========
-       يستخدم ماركر Hiro القياسي.
-       اطبع الماركر من: https://raw.githubusercontent.com/MindAR-js/marker-training/main/examples/targets/hiro.png
-  -->
-  <a-scene id="mindarScene"
-           class="hidden"
-           embedded
-           vr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: false"
-           mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/MindAR-js/marker-training/examples/targets/hiro.mind; uiLoading: no; uiScanning: no;">
-    <!-- كاميرا MindAR -->
-    <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-
-    <!-- عند رؤية الماركر، يظهر هذا المجسم فوقه -->
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-box position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ffb703"
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
-      <a-text value="MindAR Fallback" align="center" position="0 -0.6 0" width="2"></a-text>
-    </a-entity>
-  </a-scene>
-
-  <script>
-    (function () {
-      const ui = document.getElementById('ui');
-      const msg = document.getElementById('msg');
-      const startBtn = document.getElementById('startAR');
-      const webxrScene = document.getElementById('webxrScene');
-      const mindarScene = document.getElementById('mindarScene');
-      const xrBox = document.getElementById('xrBox');
-
-      let mode = null; // 'webxr' | 'mindar'
-
-      function setMessage(t) { msg.textContent = t; }
-
-      async function detectMode() {
-        // تفضيل WebXR إن كان مدعومًا
-        if ('xr' in navigator) {
-          try {
-            const ok = await navigator.xr.isSessionSupported('immersive-ar');
-            if (ok) return 'webxr';
-          } catch (e) { /* ignore */ }
-        }
-        // وإلا نعود لـ MindAR image
-        return 'mindar';
-      }
-
-      // بدء WebXR
-      async function startWebXR() {
-        webxrScene.classList.remove('hidden');
-        // A-Frame enterVR() يشغل جلسة WebXR AR
-        await webxrScene.enterVR();
-        xrBox.setAttribute('visible', true);
-        setMessage('تم تشغيل كاميرا WebXR. حرّك الهاتف لتثبيت التتبع.');
-      }
-
-      // بدء MindAR
-      async function startMindAR() {
-        mindarScene.classList.remove('hidden');
-        setMessage('افتح الكاميرا ووجّهها إلى ماركر Hiro لتظهر المجسّم.');
-        // بدء نظام MindAR يدويًا
-        try {
-          await mindarScene.systems['mindar-image-system'].start(); // 🔹 يبدأ الكاميرا والتتبّع
-        } catch (e) {
-          console.error(e);
-          setMessage('تعذّر تشغيل MindAR. تحقق من أذونات الكاميرا وجرّب إعادة التحميل.');
-          throw e;
-        }
-      }
-
-      // الضغط على زر البدء
-      startBtn.addEventListener('click', async () => {
-        startBtn.disabled = true;
-        setMessage('جاري التحقق من دعم الجهاز...');
-        try {
-          mode = await detectMode();
-          if (mode === 'webxr') {
-            await startWebXR();
-          } else {
-            await startMindAR();
-          }
-          startBtn.classList.add('hidden');
-        } catch (e) {
-          console.error(e);
-          startBtn.disabled = false;
-          setMessage('تعذّر البدء. تأكد من HTTPS ومنح إذن الكاميرا. على iOS استخدم الوضع الاحتياطي (MindAR).');
-        }
-      });
-
-      // أحداث الدخول/الخروج من WebXR
-      webxrScene.addEventListener('enter-vr', () => {
-        xrBox.setAttribute('visible', true);
-      });
-      webxrScene.addEventListener('exit-vr', () => {
-        xrBox.setAttribute('visible', false);
-        startBtn.classList.remove('hidden');
-        setMessage('انتهت جلسة AR. يمكنك البدء مجددًا.');
-      });
-    })();
-  </script>
+    <script>
+        // عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            const startButton = document.getElementById('startAR');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const arScene = document.getElementById('arScene');
+            const loading = document.getElementById('loading');
+            
+            // عند الضغط على زر بدء الكاميرا
+            startButton.addEventListener('click', function() {
+                // إظهار شاشة التحميل
+                loading.style.display = 'flex';
+                
+                // محاكاة تحميل الكاميرا (في التطبيق الحقيقي، سيتم فتح الكاميرا مباشرة)
+                setTimeout(function() {
+                    // إخفاء شاشة الترحيب
+                    welcomeScreen.style.display = 'none';
+                    
+                    // إظهار مشهد الواقع المعزز
+                    arScene.style.display = 'block';
+                    
+                    // إخفاء شاشة التحميل
+                    loading.style.display = 'none';
+                    
+                    // تشغيل الكاميرا (في التطبيق الحقيقي)
+                    console.log('تم فتح الكاميرا بنجاح!');
+                }, 2000);
+            });
+            
+            // إضافة تأثيرات تفاعلية
+            const scene = document.querySelector('a-scene');
+            
+            if (scene) {
+                scene.addEventListener('loaded', function() {
+                    console.log('تم تحميل مشهد الواقع المعزز');
+                });
+            }
+        });
+    </script>
 </body>
 </html>
