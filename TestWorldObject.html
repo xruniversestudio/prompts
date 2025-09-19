@@ -14,196 +14,190 @@
                         </head>
                         <body>
                             <!DOCTYPE html>
-<html lang="ar">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>مكعب في العالم الحقيقي</title>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
-      direction: rtl;
-    }
-
-    #startButton {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 15px 30px;
-      font-size: 18px;
-      background: #00c9ff;
-      color: white;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      z-index: 10;
-    }
-
-    #arContainer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: none;
-    }
-
-    #video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
-    }
-
-    #canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-    }
-
-    #instructions {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      color: white;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 14px;
-      z-index: 3;
-    }
-  </style>
-</head>
-<body>
-  <button id="startButton">ابدأ التجربة</button>
-  
-  <div id="arContainer">
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
-    <div id="instructions">وجه الكاميرا نحو الأرض لرؤية المكعب</div>
-  </div>
-
-  <script>
-    const startButton = document.getElementById('startButton');
-    const arContainer = document.getElementById('arContainer');
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-
-    let scene, camera, renderer, cube;
-
-    // إعداد المشهد الثلاثي الأبعاد
-    function initAR() {
-      // إنشاء المشهد
-      scene = new THREE.Scene();
-      
-      // إنشاء الكاميرا
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-      
-      // وضع الكاميرا في الأصل
-      camera.position.set(0, 1.6, 0);
-      camera.lookAt(0, 0, -1);
-      
-      // إنشاء Renderer
-      renderer = new THREE.WebGLRenderer({ 
-        canvas: canvas, 
-        alpha: true,
-        antialias: true 
-      });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000, 0); // شفاف بالكامل
-      renderer.shadowMap.enabled = true;
-      
-      // إضافة إضاءة طبيعية
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(1, 1, 1);
-      directionalLight.castShadow = true;
-      scene.add(directionalLight);
-      
-      // إنشاء مكعب يبدو وكأنه على الأرض
-      const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-      const material = new THREE.MeshLambertMaterial({ 
-        color: 0x00ff00
-      });
-      cube = new THREE.Mesh(geometry, material);
-      cube.position.set(0, 0.25, -2);
-      cube.castShadow = true;
-      scene.add(cube);
-      
-      // إنشاء "الأرض" الافتراضية (غير مرئية)
-      const floorGeometry = new THREE.PlaneGeometry(10, 10);
-      const floorMaterial = new THREE.MeshLambertMaterial({ 
-        color: 0x888888,
-        side: THREE.DoubleSide,
-        visible: false // جعلها غير مرئية
-      });
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = -Math.PI / 2;
-      floor.position.y = 0;
-      floor.receiveShadow = true;
-      scene.add(floor);
-      
-      // تشغيل التحديثات
-      function animate() {
-        requestAnimationFrame(animate);
-        if (cube) {
-          cube.rotation.y += 0.02;
+    <meta charset="utf-8">
+    <title>WebAR Cube</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        .arjs-loader {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        renderer.render(scene, camera);
-      }
-      animate();
-      
-      // تحديث الحجم عند تغيير الشاشة
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-    }
+        .arjs-loader div {
+            text-align: center;
+            font-size: 1.25em;
+            color: white;
+        }
+    </style>
+</head>
+<body style="margin: 0; overflow: hidden;">
+    <!-- Loading Screen -->
+    <div class="arjs-loader">
+        <div>جاري تحميل الكاميرا...</div>
+    </div>
 
-    // بدء الكاميرا
-    startButton.addEventListener('click', async () => {
-      try {
-        // إخفاء الزر وإظهار الكاميرا
-        startButton.style.display = 'none';
-        arContainer.style.display = 'block';
-        
-        // فتح الكاميرا
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
+    <!-- A-Frame Scene -->
+    <a-scene 
+        vr-mode-ui="enabled: false"
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+        renderer="logarithmicDepthBuffer: true;"
+        loading-screen="enabled: false">
+
+        <!-- الكاميرا -->
+        <a-entity camera></a-entity>
+
+        <!-- المكعب الثلاثي الأبعاد -->
+        <a-entity id="arCube" 
+                  position="0 0 -1"
+                  rotation="0 0 0"
+                  scale="0.5 0.5 0.5"
+                  animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true">
+            <a-box 
+                color="#4CC3D9" 
+                position="0 0 0"
+                shadow="cast: true; receive: true">
+                <!-- أضواء مختلفة لكل وجه -->
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #FF6B6B" 
+                          position="0.5 0 0" 
+                          rotation="0 -90 0"></a-entity>
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #4ECDC4" 
+                          position="-0.5 0 0" 
+                          rotation="0 90 0"></a-entity>
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #45B7D1" 
+                          position="0 0.5 0" 
+                          rotation="-90 0 0"></a-entity>
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #96CEB4" 
+                          position="0 -0.5 0" 
+                          rotation="90 0 0"></a-entity>
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #FFEAA7" 
+                          position="0 0 0.5"></a-entity>
+                <a-entity geometry="primitive: plane; width: 1; height: 1" 
+                          material="color: #DDA0DD" 
+                          position="0 0 -0.5" 
+                          rotation="0 180 0"></a-entity>
+            </a-box>
+        </a-entity>
+
+        <!-- تحكم الدوران بالماوس/اللمس -->
+        <a-entity id="rotationController"></a-entity>
+    </a-scene>
+
+    <script>
+        // إزالة شاشة التحميل عند بدء الكاميرا
+        window.addEventListener('arjs-video-loaded', function() {
+            document.querySelector('.arjs-loader').style.display = 'none';
         });
-        video.srcObject = stream;
-        
-        // إعداد الواقع المعزز بعد فتح الكاميرا
-        setTimeout(() => {
-          initAR();
-        }, 500); // تأخير بسيط لضمان تحميل الكاميرا
-        
-      } catch (error) {
-        console.error('خطأ في فتح الكاميرا:', error);
-        alert('فشل في فتح الكاميرا: ' + error.message);
-        startButton.style.display = 'block';
-        arContainer.style.display = 'none';
-      }
-    });
-  </script>
+
+        // متغيرات التحكم بالدوران
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        const cube = document.querySelector('#arCube');
+        const scene = document.querySelector('a-scene');
+
+        // أحداث الماوس
+        scene.addEventListener('mousedown', startDrag);
+        scene.addEventListener('mousemove', drag);
+        scene.addEventListener('mouseup', endDrag);
+        scene.addEventListener('mouseleave', endDrag);
+
+        // أحداث اللمس للهواتف
+        scene.addEventListener('touchstart', handleTouchStart);
+        scene.addEventListener('touchmove', handleTouchMove);
+        scene.addEventListener('touchend', endDrag);
+
+        function startDrag(event) {
+            isDragging = true;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+
+        function drag(event) {
+            if (!isDragging) return;
+
+            const deltaMove = {
+                x: event.clientX - previousMousePosition.x,
+                y: event.clientY - previousMousePosition.y
+            };
+
+            const rotation = cube.getAttribute('rotation');
+            cube.setAttribute('rotation', {
+                x: rotation.x + deltaMove.y * 0.5,
+                y: rotation.y + deltaMove.x * 0.5,
+                z: rotation.z
+            });
+
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+
+        function endDrag() {
+            isDragging = false;
+        }
+
+        function handleTouchStart(event) {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+                isDragging = true;
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }
+
+        function handleTouchMove(event) {
+            if (isDragging && event.touches.length === 1) {
+                event.preventDefault();
+                
+                const deltaMove = {
+                    x: event.touches[0].clientX - previousMousePosition.x,
+                    y: event.touches[0].clientY - previousMousePosition.y
+                };
+
+                const rotation = cube.getAttribute('rotation');
+                cube.setAttribute('rotation', {
+                    x: rotation.x + deltaMove.y * 0.5,
+                    y: rotation.y + deltaMove.x * 0.5,
+                    z: rotation.z
+                });
+
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }
+
+        // إيقاف التدوير التلقائي عند التفاعل
+        scene.addEventListener('mousedown', stopAutoRotation);
+        scene.addEventListener('touchstart', stopAutoRotation);
+
+        function stopAutoRotation() {
+            const animation = cube.getAttribute('animation');
+            if (animation) {
+                cube.removeAttribute('animation');
+            }
+        }
+    </script>
 </body>
 </html>
 
