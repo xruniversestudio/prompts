@@ -1,4 +1,19 @@
-<!DOCTYPE html>
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  background-color: white; /* Ensure the iframe has a white background */
+                }
+    
+                
+              </style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -79,13 +94,13 @@
         let placed = false;
         let controller;
         let ambientLight, directionalLight, shadowCatcher;
-        let initialScale = 1;
-        const minScale = 0.5;
-        const maxScale = 2.0;
+        let initialScale = 0.2; // Smaller initial size
+        const minScale = 0.1;
+        const maxScale = 0.5;
         let isDragging = false;
         let dragStart = new THREE.Vector2();
         let currentRotation = 0;
-        let initialPosition = new THREE.Vector3(0, 0, -1.5); // Start position in front of camera
+        let initialPosition = new THREE.Vector3(0, 0, -0.5); // Closer to camera
 
         // DOM elements
         const hintElement = document.getElementById('hint');
@@ -173,8 +188,9 @@
             cube.castShadow = true;
             cube.receiveShadow = false;
             
-            // Position in front of camera initially
+            // Position in front of camera initially with smaller scale
             cube.position.copy(initialPosition);
+            cube.scale.set(initialScale, initialScale, initialScale);
             
             scene.add(cube);
 
@@ -210,7 +226,7 @@
 
             // Position at hit test result
             cube.position.copy(reticle.position);
-            cube.position.y += 0.5; // Place on surface
+            cube.position.y += 0.1; // Place on surface (adjusted for smaller size)
             
             // Position shadow catcher
             shadowCatcher.position.copy(reticle.position);
@@ -245,8 +261,9 @@
         }
 
         function resetScene() {
-            // Reset to initial position
+            // Reset to initial position and scale
             cube.position.copy(initialPosition);
+            cube.scale.set(initialScale, initialScale, initialScale);
             shadowCatcher.position.copy(initialPosition);
             shadowCatcher.position.y = 0.01;
             
@@ -311,3 +328,12 @@
     </script>
 </body>
 </html>
+
+
+    
+              <script>
+                              
+              </script>
+                        </body>
+                        </html>
+                    
