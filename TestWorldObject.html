@@ -1,94 +1,53 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  background-color: white; /* Ensure the iframe has a white background */
-                }
-    
-                
-              </style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>AR Experience Pro</title>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/WEBGL.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/webxr/WebXRManager.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>فتح الكاميرا</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: 'Tajawal', sans-serif;
     }
 
     body {
-      font-family: 'Tajawal', sans-serif;
-      background: linear-gradient(135deg, #0f0628, #2a0845);
-      color: white;
+      background: linear-gradient(135deg, #1a2a6c, #b21f1f);
       height: 100vh;
-      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       direction: rtl;
     }
 
     .container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-
-    .welcome-screen {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 10;
       text-align: center;
-      padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      max-width: 90%;
     }
 
-    .logo {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #00eaff;
-      margin-bottom: 15px;
-      text-shadow: 0 0 10px #00eaff;
+    h1 {
+      color: white;
+      margin-bottom: 20px;
+      font-size: 2rem;
     }
 
-    .welcome-screen h1 {
-      font-size: 2.2rem;
-      color: #fff;
-      margin-bottom: 15px;
-      text-shadow: 0 0 10px #00eaff;
-    }
-
-    .welcome-screen p {
-      color: #ccc;
-      max-width: 70%;
-      line-height: 1.6;
+    p {
+      color: #ddd;
       margin-bottom: 30px;
+      font-size: 1.1rem;
+      line-height: 1.6;
     }
 
-    .ar-button {
-      background: linear-gradient(45deg, #00eaff, #00b8ff);
+    .open-camera-btn {
+      background: linear-gradient(45deg, #00c9ff, #92fe9d);
       border: none;
       padding: 15px 40px;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       border-radius: 50px;
       cursor: pointer;
       color: #1a2a6c;
@@ -98,256 +57,101 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      margin: 0 auto;
     }
 
-    .ar-button:hover {
+    .open-camera-btn:hover {
       transform: translateY(-3px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     }
 
-    .ar-button:active {
-      transform: translateY(1px);
-    }
-
-    .ar-button i {
-      font-size: 1.5rem;
-    }
-
-    .instructions {
-      position: absolute;
-      bottom: 20px;
-      color: #fff;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 10px;
-      border-radius: 10px;
-      max-width: 90%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.9rem;
-    }
-
-    .loading {
+    .video-container {
+      margin-top: 30px;
       display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
+    }
+
+    video {
       width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      z-index: 20;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: white;
-    }
-
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: #00eaff;
-      animation: spin 1s ease-in-out infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .ar-marker {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #00eaff;
-      padding: 8px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .ar-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
+      max-width: 500px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     }
 
     .status {
-      position: absolute;
-      bottom: 60px;
-      left: 20px;
-      color: #00eaff;
-      font-size: 0.9rem;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 8px 12px;
-      border-radius: 15px;
+      margin-top: 15px;
+      color: #00ffaa;
+      font-weight: bold;
     }
 
     @media (max-width: 768px) {
-      .welcome-screen h1 {
-        font-size: 1.8rem;
+      .container {
+        padding: 30px 20px;
       }
-      .ar-button {
-        padding: 12px 30px;
-        font-size: 1.1rem;
+      
+      h1 {
+        font-size: 1.7rem;
+      }
+      
+      p {
+        font-size: 1rem;
       }
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <div class="welcome-screen" id="welcomeScreen">
-      <div class="logo">AR PRO</div>
-      <h1>تجربة الواقع المعزز</h1>
-      <p>استخدم الكاميرا لرؤية العناصر ثلاثية الأبعاد التي تظهر فوق العالم الحقيقي.</p>
-      <button class="ar-button" id="startAR">
-        <i class="fas fa-camera"></i>
-        ابدأ التجربة
-      </button>
-      <div class="instructions">
-        <p>وجه الكاميرا نحو سطح مستوٍ لتثبيت العناصر</p>
-      </div>
+    <h1>فتح الكاميرا</h1>
+    <p>اضغط على الزر أدناه لفتح الكاميرا. سيتم عرض الصورة الحية مباشرة.</p>
+    
+    <button class="open-camera-btn" id="openCamera">
+      <i class="fas fa-camera"></i>
+      افتح الكاميرا
+    </button>
+    
+    <div class="video-container" id="videoContainer">
+      <video id="video" autoplay playsinline></video>
+      <div class="status" id="status">جاري تحميل الكاميرا...</div>
     </div>
-
-    <div class="loading" id="loading">
-      <div class="spinner"></div>
-      <p>جاري تفعيل الكاميرا...</p>
-    </div>
-
-    <div class="ar-canvas" id="arCanvas"></div>
-
-    <div class="ar-marker">
-      <i class="fas fa-qrcode"></i>
-      <span>استخدم ماركر Hiro</span>
-    </div>
-
-    <div class="status" id="status">الكاميرا غير نشطة</div>
   </div>
 
   <script>
-    const startButton = document.getElementById('startAR');
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    const loading = document.getElementById('loading');
-    const arCanvas = document.getElementById('arCanvas');
+    const openCameraBtn = document.getElementById('openCamera');
+    const videoContainer = document.getElementById('videoContainer');
+    const video = document.getElementById('video');
     const status = document.getElementById('status');
 
-    // تنفيذ AR باستخدام Three.js و WebXR
-    let scene, camera, renderer, webXRManager;
-
-    function initAR() {
-      // إخفاء الشاشة الترحيبية
-      welcomeScreen.style.display = 'none';
-      loading.style.display = 'flex';
-
-      // إعداد Three.js
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-      // إعداد Renderer مع WebXR
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000);
-      arCanvas.appendChild(renderer.domElement);
-
-      // إدارة WebXR
-      webXRManager = new THREE.WebXRManager(renderer);
-      webXRManager.addEventListener('sessionstart', () => {
-        status.textContent = 'الكاميرا نشطة ✓';
-        status.style.color = '#00eaff';
-      });
-
-      // إضاءة المشهد
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-      scene.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(1, 1, 1);
-      scene.add(directionalLight);
-
-      // كائن ثلاثي الأبعاد
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const material = new THREE.MeshPhongMaterial({
-        color: 0x00eaff,
-        transparent: true,
-        opacity: 0.9,
-        shininess: 100
-      });
-      const cube = new THREE.Mesh(geometry, material);
-      cube.position.set(0, 0.5, 0);
-      scene.add(cube);
-
-      // تأثيرات حركة
-      function animate() {
-        requestAnimationFrame(animate);
-        if (webXRManager.isPresenting) {
-          cube.rotation.x += 0.01;
-          cube.rotation.y += 0.01;
-        }
-        webXRManager.update();
-        renderer.render(scene, camera);
-      }
-      animate();
-
-      // تحديث الحجم عند تغيير حجم الشاشة
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-
-      // إخفاء شاشة التحميل بعد 1.5 ثانية
-      setTimeout(() => {
-        loading.style.display = 'none';
-      }, 1500);
-    }
-
-    // تشغيل الوظيفة عند الضغط على الزر
-    startButton.addEventListener('click', async () => {
+    openCameraBtn.addEventListener('click', async () => {
       try {
-        // طلب الوصول إلى الكاميرا
-        await navigator.mediaDevices.getUserMedia({ video: true });
+        // إخفاء الزر وإظهار محتوى الكاميرا
+        openCameraBtn.style.display = 'none';
         
-        // بدء جلسة WebXR
-        if (navigator.xr) {
-          const session = await navigator.xr.requestSession('immersive-ar');
-          webXRManager.setSession(session);
-          initAR();
-        } else {
-          alert('الواقع المعزز غير مدعوم على هذا الجهاز');
-          loading.style.display = 'none';
-          welcomeScreen.style.display = 'flex';
-        }
+        // إظهار حاوية الفيديو
+        videoContainer.style.display = 'block';
+        
+        // طلب الوصول إلى الكاميرا
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment', // استخدم الكاميرا الخلفية إذا كانت متوفرة
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }, 
+          audio: false 
+        });
+        
+        // عرض تدفق الكاميرا في العنصر video
+        video.srcObject = stream;
+        status.textContent = 'الكاميرا تعمل بنجاح ✓';
+        status.style.color = '#00ffaa';
+        
       } catch (error) {
         console.error('خطأ في فتح الكاميرا:', error);
-        alert('فشل في فتح الكاميرا. يرجى السماح بالوصول إليها.');
-        loading.style.display = 'none';
-        welcomeScreen.style.display = 'flex';
+        status.textContent = 'فشل في فتح الكاميرا: ' + error.message;
+        status.style.color = '#ff5555';
+        openCameraBtn.style.display = 'flex';
       }
     });
-
-    // تعطيل التفاعل مع الكاميرا إذا لم تكن متاحة
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('الكاميرا غير مدعومة على هذا الجهاز');
-      startButton.disabled = true;
-    }
   </script>
 </body>
 </html>
-
-
-    
-              <script>
-                              
-              </script>
-                        </body>
-                        </html>
-                    
