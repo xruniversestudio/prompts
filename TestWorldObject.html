@@ -76,17 +76,24 @@
     <div id="reticle"></div>
     <button id="resetBtn">Reset</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/webxr/ARButton.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/webxr/XRControllerModelFactory.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.152.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.152.0/examples/jsm/"
+        }
+    }
+    </script>
 
-    <script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+
         // Main variables
         let container, camera, scene, renderer, cube, reticle, hitTestSource, hitTestSourceRequested;
         let placed = false;
-        let controller, controllerGrip;
+        let controller;
         let ambientLight, directionalLight, shadowCatcher;
         let initialScale = 1;
         const minScale = 0.5;
@@ -162,10 +169,6 @@
             controller.addEventListener('selectstart', onSelectStart);
             controller.addEventListener('selectend', onSelectEnd);
             scene.add(controller);
-
-            // Controller grip for advanced interactions
-            controllerGrip = renderer.xr.getControllerGrip(0);
-            scene.add(controllerGrip);
         }
 
         function onSelectStart() {
