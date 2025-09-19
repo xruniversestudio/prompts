@@ -1,25 +1,13 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  background-color: white; /* Ensure the iframe has a white background */
-                }
-    
-                
-              </style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>مكعب World Object</title>
+  <title>AR بدون ماركر</title>
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/webxr/WebXRManager.js"></script>
   <style>
     * {
       margin: 0;
@@ -106,16 +94,6 @@
       display: none;
     }
 
-    #video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
-    }
-
     #canvas {
       position: absolute;
       top: 0;
@@ -144,8 +122,8 @@
 <body>
   <div class="container">
     <div class="welcome-screen" id="welcomeScreen">
-      <h1>مكعب World Object</h1>
-      <p>اضغط على الزر لفتح الكاميرا ورؤية مكعب ثلاثي الأبعاد موضوع في العالم الحقيقي.</p>
+      <h1>AR بدون ماركر</h1>
+      <p>اضغط على الزر لفتح الكاميرا ووضع مكعب ثلاثي الأبعاد في العالم الحقيقي.</p>
       <button class="open-camera-btn" id="openCamera">
         <i class="fas fa-camera"></i>
         افتح الكاميرا
@@ -153,9 +131,8 @@
     </div>
 
     <div class="video-container" id="videoContainer">
-      <video id="video" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
-      <div class="status" id="status">الكاميرا تعمل ✓</div>
+      <div class="status" id="status">جاري التحقق من الجهاز...</div>
     </div>
   </div>
 
@@ -163,19 +140,15 @@
     const openCameraBtn = document.getElementById('openCamera');
     const welcomeScreen = document.getElementById('welcomeScreen');
     const videoContainer = document.getElementById('videoContainer');
-    const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
 
-    let scene, camera, renderer, cube;
+    let scene, camera, renderer, webXRManager, cube;
 
     // إعداد المشهد الثلاثي الأبعاد
     function initScene() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-      // وضع الكاميرا في الأصل (0,0,0)
-      camera.position.set(0, 0, 0);
 
       // إضاءة المشهد
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -185,8 +158,8 @@
       directionalLight.position.set(1, 1, 1);
       scene.add(directionalLight);
 
-      // مكعب ثلاثي الأبعاد (كـ World Object)
-      const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5); // حجم مناسب
+      // مكعب ثلاثي الأبعاد (World Object)
+      const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
       const material = new THREE.MeshPhongMaterial({
         color: 0x00eaff,
         transparent: true,
@@ -194,9 +167,7 @@
         shininess: 100
       });
       cube = new THREE.Mesh(geometry, material);
-      
-      // وضع المكعب أمام الكاميرا (كأنه على الطاولة)
-      cube.position.set(0, 0, -3); // 3 وحدات أمام الكاميرا
+      cube.position.set(0, 0, -2); // وضعه أمام الكاميرا
       scene.add(cube);
 
       // إعداد Renderer
@@ -208,17 +179,18 @@
     // تشغيل التحديثات
     function animate() {
       requestAnimationFrame(animate);
-      
-      // دوران المكعب حول نفسه
       cube.rotation.x += 0.01;
       cube.rotation.y += 0.01;
-      
       renderer.render(scene, camera);
     }
 
-    // فتح الكاميرا
+    // فتح الكاميرا باستخدام WebXR
     openCameraBtn.addEventListener('click', async () => {
       try {
+        if (!navigator.xr) {
+          throw new Error("WebXR غير مدعوم على هذا الجهاز");
+        }
+
         // إخفاء الشاشة الترحيبية
         welcomeScreen.style.display = 'none';
         videoContainer.style.display = 'block';
@@ -227,19 +199,14 @@
         initScene();
         animate();
 
-        // طلب الوصول إلى الكاميرا
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }, 
-          audio: false 
+        // طلب جلسة WebXR
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['local-floor']
         });
 
-        // عرض الكاميرا في العنصر video
-        video.srcObject = stream;
-        video.play();
+        // إدارة WebXR
+        webXRManager = new THREE.WebXRManager(renderer);
+        webXRManager.setSession(session);
 
         // تحديث الحجم عند تغيير حجم الشاشة
         window.addEventListener('resize', () => {
@@ -248,8 +215,17 @@
           renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        status.textContent = 'الكاميرا تعمل ✓';
-        status.style.color = '#00ffaa';
+        // عند بدء الجلسة
+        webXRManager.addEventListener('sessionstart', () => {
+          status.textContent = 'الكاميرا تعمل ✓';
+          status.style.color = '#00ffaa';
+        });
+
+        // عند إنهاء الجلسة
+        webXRManager.addEventListener('sessionend', () => {
+          status.textContent = 'تم إيقاف الكاميرا';
+          status.style.color = '#ff5555';
+        });
 
       } catch (error) {
         console.error('خطأ في فتح الكاميرا:', error);
@@ -261,12 +237,3 @@
   </script>
 </body>
 </html>
-
-
-    
-              <script>
-                              
-              </script>
-                        </body>
-                        </html>
-                    
