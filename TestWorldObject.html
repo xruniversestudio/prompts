@@ -1,19 +1,4 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  background-color: white; /* Ensure the iframe has a white background */
-                }
-    
-                
-              </style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -72,7 +57,7 @@
 </head>
 <body>
     <div id="canvas-container"></div>
-    <div id="hint">Tap to place cube</div>
+    <div id="hint">Move device to detect surface</div>
     <div id="reticle"></div>
     <button id="resetBtn">Reset</button>
 
@@ -87,7 +72,6 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { ARButton } from 'three/addons/webxr/ARButton.js';
 
         // Main variables
@@ -99,9 +83,9 @@
         const minScale = 0.5;
         const maxScale = 2.0;
         let isDragging = false;
-        let previousPosition = new THREE.Vector3();
         let dragStart = new THREE.Vector2();
         let currentRotation = 0;
+        let initialPosition = new THREE.Vector3(0, 0, -1.5); // Start position in front of camera
 
         // DOM elements
         const hintElement = document.getElementById('hint');
@@ -155,6 +139,9 @@
             // Setup controllers
             setupControllers();
 
+            // Create cube immediately
+            createCube();
+
             // Event listeners
             resetButton.addEventListener('click', resetScene);
             window.addEventListener('resize', onWindowResize);
@@ -169,6 +156,37 @@
             controller.addEventListener('selectstart', onSelectStart);
             controller.addEventListener('selectend', onSelectEnd);
             scene.add(controller);
+        }
+
+        function createCube() {
+            // Create cube geometry and material
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            
+            // PBR material with subtle bevel
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                roughness: 0.5,
+                metalness: 0.1
+            });
+
+            cube = new THREE.Mesh(geometry, material);
+            cube.castShadow = true;
+            cube.receiveShadow = false;
+            
+            // Position in front of camera initially
+            cube.position.copy(initialPosition);
+            
+            scene.add(cube);
+
+            // Create shadow catcher
+            const shadowPlane = new THREE.PlaneGeometry(2, 2);
+            const shadowMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+            shadowCatcher = new THREE.Mesh(shadowPlane, shadowMaterial);
+            shadowCatcher.rotation.x = -Math.PI / 2;
+            shadowCatcher.position.copy(initialPosition);
+            shadowCatcher.position.y = 0.01; // Slightly above ground
+            shadowCatcher.receiveShadow = true;
+            scene.add(shadowCatcher);
         }
 
         function onSelectStart() {
@@ -186,38 +204,17 @@
         }
 
         function placeCube() {
-            if (!hitTestSourceRequested) {
+            if (!hitTestSourceRequested || !reticle.visible) {
                 return;
             }
 
-            // Create cube geometry and material
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            
-            // PBR material with subtle bevel
-            const material = new THREE.MeshStandardMaterial({
-                color: 0x808080,
-                roughness: 0.5,
-                metalness: 0.1
-            });
-
-            cube = new THREE.Mesh(geometry, material);
-            cube.castShadow = true;
-            cube.receiveShadow = false;
-            
             // Position at hit test result
             cube.position.copy(reticle.position);
             cube.position.y += 0.5; // Place on surface
             
-            scene.add(cube);
-
-            // Create shadow catcher
-            const shadowPlane = new THREE.PlaneGeometry(2, 2);
-            const shadowMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
-            shadowCatcher = new THREE.Mesh(shadowPlane, shadowMaterial);
-            shadowCatcher.rotation.x = -Math.PI / 2;
-            shadowCatcher.position.y = 0.01; // Slightly above ground
-            shadowCatcher.receiveShadow = true;
-            scene.add(shadowCatcher);
+            // Position shadow catcher
+            shadowCatcher.position.copy(reticle.position);
+            shadowCatcher.position.y = 0.01;
 
             // Update UI
             placed = true;
@@ -228,8 +225,9 @@
 
         function startDrag() {
             isDragging = true;
-            previousPosition.copy(cube.position);
             dragStart.copy(getControllerScreenPosition());
+            currentRotation = cube.rotation.y;
+            initialScale = cube.scale.x;
         }
 
         function endDrag() {
@@ -247,14 +245,11 @@
         }
 
         function resetScene() {
-            if (cube) {
-                scene.remove(cube);
-                cube = null;
-            }
-            if (shadowCatcher) {
-                scene.remove(shadowCatcher);
-                shadowCatcher = null;
-            }
+            // Reset to initial position
+            cube.position.copy(initialPosition);
+            shadowCatcher.position.copy(initialPosition);
+            shadowCatcher.position.y = 0.01;
+            
             placed = false;
             hintElement.style.display = 'block';
             resetButton.style.display = 'none';
@@ -316,12 +311,3 @@
     </script>
 </body>
 </html>
-
-
-    
-              <script>
-                              
-              </script>
-                        </body>
-                        </html>
-                    
