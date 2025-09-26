@@ -1,291 +1,372 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>WebAR World Tracking – Cube (Single HTML)</title>
-  <style>
-    html, body { height: 100%; margin: 0; padding: 0; background:#000; }
-    #app { position: fixed; inset: 0; overflow: hidden; }
-    canvas { display: block; }
-
-    /* شريط أزرار بسيط للموبايل */
-    .ui {
-      position: fixed; left: 50%; transform: translateX(-50%);
-      bottom: env(safe-area-inset-bottom, 16px);
-      display: flex; gap: 8px; z-index: 10; direction: rtl;
-      background: rgba(0,0,0,0.35); padding: 8px; border-radius: 12px; backdrop-filter: blur(6px);
-    }
-    .ui button {
-      border: none; border-radius: 10px; padding: 10px 12px; font-size: 14px;
-      color: #fff; background: #1f6feb; cursor: pointer; min-width: 88px;
-    }
-    .ui button.secondary { background: #444; }
-    .msg {
-      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-      color: #fff; background: rgba(0,0,0,0.45); padding: 8px 12px; border-radius: 10px;
-      font-size: 13px; z-index: 10; max-width: 90vw; text-align: center;
-    }
-
-    /* ريتكل بشكل حلقة */
-    @keyframes pulse {
-      0% { opacity: 0.65; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.05); }
-      100% { opacity: 0.65; transform: scale(1); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAR Cube Placement</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+        
+        button {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        #reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+        }
+        
+        #reticle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+        
+        #fallback-info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <div id="app"></div>
+    <div id="container">
+        <div id="canvas-container"></div>
+        <div id="reticle"></div>
+        <div id="ui">
+            <button id="enter-ar">Enter AR</button>
+            <button id="reset">Reset</button>
+            <button id="toggle-grid">Toggle Grid</button>
+        </div>
+        <div id="fallback-info">
+            <p>WebAR not supported. Showing fallback 3D preview.</p>
+        </div>
+    </div>
 
-  <div class="msg" id="status">جاهز</div>
-  <div class="ui" id="ui">
-    <button id="enter">دخول AR</button>
-    <button id="reset" class="secondary">إعادة ضبط</button>
-    <button id="grid" class="secondary">إظهار الشبكة</button>
-  </div>
-
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-
-    // عناصر عامة
-    const appEl = document.getElementById('app');
-    const statusEl = document.getElementById('status');
-    const btnEnter = document.getElementById('enter');
-    const btnReset = document.getElementById('reset');
-    const btnGrid = document.getElementById('grid');
-
-    let renderer, scene, camera;
-    let gridHelper, reticle;
-    let xrRefSpace = null, xrViewerSpace = null, xrHitTestSource = null;
-    let inAR = false;
-    const placed = []; // تخزين المكعبات الموضوعة
-
-    // تهيئة المشهد
-    init();
-    // إن لم يدعم الجهاز AR سنفعّل fallback للمعاينة
-    checkARSupport().then(supported => {
-      if (!supported) startFallbackPreview();
-    });
-
-    async function checkARSupport() {
-      if (!('xr' in navigator)) {
-        setStatus('جهازك لا يدعم WebXR. عرض معاينة 3D.');
-        return false;
-      }
-      const ok = await navigator.xr.isSessionSupported('immersive-ar');
-      setStatus(ok ? 'يمكنك بدء وضع AR.' : 'AR غير مدعوم. عرض معاينة 3D.');
-      return ok;
-    }
-
-    function init() {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      appEl.appendChild(renderer.domElement);
-
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
-
-      // إضاءة
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
-      hemi.position.set(0, 1, 0);
-      scene.add(hemi);
-
-      // شبكة أرضية (مخفية افتراضيًا)
-      gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
-      gridHelper.material.opacity = 0.35;
-      gridHelper.material.transparent = true;
-      gridHelper.visible = false;
-      scene.add(gridHelper);
-
-      // رِتكل: حلقة مسطحة تدور لتكون أفقية
-      const ringGeo = new THREE.RingGeometry(0.10, 0.12, 32);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00e0ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
-      reticle = new THREE.Mesh(ringGeo, ringMat);
-      reticle.rotation.x = -Math.PI / 2;
-      reticle.matrixAutoUpdate = false;
-      reticle.visible = false;
-      scene.add(reticle);
-
-      // حدث اختيار (ضغط) من المتحكم الافتراضي (شاشة اللمس)
-      const controller = renderer.xr.getController(0);
-      controller.addEventListener('select', onSelect);
-      scene.add(controller);
-
-      // واجهة
-      btnEnter.addEventListener('click', startAR);
-      btnReset.addEventListener('click', resetPlaced);
-      btnGrid.addEventListener('click', toggleGrid);
-      window.addEventListener('resize', onResize);
-    }
-
-    function onResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    async function startAR() {
-      try {
-        const supported = await checkARSupport();
-        if (!supported) { setStatus('AR غير مدعوم. تم الإبقاء على المعاينة العادية.'); return; }
-
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'local-floor'],
-          optionalFeatures: ['light-estimation', 'depth-sensing'] // يتم تفعيلها إن توفرت
-        });
-
-        // عند انتهاء الجلسة
-        session.addEventListener('end', () => {
-          inAR = false;
-          xrHitTestSource = null;
-          xrRefSpace = null;
-          xrViewerSpace = null;
-          reticle.visible = false;
-          setStatus('انتهت جلسة AR.');
-          // بعد الخروج من AR نعيد تشغيل fallback للمعاينة
-          startFallbackPreview();
-        });
-
-        await renderer.xr.setSession(session);
-
-        xrRefSpace = await session.requestReferenceSpace('local-floor');
-        xrViewerSpace = await session.requestReferenceSpace('viewer');
-        xrHitTestSource = await session.requestHitTestSource({ space: xrViewerSpace });
-
-        inAR = true;
-        setStatus('أدخلت وضع AR. حرّك الهاتف لتتعرّف الكاميرا على السطح، ثم اضغط لوضع مكعب.');
-
-        // إزالة أي عناصر معاينة من وضع fallback
-        clearNonARPreview();
-
-        renderer.setAnimationLoop(onXRFrame);
-      } catch (e) {
-        console.error(e);
-        setStatus('تعذر بدء AR. تحقق من الأذونات والاتصال عبر https.');
-      }
-    }
-
-    // حلقة الرسم أثناء AR
-    function onXRFrame(t, frame) {
-      const session = renderer.xr.getSession();
-      if (!session || !frame || !xrHitTestSource || !xrRefSpace) {
-        renderer.render(scene, camera);
-        return;
-      }
-
-      // نتائج hit-test لتحديد موضع السطح
-      const results = frame.getHitTestResults(xrHitTestSource);
-      if (results.length) {
-        const pose = results[0].getPose(xrRefSpace);
-        if (pose) {
-          reticle.visible = true;
-          // تحديث مصفوفة التحويل مباشرة
-          reticle.matrix.fromArray(pose.transform.matrix);
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Main variables
+        let scene, camera, renderer;
+        let arSession = null;
+        let reticleVisible = false;
+        let cubes = [];
+        let grid = null;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let hitTestSource = null;
+        let frame = null;
+        let referenceSpace = null;
+        
+        // Initialize Three.js scene
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            // Setup camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Setup renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(ambientLight);
+            
+            const hemisphereLight = new THREE.HemisphereLight(0x808080, 0x404040, 1);
+            scene.add(hemisphereLight);
+            
+            // Setup fallback cube for non-AR mode
+            const fallbackCube = new THREE.Mesh(
+                new THREE.BoxGeometry(0.25, 0.25, 0.25),
+                new THREE.MeshPhongMaterial({ color: 0x00ff00 })
+            );
+            fallbackCube.position.set(0, 0, -1);
+            scene.add(fallbackCube);
+            
+            // Setup OrbitControls for fallback mode
+            let controls = null;
+            if ('OrbitControls' in THREE) {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.25;
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
         }
-      } else {
-        reticle.visible = false;
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    // عند الضغط في وضع AR: ضع مكعبًا عند موقع الريتكل
-    function onSelect() {
-      if (!inAR || !reticle.visible) return;
-
-      const cube = createCube(0.25); // 25 سم
-      // استخرج التحويل من مصفوفة الريتكل
-      const pos = new THREE.Vector3();
-      const quat = new THREE.Quaternion();
-      const scl = new THREE.Vector3();
-      reticle.matrix.decompose(pos, quat, scl);
-
-      cube.position.copy(pos);
-      // نضمن أن المكعب موازي للأرض (استخدم فقط دوران Y من الريتكل إن رغبت)
-      cube.quaternion.copy(quat);
-      scene.add(cube);
-      placed.push(cube);
-    }
-
-    // إنشاء مكعب PBR بسيط
-    function createCube(sizeMeters = 0.25) {
-      const geo = new THREE.BoxGeometry(sizeMeters, sizeMeters, sizeMeters);
-      const mat = new THREE.MeshStandardMaterial({
-        color: 0x2ad4ff,
-        metalness: 0.2,
-        roughness: 0.35
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      // ظل تجميلي خفيف (إن أردت تفعيل الظلال فعليًا أضف PlaneReceiver + renderer.shadowMap)
-      return mesh;
-    }
-
-    function resetPlaced() {
-      for (const m of placed) {
-        scene.remove(m);
-        m.geometry?.dispose?.();
-        m.material?.dispose?.();
-      }
-      placed.length = 0;
-      setStatus(inAR ? 'تمت إزالة كل المكعبات. اضغط لوضع مكعب جديد.' : 'تمت الإزالة.');
-    }
-
-    function toggleGrid() {
-      gridHelper.visible = !gridHelper.visible;
-      btnGrid.textContent = gridHelper.visible ? 'إخفاء الشبكة' : 'إظهار الشبكة';
-    }
-
-    function setStatus(text) {
-      statusEl.textContent = text;
-    }
-
-    // ======= Fallback (معاينة ثلاثية الأبعاد بدون AR) =======
-    let controls = null;
-    let previewCube = null;
-
-    function startFallbackPreview() {
-      // إن كان هناك جلسة XR نشطة، لا نُشغّل المعاينة
-      if (renderer.xr.isPresenting) return;
-
-      clearNonARPreview();
-
-      // كاميرا ومعاينة بسيطة
-      camera.position.set(0, 1.2, 2.0);
-
-      previewCube = createCube(0.5);
-      previewCube.position.set(0, 0.25, 0);
-      scene.add(previewCube);
-
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-
-      // حلقة رسم للمعاينة
-      renderer.setAnimationLoop(() => {
-        controls?.update();
-        renderer.render(scene, camera);
-      });
-
-      setStatus('معاينة 3D: حرّك وأدر المشهد. (AR غير نشط)');
-    }
-
-    function clearNonARPreview() {
-      // إزالة المكعب الخاص بالمعاينة إن وجد
-      if (previewCube) {
-        scene.remove(previewCube);
-        previewCube.geometry.dispose();
-        previewCube.material.dispose();
-        previewCube = null;
-      }
-      // إزالة أدوات الدوران إن كانت موجودة
-      if (controls) {
-        controls.dispose();
-        controls = null;
-      }
-    }
-  </script>
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Initialize AR session
+        async function initAR() {
+            try {
+                // Check if WebXR is supported
+                if (!navigator.xr) {
+                    console.log('WebXR not supported');
+                    showFallback();
+                    return;
+                }
+                
+                // Check if AR session is supported
+                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!isARSupported) {
+                    console.log('AR not supported');
+                    showFallback();
+                    return;
+                }
+                
+                // Request AR session
+                arSession = await navigator.xr.requestSession('immersive-ar');
+                
+                // Set up reference space
+                referenceSpace = await arSession.requestReferenceSpace('local');
+                
+                // Set up hit test source
+                hitTestSource = await arSession.requestHitTestSource({ space: referenceSpace });
+                
+                // Update renderer to use XR
+                renderer.xr.enabled = true;
+                renderer.xr.setSession(arSession);
+                
+                // Hide fallback info
+                document.getElementById('fallback-info').style.display = 'none';
+                
+                // Show reticle
+                document.getElementById('reticle').style.display = 'block';
+                
+                // Start animation loop
+                renderer.setAnimationLoop(animate);
+                
+                // Listen for session end
+                arSession.addEventListener('end', () => {
+                    renderer.setAnimationLoop(null);
+                    document.getElementById('reticle').style.display = 'none';
+                    initScene(); // Reset to fallback
+                });
+                
+            } catch (error) {
+                console.error('Error initializing AR:', error);
+                showFallback();
+            }
+        }
+        
+        // Show fallback 3D preview
+        function showFallback() {
+            document.getElementById('fallback-info').style.display = 'block';
+            renderer.setAnimationLoop(animate);
+        }
+        
+        // Animation loop
+        function animate(time, frame) {
+            if (arSession && frame) {
+                // Get viewer pose
+                const pose = frame.getViewerPose(referenceSpace);
+                if (pose) {
+                    const view = pose.views[0];
+                    const projectionMatrix = view.projectionMatrix;
+                    const viewMatrix = view.transform.inverse.matrix;
+                    
+                    camera.projectionMatrix.fromArray(projectionMatrix);
+                    camera.matrixWorldInverse.fromArray(viewMatrix);
+                    camera.updateMatrixWorld(true);
+                }
+                
+                // Perform hit test
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        const pose = hit.getPose(referenceSpace);
+                        
+                        if (pose) {
+                            // Update reticle position
+                            updateReticlePosition(pose.transform.matrix);
+                            reticleVisible = true;
+                        } else {
+                            reticleVisible = false;
+                        }
+                    } else {
+                        reticleVisible = false;
+                    }
+                    
+                    // Show/hide reticle based on hit test results
+                    document.getElementById('reticle').style.display = reticleVisible ? 'block' : 'none';
+                }
+            } else {
+                // Fallback camera animation
+                camera.rotation.y += 0.005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Update reticle position based on hit test
+        function updateReticlePosition(matrix) {
+            // Create a temporary object to get position from matrix
+            const tempObject = new THREE.Object3D();
+            tempObject.matrix.fromArray(matrix);
+            tempObject.updateMatrixWorld(true);
+            
+            // Position the reticle in 3D space
+            const position = new THREE.Vector3();
+            position.setFromMatrixPosition(tempObject.matrixWorld);
+            
+            // Update reticle element position (for UI)
+            const vector = position.clone();
+            vector.project(camera);
+            
+            const reticle = document.getElementById('reticle');
+            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+            
+            reticle.style.left = `${x}px`;
+            reticle.style.top = `${y}px`;
+        }
+        
+        // Place a cube at the reticle position
+        function placeCube() {
+            if (!hitTestSource || !reticleVisible) return;
+            
+            // Get current hit test results
+            const frame = renderer.xr.getFrame();
+            if (!frame) return;
+            
+            const hitTestResults = frame.getHitTestResults(hitTestSource);
+            if (hitTestResults.length === 0) return;
+            
+            const hit = hitTestResults[0];
+            const pose = hit.getPose(referenceSpace);
+            if (!pose) return;
+            
+            // Create cube
+            const geometry = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: Math.random() * 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const cube = new THREE.Mesh(geometry, material);
+            
+            // Set position from hit test pose
+            const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+            cube.position.setFromMatrixPosition(matrix);
+            
+            // Add to scene and cubes array
+            scene.add(cube);
+            cubes.push(cube);
+        }
+        
+        // Reset all placed cubes
+        function resetCubes() {
+            cubes.forEach(cube => scene.remove(cube));
+            cubes = [];
+        }
+        
+        // Toggle grid visibility
+        function toggleGrid() {
+            if (grid) {
+                scene.remove(grid);
+                grid = null;
+            } else {
+                grid = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+                scene.add(grid);
+            }
+        }
+        
+        // Initialize the application
+        function init() {
+            initScene();
+            
+            // Setup event listeners
+            document.getElementById('enter-ar').addEventListener('click', initAR);
+            document.getElementById('reset').addEventListener('click', resetCubes);
+            document.getElementById('toggle-grid').addEventListener('click', toggleGrid);
+            
+            // Setup tap/click to place cubes
+            renderer.domElement.addEventListener('click', () => {
+                if (arSession) {
+                    placeCube();
+                }
+            });
+            
+            // For mobile touch
+            renderer.domElement.addEventListener('touchend', (event) => {
+                if (arSession) {
+                    event.preventDefault();
+                    placeCube();
+                }
+            });
+        }
+        
+        // Start the application
+        init();
+    </script>
 </body>
 </html>
