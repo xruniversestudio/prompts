@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>WebAR World Tracking – Cube (Single HTML)</title>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; background:#000; }
+    #app { position: fixed; inset: 0; overflow: hidden; }
+    canvas { display: block; }
+
+    /* شريط أزرار بسيط للموبايل */
+    .ui {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: env(safe-area-inset-bottom, 16px);
+      display: flex; gap: 8px; z-index: 10; direction: rtl;
+      background: rgba(0,0,0,0.35); padding: 8px; border-radius: 12px; backdrop-filter: blur(6px);
+    }
+    .ui button {
+      border: none; border-radius: 10px; padding: 10px 12px; font-size: 14px;
+      color: #fff; background: #1f6feb; cursor: pointer; min-width: 88px;
+    }
+    .ui button.secondary { background: #444; }
+    .msg {
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      color: #fff; background: rgba(0,0,0,0.45); padding: 8px 12px; border-radius: 10px;
+      font-size: 13px; z-index: 10; max-width: 90vw; text-align: center;
+    }
+
+    /* ريتكل بشكل حلقة */
+    @keyframes pulse {
+      0% { opacity: 0.65; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 0.65; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="msg" id="status">جاهز</div>
+  <div class="ui" id="ui">
+    <button id="enter">دخول AR</button>
+    <button id="reset" class="secondary">إعادة ضبط</button>
+    <button id="grid" class="secondary">إظهار الشبكة</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    // عناصر عامة
+    const appEl = document.getElementById('app');
+    const statusEl = document.getElementById('status');
+    const btnEnter = document.getElementById('enter');
+    const btnReset = document.getElementById('reset');
+    const btnGrid = document.getElementById('grid');
+
+    let renderer, scene, camera;
+    let gridHelper, reticle;
+    let xrRefSpace = null, xrViewerSpace = null, xrHitTestSource = null;
+    let inAR = false;
+    const placed = []; // تخزين المكعبات الموضوعة
+
+    // تهيئة المشهد
+    init();
+    // إن لم يدعم الجهاز AR سنفعّل fallback للمعاينة
+    checkARSupport().then(supported => {
+      if (!supported) startFallbackPreview();
+    });
+
+    async function checkARSupport() {
+      if (!('xr' in navigator)) {
+        setStatus('جهازك لا يدعم WebXR. عرض معاينة 3D.');
+        return false;
+      }
+      const ok = await navigator.xr.isSessionSupported('immersive-ar');
+      setStatus(ok ? 'يمكنك بدء وضع AR.' : 'AR غير مدعوم. عرض معاينة 3D.');
+      return ok;
+    }
+
+    function init() {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      appEl.appendChild(renderer.domElement);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+
+      // إضاءة
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+      hemi.position.set(0, 1, 0);
+      scene.add(hemi);
+
+      // شبكة أرضية (مخفية افتراضيًا)
+      gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
+      gridHelper.material.opacity = 0.35;
+      gridHelper.material.transparent = true;
+      gridHelper.visible = false;
+      scene.add(gridHelper);
+
+      // رِتكل: حلقة مسطحة تدور لتكون أفقية
+      const ringGeo = new THREE.RingGeometry(0.10, 0.12, 32);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00e0ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+      reticle = new THREE.Mesh(ringGeo, ringMat);
+      reticle.rotation.x = -Math.PI / 2;
+      reticle.matrixAutoUpdate = false;
+      reticle.visible = false;
+      scene.add(reticle);
+
+      // حدث اختيار (ضغط) من المتحكم الافتراضي (شاشة اللمس)
+      const controller = renderer.xr.getController(0);
+      controller.addEventListener('select', onSelect);
+      scene.add(controller);
+
+      // واجهة
+      btnEnter.addEventListener('click', startAR);
+      btnReset.addEventListener('click', resetPlaced);
+      btnGrid.addEventListener('click', toggleGrid);
+      window.addEventListener('resize', onResize);
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    async function startAR() {
+      try {
+        const supported = await checkARSupport();
+        if (!supported) { setStatus('AR غير مدعوم. تم الإبقاء على المعاينة العادية.'); return; }
+
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test', 'local-floor'],
+          optionalFeatures: ['light-estimation', 'depth-sensing'] // يتم تفعيلها إن توفرت
+        });
+
+        // عند انتهاء الجلسة
+        session.addEventListener('end', () => {
+          inAR = false;
+          xrHitTestSource = null;
+          xrRefSpace = null;
+          xrViewerSpace = null;
+          reticle.visible = false;
+          setStatus('انتهت جلسة AR.');
+          // بعد الخروج من AR نعيد تشغيل fallback للمعاينة
+          startFallbackPreview();
+        });
+
+        await renderer.xr.setSession(session);
+
+        xrRefSpace = await session.requestReferenceSpace('local-floor');
+        xrViewerSpace = await session.requestReferenceSpace('viewer');
+        xrHitTestSource = await session.requestHitTestSource({ space: xrViewerSpace });
+
+        inAR = true;
+        setStatus('أدخلت وضع AR. حرّك الهاتف لتتعرّف الكاميرا على السطح، ثم اضغط لوضع مكعب.');
+
+        // إزالة أي عناصر معاينة من وضع fallback
+        clearNonARPreview();
+
+        renderer.setAnimationLoop(onXRFrame);
+      } catch (e) {
+        console.error(e);
+        setStatus('تعذر بدء AR. تحقق من الأذونات والاتصال عبر https.');
+      }
+    }
+
+    // حلقة الرسم أثناء AR
+    function onXRFrame(t, frame) {
+      const session = renderer.xr.getSession();
+      if (!session || !frame || !xrHitTestSource || !xrRefSpace) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      // نتائج hit-test لتحديد موضع السطح
+      const results = frame.getHitTestResults(xrHitTestSource);
+      if (results.length) {
+        const pose = results[0].getPose(xrRefSpace);
+        if (pose) {
+          reticle.visible = true;
+          // تحديث مصفوفة التحويل مباشرة
+          reticle.matrix.fromArray(pose.transform.matrix);
+        }
+      } else {
+        reticle.visible = false;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // عند الضغط في وضع AR: ضع مكعبًا عند موقع الريتكل
+    function onSelect() {
+      if (!inAR || !reticle.visible) return;
+
+      const cube = createCube(0.25); // 25 سم
+      // استخرج التحويل من مصفوفة الريتكل
+      const pos = new THREE.Vector3();
+      const quat = new THREE.Quaternion();
+      const scl = new THREE.Vector3();
+      reticle.matrix.decompose(pos, quat, scl);
+
+      cube.position.copy(pos);
+      // نضمن أن المكعب موازي للأرض (استخدم فقط دوران Y من الريتكل إن رغبت)
+      cube.quaternion.copy(quat);
+      scene.add(cube);
+      placed.push(cube);
+    }
+
+    // إنشاء مكعب PBR بسيط
+    function createCube(sizeMeters = 0.25) {
+      const geo = new THREE.BoxGeometry(sizeMeters, sizeMeters, sizeMeters);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x2ad4ff,
+        metalness: 0.2,
+        roughness: 0.35
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      // ظل تجميلي خفيف (إن أردت تفعيل الظلال فعليًا أضف PlaneReceiver + renderer.shadowMap)
+      return mesh;
+    }
+
+    function resetPlaced() {
+      for (const m of placed) {
+        scene.remove(m);
+        m.geometry?.dispose?.();
+        m.material?.dispose?.();
+      }
+      placed.length = 0;
+      setStatus(inAR ? 'تمت إزالة كل المكعبات. اضغط لوضع مكعب جديد.' : 'تمت الإزالة.');
+    }
+
+    function toggleGrid() {
+      gridHelper.visible = !gridHelper.visible;
+      btnGrid.textContent = gridHelper.visible ? 'إخفاء الشبكة' : 'إظهار الشبكة';
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    // ======= Fallback (معاينة ثلاثية الأبعاد بدون AR) =======
+    let controls = null;
+    let previewCube = null;
+
+    function startFallbackPreview() {
+      // إن كان هناك جلسة XR نشطة، لا نُشغّل المعاينة
+      if (renderer.xr.isPresenting) return;
+
+      clearNonARPreview();
+
+      // كاميرا ومعاينة بسيطة
+      camera.position.set(0, 1.2, 2.0);
+
+      previewCube = createCube(0.5);
+      previewCube.position.set(0, 0.25, 0);
+      scene.add(previewCube);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      // حلقة رسم للمعاينة
+      renderer.setAnimationLoop(() => {
+        controls?.update();
+        renderer.render(scene, camera);
+      });
+
+      setStatus('معاينة 3D: حرّك وأدر المشهد. (AR غير نشط)');
+    }
+
+    function clearNonARPreview() {
+      // إزالة المكعب الخاص بالمعاينة إن وجد
+      if (previewCube) {
+        scene.remove(previewCube);
+        previewCube.geometry.dispose();
+        previewCube.material.dispose();
+        previewCube = null;
+      }
+      // إزالة أدوات الدوران إن كانت موجودة
+      if (controls) {
+        controls.dispose();
+        controls = null;
+      }
+    }
+  </script>
+</body>
+</html>
