@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>برومبت إعلان منتج (عربي/English)</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg1:#b40f8f;--bg2:#2c1d7c}
+    body{
+      font-family:'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+      background:linear-gradient(90deg,var(--bg1) 0%,var(--bg2) 100%);
+      min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
+      padding:20px;color:#fff;direction:rtl
+    }
+    .logo{position:fixed;top:20px;right:20px;z-index:100}
+    .logo img{width:60px;height:60px;object-fit:contain}.container{
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);
+  border:1px solid rgba(255,255,255,.3);border-radius:20px;
+  padding:25px;width:100%;max-width:900px;margin-top:80px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4)
+}
+
+.header{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:15px;background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.05));
+  border-radius:12px;margin-bottom:16px;position:sticky;top:0;z-index:10
+}
+.header h2{
+  font-size:22px;background:linear-gradient(90deg,#fff,#ddd);
+  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap
+}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tab-btn{
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+  color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:14px;
+  transition:.25s;user-select:none
+}
+.tab-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
+.tab-btn.active{background:#ffffff;color:var(--bg2);border-color:transparent;font-weight:600}
+
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.copy-btn,.select-btn{
+  background-color:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);
+  color:white;padding:8px 16px;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px
+}
+.copy-btn:hover,.select-btn:hover{background-color:rgba(255,255,255,.35);transform:translateY(-2px)}
+
+.text{
+  font-size:16px;line-height:1.8;white-space:pre-wrap;padding:10px 12px;
+  border:1px dashed rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.06)
+}
+
+.copied{
+  position:fixed;top:20px;right:100px;background-color:rgba(255,255,255,.25);
+  padding:8px 16px;border-radius:6px;opacity:0;transition:opacity .3s
+}
+.copied.show{opacity:1}
+
+@media (max-width: 768px){
+  .container{padding:15px;margin-top:70px}
+  .header h2{font-size:18px}
+  .logo img{width:50px;height:50px}
+  .text{font-size:14px}
+}
+@media (max-width: 480px){
+  .header{flex-direction:column;gap:10px}
+  .header h2{text-align:center}
+}
+
+  </style>
+</head>
+<body>
+  <div class="logo"><!-- ضع شعارك هنا إن رغبت --></div>  <div class="container">
+    <div class="header">
+      <h2>برومبت إعلان منتج — Product Ad Prompt</h2>
+      <button class="copy-btn" id="copyButton" aria-label="نسخ النص الحالي">نسخ النص</button>
+    </div><!-- تبويبات البرومبتات -->
+<div class="tabs" role="tablist" aria-label="اختيار البرومبت">
+  <button class="tab-btn" data-key="product-ar" role="tab" aria-selected="false">إعلان منتج (عربي)</button>
+  <button class="tab-btn" data-key="product-en" role="tab" aria-selected="false">Product Ad (English)</button>
+</div>
+
+<!-- أدوات مساعدة بسيطة -->
+<div class="controls">
+  <button class="select-btn" id="selectAll">تحديد الكل</button>
+</div>
+
+<!-- منطقة النص -->
+<div class="text" id="textToCopy"></div>
+
+  </div>  <div class="copied" id="copiedMsg" role="status" aria-live="polite">تم النسخ بنجاح!</div>  <script>
+    // محتوى البرومبتات المحدث — Updated prompts
+    const PROMPTS = {
+      "product-ar": `تصرّف كأنك مخرج إبداعي محترف ومصوّر فوتوغرافي. اكتب برومبت تفصيلي لمنتج محدد (مثال: إعلان ماسكارا)، مع التركيز على الجوانب التالية:\n- الكاميرا\n- الإضاءة\n- الأجواء (Tone)\n- التفاصيل ومواد التصنيع (Texture & material details)` ,
+
+      "product-en": `Act like a professional creative director and photographer. Write a detailed prompt for a specific product (for example: mascara ads), focusing on the following aspects:\n- Camera\n- Lighting\n- Tone\n- Texture & material details`
+    };
+
+    // عناصر DOM
+    const textEl = document.getElementById('textToCopy');
+    const copyBtn = document.getElementById('copyButton');
+    const copiedMsg = document.getElementById('copiedMsg');
+    const tabs = document.querySelectorAll('.tab-btn');
+    const selectAllBtn = document.getElementById('selectAll');
+
+    // تحميل أولي — الافتراضي: العربية
+    let currentKey = 'product-ar';
+    function renderPrompt(key){
+      currentKey = key;
+      textEl.textContent = PROMPTS[key];
+      tabs.forEach(btn=>{
+        const active = btn.dataset.key === key;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+    renderPrompt(currentKey);
+
+    // تبديل التبويب
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=> renderPrompt(btn.dataset.key));
+    });
+
+    // نسخ النص الحالي
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(textEl.textContent);
+        copiedMsg.classList.add('show');
+        setTimeout(()=>copiedMsg.classList.remove('show'), 2000);
+      }catch(err){
+        console.error('فشل في نسخ النص: ', err);
+        alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى');
+      }
+    });
+
+    // تحديد كل النص لتسهيل النسخ اليدوي
+    selectAllBtn.addEventListener('click', ()=>{
+      const range = document.createRange();
+      range.selectNodeContents(textEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  </script></body>
+</html>
