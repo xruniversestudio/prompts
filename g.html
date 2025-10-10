@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>تجربة الواقع المعزز - مكعب ثلاثي الأبعاد</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -17,6 +17,9 @@
         body {
             overflow: hidden;
             background: #000;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         .arjs-loader {
@@ -129,16 +132,17 @@
             opacity: 1;
         }
         
-        .debug-info {
+        .version {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             color: white;
             background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 20px;
             font-size: 14px;
             z-index: 100;
+            direction: ltr;
         }
         
         .hint {
@@ -152,6 +156,17 @@
             opacity: 0.8;
             font-size: 18px;
             transition: opacity 0.5s ease;
+        }
+        
+        /* إزالة تأثيرات الكاميرا غير المرغوب فيها */
+        .a-enter-vr {
+            display: none !important;
+        }
+        
+        /* تحسين عرض الفيديو لإزالة تأثير العدسة الواسعة */
+        .a-canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
     </style>
 </head>
@@ -169,6 +184,7 @@
     <div class="surface-indicator"></div>
     <div class="surface-message">تم اكتشاف سطح - انقر لوضع المكعب</div>
     <div class="hint">حرك هاتفك لاكتشاف الأسطح المحيطة</div>
+    <div class="version">الإصدار 2.1.4</div>
     
     <div class="instructions">
         ابحث عن سطح مستوٍ ثم انقر لتركيب المكعب ثلاثي الأبعاد
@@ -178,13 +194,21 @@
         vr-mode-ui="enabled: false"
         arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
         embedded
-        renderer="logarithmicDepthBuffer: true;"
+        renderer="logarithmicDepthBuffer: true; colorManagement: true;"
         gesture-detector
     >
 
-        <!-- نظام الواقع المعزز بدون علامات -->
+        <!-- كاميرا طبيعية بدون تأثيرات مبالغ فيها -->
         <a-entity id="rig" movement-controls>
-            <a-entity camera look-controls="enabled: false" position="0 1.6 0"></a-entity>
+            <a-entity 
+                camera 
+                look-controls="enabled: false" 
+                position="0 1.6 0"
+                fov="60"
+                near="0.1"
+                far="1000"
+                wasd-controls="enabled: false">
+            </a-entity>
         </a-entity>
 
         <!-- ضوء للمشهد -->
@@ -304,6 +328,7 @@
         const surfaceMessage = document.querySelector('.surface-message');
         const hint = document.querySelector('.hint');
         const instructions = document.querySelector('.instructions');
+        const version = document.querySelector('.version');
         
         // عناصر المشهد
         const scene = document.querySelector('a-scene');
@@ -324,6 +349,15 @@
                     loader.style.display = 'none';
                 }, 500);
             }, 2000);
+            
+            // إعدادات إضافية للكاميرا بعد التحميل
+            const camera = document.querySelector('[camera]');
+            if (camera) {
+                // ضبط إعدادات الكاميرا لتجنب تأثير العدسة الواسعة
+                camera.setAttribute('fov', '60');
+                camera.setAttribute('near', '0.1');
+                camera.setAttribute('far', '1000');
+            }
         });
         
         // محاكاة اكتشاف السطح بعد فترة
@@ -377,6 +411,9 @@
                     dur: 800,
                     easing: 'easeOutElastic'
                 });
+                
+                // إخفاء التلميحات
+                hint.style.display = 'none';
             }
         });
         
@@ -401,22 +438,24 @@
             }
         }, 8000);
         
-        // معلومات التصحيح (يمكن إزالتها في الإصدار النهائي)
-        window.addEventListener('load', () => {
-            const debugInfo = document.createElement('div');
-            debugInfo.className = 'debug-info';
-            debugInfo.innerHTML = `
-                حالة السطح: <span id="surfaceStatus">جارٍ البحث...</span><br>
-                حالة المكعب: <span id="cubeStatus">غير موضوعة</span>
-            `;
-            document.body.appendChild(debugInfo);
-            
-            setInterval(() => {
-                document.getElementById('surfaceStatus').textContent = 
-                    surfaceDetected ? 'تم الاكتشاف' : 'جارٍ البحث';
-                document.getElementById('cubeStatus').textContent = 
-                    cubePlaced ? 'موضوعة' : 'غير موضوعة';
-            }, 500);
+        // تحديث رقم الإصدار تلقائياً كل 10 ثوانٍ (لأغراض العرض)
+        let versionCounter = 2.1;
+        setInterval(() => {
+            if (!cubePlaced) {
+                versionCounter += 0.1;
+                version.textContent = `الإصدار ${versionCounter.toFixed(1)}`;
+            }
+        }, 10000);
+        
+        // منع السلوك الافتراضي للمس (لمنع التكبير/التصغير غير المرغوب فيه)
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
         });
     </script>
 </body>
