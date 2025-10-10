@@ -179,17 +179,6 @@
             border-bottom: 1px solid #333;
         }
         
-        /* إزالة تأثيرات الكاميرا غير المرغوب فيها */
-        .a-enter-vr {
-            display: none !important;
-        }
-        
-        /* تحسين عرض الفيديو لإزالة تأثير العدسة الواسعة */
-        .a-canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-        
         .tap-hint {
             position: absolute;
             bottom: 100px;
@@ -215,6 +204,41 @@
             0%, 100% { transform: translateX(-50%) translateY(0); }
             50% { transform: translateX(-50%) translateY(-10px); }
         }
+        
+        .error-message {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            flex-direction: column;
+        }
+        
+        .error-content {
+            background: rgba(179, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 90%;
+        }
+        
+        .retry-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #4fc3f7;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -228,7 +252,20 @@
         </div>
     </div>
 
-    <div class="status-bar">جاري البحث عن الأسطح...</div>
+    <div class="error-message" id="errorMessage">
+        <div class="error-content">
+            <h2>حدث خطأ في تحميل الكاميرا</h2>
+            <p>قد يكون السبب أحد ما يلي:</p>
+            <ul style="text-align: right; margin: 15px 0; list-style-type: none;">
+                <li>• لم يتم منح الإذن لاستخدام الكاميرا</li>
+                <li>• الكاميرا قيد الاستخدام من قبل تطبيق آخر</li>
+                <li>• المتصفح لا يدعم الواقع المعزز</li>
+            </ul>
+            <button class="retry-button" onclick="window.location.reload()">إعادة المحاولة</button>
+        </div>
+    </div>
+
+    <div class="status-bar">جاري تهيئة الكاميرا...</div>
     <div class="surface-indicator"></div>
     <div class="surface-message">تم اكتشاف سطح - انقر لوضع المكعب</div>
     <div class="hint">حرك هاتفك لاكتشاف الأسطح المحيطة</div>
@@ -289,23 +326,6 @@
             position="0 0 -1.5" 
             geometry="primitive: ring; radiusInner: 0.008; radiusOuter: 0.012"
             material="color: #4fc3f7; shader: flat; opacity: 0.8">
-            <a-animation 
-                begin="click" 
-                easing="ease-in" 
-                attribute="scale" 
-                fill="forwards" 
-                from="1 1 1" 
-                to="2 2 2" 
-                dur="200">
-            </a-animation>
-            <a-animation 
-                begin="click" 
-                easing="ease-in" 
-                attribute="material.opacity" 
-                from="0.8" 
-                to="0" 
-                dur="200">
-            </a-animation>
         </a-entity>
 
         <!-- شبكة اكتشاف الأسطح (ستظهر عند اكتشاف سطح) -->
@@ -324,7 +344,7 @@
             id="cube" 
             visible="false" 
             geometry="primitive: box; width: 0.5; height: 0.5; depth: 0.5" 
-            material="color: #4fc3f7; metalness: 0.7; roughness: 0.2; envMap: null;" 
+            material="color: #4fc3f7; metalness: 0.7; roughness: 0.2;" 
             position="0 0.25 0" 
             animation="property: rotation; to: 0 360 0; loop: true; dur: 10000;"
             shadow="cast: true">
@@ -345,8 +365,7 @@
                 align="center" 
                 position="0 0.8 0" 
                 color="#FFFFFF" 
-                scale="2 2 2"
-                shader="msdf">
+                scale="2 2 2">
             </a-text>
             
             <!-- تأثيرات بصرية إضافية -->
@@ -380,40 +399,76 @@
         const version = document.querySelector('.version');
         const statusBar = document.querySelector('.status-bar');
         const tapHint = document.querySelector('.tap-hint');
+        const errorMessage = document.getElementById('errorMessage');
         
         // عناصر المشهد
         const scene = document.querySelector('a-scene');
-        const cursor = document.querySelector('#cursor');
         const cube = document.querySelector('#cube');
         const surfaceGrid = document.querySelector('#surfaceGrid');
-        const ground = document.querySelector('#ground');
         
         // حالة اكتشاف السطح
         let surfaceDetected = false;
         let cubePlaced = false;
+        let sceneLoaded = false;
+        
+        // التحقق من دعم الواقع المعزز
+        function checkARSupport() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError('المتصفح لا يدعم الوصول إلى الكاميرا');
+                return false;
+            }
+            return true;
+        }
+        
+        // عرض رسالة الخطأ
+        function showError(message) {
+            loader.style.display = 'none';
+            errorMessage.style.display = 'flex';
+            const errorContent = errorMessage.querySelector('.error-content');
+            errorContent.querySelector('p').textContent = message;
+        }
         
         // إخفاء شاشة التحميل عند تحميل المشهد
         scene.addEventListener('loaded', function() {
+            sceneLoaded = true;
+            statusBar.textContent = 'جارٍ البحث عن الأسطح...';
+            
             setTimeout(() => {
                 loader.style.opacity = '0';
                 setTimeout(() => {
                     loader.style.display = 'none';
                 }, 500);
-            }, 2000);
+            }, 1500);
             
-            // إعدادات إضافية للكاميرا بعد التحميل
-            const camera = document.querySelector('[camera]');
-            if (camera) {
-                // ضبط إعدادات الكاميرا لتجنب تأثير العدسة الواسعة
-                camera.setAttribute('fov', '60');
-                camera.setAttribute('near', '0.1');
-                camera.setAttribute('far', '1000');
+            // التحقق من أن الكاميرا تعمل
+            setTimeout(() => {
+                const canvas = document.querySelector('a-canvas');
+                if (!canvas || canvas.offsetHeight === 0) {
+                    showError('فشل في تحميل الكاميرا. يرجى التأكد من منح الإذن لاستخدام الكاميرا');
+                }
+            }, 3000);
+        });
+        
+        // التحقق من دعم AR عند تحميل الصفحة
+        window.addEventListener('load', function() {
+            if (!checkARSupport()) {
+                return;
             }
+            
+            // طلب إذن الكاميرا مسبقاً
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    // الكاميرا تعمل بشكل صحيح
+                    statusBar.textContent = 'الكاميرا جاهزة - ابحث عن سطح';
+                })
+                .catch(function(error) {
+                    showError('لم يتم منح الإذن لاستخدام الكاميرا: ' + error.message);
+                });
         });
         
         // محاكاة اكتشاف السطح بعد فترة
         let surfaceDetectionInterval = setInterval(() => {
-            if (!surfaceDetected && !cubePlaced) {
+            if (!surfaceDetected && !cubePlaced && sceneLoaded) {
                 surfaceDetected = true;
                 surfaceIndicator.classList.add('active');
                 surfaceMessage.classList.add('active');
@@ -496,7 +551,7 @@
         
         // محاكاة فقدان السطح واكتشافه مرة أخرى (لأغراض العرض)
         setInterval(() => {
-            if (!cubePlaced) {
+            if (!cubePlaced && sceneLoaded) {
                 surfaceDetected = !surfaceDetected;
                 
                 if (surfaceDetected) {
@@ -538,6 +593,25 @@
         document.addEventListener('gesturestart', function(e) {
             e.preventDefault();
         });
+        
+        // إضافة زر إعادة تحميد يدوي في حالة وجود مشاكل
+        const reloadButton = document.createElement('button');
+        reloadButton.textContent = 'إعادة التحميل';
+        reloadButton.style.position = 'absolute';
+        reloadButton.style.top = '60px';
+        reloadButton.style.right = '15px';
+        reloadButton.style.zIndex = '1000';
+        reloadButton.style.background = '#4fc3f7';
+        reloadButton.style.color = 'white';
+        reloadButton.style.border = 'none';
+        reloadButton.style.padding = '8px 16px';
+        reloadButton.style.borderRadius = '20px';
+        reloadButton.style.cursor = 'pointer';
+        reloadButton.style.fontSize = '14px';
+        reloadButton.addEventListener('click', function() {
+            window.location.reload();
+        });
+        document.body.appendChild(reloadButton);
     </script>
 </body>
 </html>
