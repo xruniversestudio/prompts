@@ -75,16 +75,20 @@
         
         .instructions {
             position: absolute;
-            bottom: 20px;
+            bottom: 0;
             left: 0;
             width: 100%;
             text-align: center;
             color: white;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-            padding: 15px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 20px 15px;
             z-index: 100;
             font-size: 16px;
             transition: opacity 0.3s ease;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .surface-indicator {
@@ -92,8 +96,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border: 3px solid #4fc3f7;
             border-radius: 50%;
             z-index: 90;
@@ -115,17 +119,19 @@
         
         .surface-message {
             position: absolute;
-            top: 30%;
+            top: 40%;
             left: 0;
             width: 100%;
             text-align: center;
             color: white;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
             z-index: 100;
             font-size: 18px;
             transition: opacity 0.5s ease;
             opacity: 0;
+            border-top: 2px solid #4fc3f7;
+            border-bottom: 2px solid #4fc3f7;
         }
         
         .surface-message.active {
@@ -135,7 +141,7 @@
         .version {
             position: absolute;
             top: 15px;
-            left: 15px;
+            right: 15px;
             color: white;
             background: rgba(0, 0, 0, 0.5);
             padding: 6px 12px;
@@ -147,15 +153,30 @@
         
         .hint {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 20%;
+            left: 0;
+            width: 100%;
             color: white;
             text-align: center;
             z-index: 80;
             opacity: 0.8;
-            font-size: 18px;
+            font-size: 16px;
             transition: opacity 0.5s ease;
+            padding: 0 15px;
+        }
+        
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            z-index: 100;
+            font-size: 14px;
+            text-align: center;
+            border-bottom: 1px solid #333;
         }
         
         /* إزالة تأثيرات الكاميرا غير المرغوب فيها */
@@ -167,6 +188,32 @@
         .a-canvas {
             width: 100% !important;
             height: 100% !important;
+        }
+        
+        .tap-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(79, 195, 247, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 90;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        
+        .tap-hint.active {
+            opacity: 1;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
         }
     </style>
 </head>
@@ -181,10 +228,12 @@
         </div>
     </div>
 
+    <div class="status-bar">جاري البحث عن الأسطح...</div>
     <div class="surface-indicator"></div>
     <div class="surface-message">تم اكتشاف سطح - انقر لوضع المكعب</div>
     <div class="hint">حرك هاتفك لاكتشاف الأسطح المحيطة</div>
     <div class="version">الإصدار 2.1.4</div>
+    <div class="tap-hint">انقر هنا</div>
     
     <div class="instructions">
         ابحث عن سطح مستوٍ ثم انقر لتركيب المكعب ثلاثي الأبعاد
@@ -262,6 +311,7 @@
         <!-- شبكة اكتشاف الأسطح (ستظهر عند اكتشاف سطح) -->
         <a-entity 
             id="surfaceGrid" 
+            class="clickable"
             visible="false" 
             geometry="primitive: plane; width: 1; height: 1" 
             material="color: #4fc3f7; opacity: 0.4; transparent: true; shader: flat" 
@@ -272,7 +322,6 @@
         <!-- المكعب الثلاثي الأبعاد -->
         <a-entity 
             id="cube" 
-            class="clickable" 
             visible="false" 
             geometry="primitive: box; width: 0.5; height: 0.5; depth: 0.5" 
             material="color: #4fc3f7; metalness: 0.7; roughness: 0.2; envMap: null;" 
@@ -297,8 +346,7 @@
                 position="0 0.8 0" 
                 color="#FFFFFF" 
                 scale="2 2 2"
-                shader="msdf"
-                font="https://cdn.aframe.io/fonts/NotoSansArabic-Regular-1.png">
+                shader="msdf">
             </a-text>
             
             <!-- تأثيرات بصرية إضافية -->
@@ -312,6 +360,7 @@
         <!-- أرضية افتراضية للمساعدة في التموضع -->
         <a-entity 
             id="ground" 
+            class="clickable"
             geometry="primitive: plane; width: 100; height: 100" 
             material="color: #222222; opacity: 0.0; transparent: true" 
             rotation="-90 0 0" 
@@ -329,6 +378,8 @@
         const hint = document.querySelector('.hint');
         const instructions = document.querySelector('.instructions');
         const version = document.querySelector('.version');
+        const statusBar = document.querySelector('.status-bar');
+        const tapHint = document.querySelector('.tap-hint');
         
         // عناصر المشهد
         const scene = document.querySelector('a-scene');
@@ -366,32 +417,55 @@
                 surfaceDetected = true;
                 surfaceIndicator.classList.add('active');
                 surfaceMessage.classList.add('active');
+                tapHint.classList.add('active');
                 hint.style.opacity = '0';
+                statusBar.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
                 
                 // عرض شبكة السطح
                 surfaceGrid.setAttribute('visible', 'true');
                 
                 // تحديث التعليمات
-                instructions.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
+                instructions.textContent = 'انقر في أي مكان على الشاشة لوضع المكعب';
                 
                 clearInterval(surfaceDetectionInterval);
             }
         }, 4000);
         
-        // التحكم في وضع المكعب عند النقر
-        cursor.addEventListener('click', function(evt) {
+        // إصلاح مشكلة النقر - استخدام حدث النقر على المستند
+        document.addEventListener('click', function() {
             if (surfaceDetected && !cubePlaced) {
-                const cursorPosition = cursor.getAttribute('position');
+                placeCube();
+            }
+        });
+        
+        // إصلاح مشكلة النقر - استخدام اللمس للأجهزة المحمولة
+        document.addEventListener('touchstart', function(e) {
+            if (surfaceDetected && !cubePlaced) {
+                e.preventDefault();
+                placeCube();
+            }
+        }, { passive: false });
+        
+        // دالة لوضع المكعب
+        function placeCube() {
+            if (surfaceDetected && !cubePlaced) {
                 const camera = document.querySelector('[camera]');
                 const cameraPosition = camera.getAttribute('position');
+                const cameraRotation = camera.getAttribute('rotation');
                 
-                // وضع المكعب أمام الكاميرا مباشرة
-                cube.setAttribute('position', {
-                    x: cameraPosition.x,
-                    y: cameraPosition.y - 0.5,
-                    z: cameraPosition.z - 1.5
-                });
+                // حساب الموضع أمام الكاميرا مباشرة
+                const distance = 1.5;
+                const yOffset = -0.5;
                 
+                // تحويل الزوايا من الدرجات إلى الراديان
+                const yaw = cameraRotation.y * (Math.PI / 180);
+                
+                // حساب الموضع النهائي
+                const x = cameraPosition.x - Math.sin(yaw) * distance;
+                const z = cameraPosition.z - Math.cos(yaw) * distance;
+                const y = cameraPosition.y + yOffset;
+                
+                cube.setAttribute('position', { x, y, z });
                 cube.setAttribute('visible', 'true');
                 cubePlaced = true;
                 
@@ -399,6 +473,9 @@
                 surfaceIndicator.classList.remove('active');
                 surfaceMessage.classList.remove('active');
                 surfaceGrid.setAttribute('visible', 'false');
+                tapHint.classList.remove('active');
+                hint.style.display = 'none';
+                statusBar.textContent = 'تم وضع المكعب - حرك هاتفك حوله';
                 
                 // تحديث التعليمات
                 instructions.textContent = 'جرب التحرك حول المكعب لمشاهدته من جميع الزوايا';
@@ -412,10 +489,10 @@
                     easing: 'easeOutElastic'
                 });
                 
-                // إخفاء التلميحات
-                hint.style.display = 'none';
+                // تحديث رقم الإصدار بعد وضع المكعب
+                version.textContent = 'الإصدار 2.1.5';
             }
-        });
+        }
         
         // محاكاة فقدان السطح واكتشافه مرة أخرى (لأغراض العرض)
         setInterval(() => {
@@ -425,15 +502,19 @@
                 if (surfaceDetected) {
                     surfaceIndicator.classList.add('active');
                     surfaceMessage.classList.add('active');
+                    tapHint.classList.add('active');
                     surfaceGrid.setAttribute('visible', 'true');
                     hint.style.opacity = '0';
-                    instructions.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
+                    statusBar.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
+                    instructions.textContent = 'انقر في أي مكان على الشاشة لوضع المكعب';
                 } else {
                     surfaceIndicator.classList.remove('active');
                     surfaceMessage.classList.remove('active');
+                    tapHint.classList.remove('active');
                     surfaceGrid.setAttribute('visible', 'false');
                     hint.style.opacity = '0.8';
-                    instructions.textContent = 'يبحث عن سطح... حرك هاتفك ببطء';
+                    statusBar.textContent = 'جار البحث عن الأسطح...';
+                    instructions.textContent = 'حرك هاتفك ببطء لاكتشاف الأسطح';
                 }
             }
         }, 8000);
