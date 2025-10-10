@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>تجربة الواقع المعزز - مكعب ثلاثي الأبعاد</title>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .arjs-loader {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="arjs-loader">
+        <div class="spinner"></div>
+        <div class="loading-text">جاري تحميل تجربة الواقع المعزز...</div>
+        <div>حرك هاتفك ببطء لاكتشاف الأسطح</div>
+    </div>
+
+    <div class="instructions">
+        حرك هاتفك ببطء لاكتشاف الأسطح. انقر على أي سطح لوضع المكعب.
+    </div>
+
+    <a-scene
+        vr-mode-ui="enabled: false"
+        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+        embedded
+        renderer="logarithmicDepthBuffer: true;"
+        gesture-detector
+    >
+
+        <!-- نظام الواقع المعزز بدون علامات -->
+        <a-entity id="rig" movement-controls>
+            <a-entity camera look-controls="enabled: false" position="0 0 0"></a-entity>
+        </a-entity>
+
+        <!-- ضوء للمشهد -->
+        <a-light 
+            type="directional" 
+            position="2 4 2" 
+            intensity="0.6" 
+            cast-shadow>
+        </a-light>
+        
+        <a-light 
+            type="ambient" 
+            intensity="0.4">
+        </a-light>
+
+        <!-- مؤشر لوضع المكعب -->
+        <a-cursor 
+            id="cursor" 
+            fuse="true" 
+            fuse-timeout="500" 
+            raycaster="objects: .clickable" 
+            animation__click="property: scale; from: 0.1 0.1 0.1; to: 1 1 1; easing: easeInCubic; dur: 150; startEvents: click" 
+            position="0 0 -1" 
+            geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" 
+            material="color: #00BFFF; shader: flat">
+        </a-cursor>
+
+        <!-- المكعب الثلاثي الأبعاد -->
+        <a-entity 
+            id="cube" 
+            class="clickable" 
+            visible="false" 
+            geometry="primitive: box" 
+            material="color: #00BFFF; metalness: 0.7; roughness: 0.2" 
+            scale="0.5 0.5 0.5" 
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
+            
+            <!-- تأثير إشعاعي حول المكعب -->
+            <a-ring 
+                color="#00BFFF" 
+                radius-inner="0.8" 
+                radius-outer="1" 
+                opacity="0.3" 
+                rotation="-90 0 0">
+            </a-ring>
+            
+            <!-- نص يشرح التجربة -->
+            <a-text 
+                value="تجربة الواقع المعزز" 
+                align="center" 
+                position="0 1.2 0" 
+                color="#FFFFFF" 
+                scale="2 2 2">
+            </a-text>
+        </a-entity>
+
+        <!-- أرضية افتراضية للمساعدة في التموضع -->
+        <a-grid 
+            id="grid" 
+            visible="false" 
+            rotation="-90 0 0" 
+            position="0 0 0" 
+            width="10" 
+            height="10" 
+            color="#CCC">
+        </a-grid>
+
+    </a-scene>
+
+    <script>
+        // إخفاء شاشة التحميل عند تحميل المشهد
+        document.querySelector('a-scene').addEventListener('loaded', function() {
+            document.querySelector('.arjs-loader').style.display = 'none';
+        });
+
+        // التحكم في وضع المكعب عند النقر
+        const cursor = document.getElementById('cursor');
+        const cube = document.getElementById('cube');
+        const grid = document.getElementById('grid');
+
+        cursor.addEventListener('click', function(evt) {
+            const target = evt.detail.intersectedEl;
+            if (target.classList.contains('clickable')) {
+                // إذا كان المكعب غير مرئي، ضعه في موقع المؤشر
+                if (!cube.getAttribute('visible')) {
+                    const cursorPosition = cursor.getAttribute('position');
+                    cube.setAttribute('position', {
+                        x: cursorPosition.x,
+                        y: cursorPosition.y,
+                        z: cursorPosition.z
+                    });
+                    cube.setAttribute('visible', 'true');
+                    grid.setAttribute('visible', 'true');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
