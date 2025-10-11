@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>تجربة الواقع المعزز - مكعب ثلاثي الأبعاد</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@master/aframe/build/aframe-ar.js"></script>
     <style>
         * {
             margin: 0;
@@ -20,6 +20,8 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            width: 100vw;
+            height: 100vh;
         }
         
         .arjs-loader {
@@ -119,7 +121,7 @@
         
         .surface-message {
             position: absolute;
-            top: 40%;
+            top: 35%;
             left: 0;
             width: 100%;
             text-align: center;
@@ -153,7 +155,7 @@
         
         .hint {
             position: absolute;
-            top: 20%;
+            top: 25%;
             left: 0;
             width: 100%;
             color: white;
@@ -172,7 +174,7 @@
             width: 100%;
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 10px 15px;
+            padding: 12px 15px;
             z-index: 100;
             font-size: 14px;
             text-align: center;
@@ -205,39 +207,46 @@
             50% { transform: translateX(-50%) translateY(-10px); }
         }
         
-        .error-message {
-            display: none;
+        .start-button {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            flex-direction: column;
-        }
-        
-        .error-content {
-            background: rgba(179, 0, 0, 0.8);
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 90%;
-        }
-        
-        .retry-button {
-            margin-top: 20px;
-            padding: 10px 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: #4fc3f7;
-            border: none;
-            border-radius: 25px;
             color: white;
-            font-size: 16px;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 18px;
             cursor: pointer;
+            z-index: 101;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .start-button:hover {
+            background: #29b6f6;
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+        
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 102;
+            max-width: 80%;
+            display: none;
+        }
+        
+        /* إزالة تأثيرات الكاميرا غير المرغوب فيها */
+        .a-enter-vr {
+            display: none !important;
         }
     </style>
 </head>
@@ -252,20 +261,15 @@
         </div>
     </div>
 
+    <button class="start-button" id="startButton">بدء التجربة</button>
+    
     <div class="error-message" id="errorMessage">
-        <div class="error-content">
-            <h2>حدث خطأ في تحميل الكاميرا</h2>
-            <p>قد يكون السبب أحد ما يلي:</p>
-            <ul style="text-align: right; margin: 15px 0; list-style-type: none;">
-                <li>• لم يتم منح الإذن لاستخدام الكاميرا</li>
-                <li>• الكاميرا قيد الاستخدام من قبل تطبيق آخر</li>
-                <li>• المتصفح لا يدعم الواقع المعزز</li>
-            </ul>
-            <button class="retry-button" onclick="window.location.reload()">إعادة المحاولة</button>
-        </div>
+        <h3>حدث خطأ في تحميل الكاميرا</h3>
+        <p>يرجى التأكد من منح الإذن لاستخدام الكاميرا وتحديث الصفحة</p>
+        <button onclick="window.location.reload()" style="margin-top: 15px; padding: 10px 20px; background: #4fc3f7; color: white; border: none; border-radius: 5px; cursor: pointer;">إعادة تحميل الصفحة</button>
     </div>
 
-    <div class="status-bar">جاري تهيئة الكاميرا...</div>
+    <div class="status-bar">انقر على "بدء التجربة" لتفعيل الكاميرا</div>
     <div class="surface-indicator"></div>
     <div class="surface-message">تم اكتشاف سطح - انقر لوضع المكعب</div>
     <div class="hint">حرك هاتفك لاكتشاف الأسطح المحيطة</div>
@@ -273,7 +277,7 @@
     <div class="tap-hint">انقر هنا</div>
     
     <div class="instructions">
-        ابحث عن سطح مستوٍ ثم انقر لتركيب المكعب ثلاثي الأبعاد
+        انقر على "بدء التجربة" لتفعيل الكاميرا والبدء
     </div>
 
     <a-scene
@@ -282,6 +286,8 @@
         embedded
         renderer="logarithmicDepthBuffer: true; colorManagement: true;"
         gesture-detector
+        id="arScene"
+        style="display: none;"
     >
 
         <!-- كاميرا طبيعية بدون تأثيرات مبالغ فيها -->
@@ -326,6 +332,23 @@
             position="0 0 -1.5" 
             geometry="primitive: ring; radiusInner: 0.008; radiusOuter: 0.012"
             material="color: #4fc3f7; shader: flat; opacity: 0.8">
+            <a-animation 
+                begin="click" 
+                easing="ease-in" 
+                attribute="scale" 
+                fill="forwards" 
+                from="1 1 1" 
+                to="2 2 2" 
+                dur="200">
+            </a-animation>
+            <a-animation 
+                begin="click" 
+                easing="ease-in" 
+                attribute="material.opacity" 
+                from="0.8" 
+                to="0" 
+                dur="200">
+            </a-animation>
         </a-entity>
 
         <!-- شبكة اكتشاف الأسطح (ستظهر عند اكتشاف سطح) -->
@@ -392,6 +415,8 @@
     <script>
         // عناصر واجهة المستخدم
         const loader = document.querySelector('.arjs-loader');
+        const startButton = document.getElementById('startButton');
+        const errorMessage = document.getElementById('errorMessage');
         const surfaceIndicator = document.querySelector('.surface-indicator');
         const surfaceMessage = document.querySelector('.surface-message');
         const hint = document.querySelector('.hint');
@@ -399,103 +424,75 @@
         const version = document.querySelector('.version');
         const statusBar = document.querySelector('.status-bar');
         const tapHint = document.querySelector('.tap-hint');
-        const errorMessage = document.getElementById('errorMessage');
+        const arScene = document.getElementById('arScene');
         
         // عناصر المشهد
         const scene = document.querySelector('a-scene');
+        const cursor = document.querySelector('#cursor');
         const cube = document.querySelector('#cube');
         const surfaceGrid = document.querySelector('#surfaceGrid');
+        const ground = document.querySelector('#ground');
         
         // حالة اكتشاف السطح
         let surfaceDetected = false;
         let cubePlaced = false;
-        let sceneLoaded = false;
-        
-        // التحقق من دعم الواقع المعزز
-        function checkARSupport() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showError('المتصفح لا يدعم الوصول إلى الكاميرا');
-                return false;
-            }
-            return true;
-        }
-        
-        // عرض رسالة الخطأ
-        function showError(message) {
-            loader.style.display = 'none';
-            errorMessage.style.display = 'flex';
-            const errorContent = errorMessage.querySelector('.error-content');
-            errorContent.querySelector('p').textContent = message;
-        }
+        let sceneStarted = false;
         
         // إخفاء شاشة التحميل عند تحميل المشهد
         scene.addEventListener('loaded', function() {
-            sceneLoaded = true;
-            statusBar.textContent = 'جارٍ البحث عن الأسطح...';
-            
             setTimeout(() => {
                 loader.style.opacity = '0';
                 setTimeout(() => {
                     loader.style.display = 'none';
+                    startButton.style.display = 'block';
                 }, 500);
-            }, 1500);
+            }, 2000);
+        });
+        
+        // بدء التجربة عند النقر على الزر
+        startButton.addEventListener('click', function() {
+            if (!sceneStarted) {
+                startARExperience();
+            }
+        });
+        
+        // دالة لبدء تجربة الواقع المعزز
+        function startARExperience() {
+            startButton.style.display = 'none';
+            arScene.style.display = 'block';
+            sceneStarted = true;
+            statusBar.textContent = 'جارٍ البحث عن الأسطح...';
+            instructions.textContent = 'حرك هاتفك ببطء لاكتشاف الأسطح';
             
-            // التحقق من أن الكاميرا تعمل
+            // محاكاة اكتشاف السطح بعد فترة
             setTimeout(() => {
-                const canvas = document.querySelector('a-canvas');
-                if (!canvas || canvas.offsetHeight === 0) {
-                    showError('فشل في تحميل الكاميرا. يرجى التأكد من منح الإذن لاستخدام الكاميرا');
+                if (!surfaceDetected && !cubePlaced) {
+                    surfaceDetected = true;
+                    surfaceIndicator.classList.add('active');
+                    surfaceMessage.classList.add('active');
+                    tapHint.classList.add('active');
+                    hint.style.opacity = '0';
+                    statusBar.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
+                    
+                    // عرض شبكة السطح
+                    surfaceGrid.setAttribute('visible', 'true');
+                    
+                    // تحديث التعليمات
+                    instructions.textContent = 'انقر في أي مكان على الشاشة لوضع المكعب';
                 }
             }, 3000);
-        });
-        
-        // التحقق من دعم AR عند تحميل الصفحة
-        window.addEventListener('load', function() {
-            if (!checkARSupport()) {
-                return;
-            }
-            
-            // طلب إذن الكاميرا مسبقاً
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(stream) {
-                    // الكاميرا تعمل بشكل صحيح
-                    statusBar.textContent = 'الكاميرا جاهزة - ابحث عن سطح';
-                })
-                .catch(function(error) {
-                    showError('لم يتم منح الإذن لاستخدام الكاميرا: ' + error.message);
-                });
-        });
-        
-        // محاكاة اكتشاف السطح بعد فترة
-        let surfaceDetectionInterval = setInterval(() => {
-            if (!surfaceDetected && !cubePlaced && sceneLoaded) {
-                surfaceDetected = true;
-                surfaceIndicator.classList.add('active');
-                surfaceMessage.classList.add('active');
-                tapHint.classList.add('active');
-                hint.style.opacity = '0';
-                statusBar.textContent = 'تم اكتشاف سطح - انقر لوضع المكعب';
-                
-                // عرض شبكة السطح
-                surfaceGrid.setAttribute('visible', 'true');
-                
-                // تحديث التعليمات
-                instructions.textContent = 'انقر في أي مكان على الشاشة لوضع المكعب';
-                
-                clearInterval(surfaceDetectionInterval);
-            }
-        }, 4000);
+        }
         
         // إصلاح مشكلة النقر - استخدام حدث النقر على المستند
         document.addEventListener('click', function() {
-            if (surfaceDetected && !cubePlaced) {
+            if (surfaceDetected && !cubePlaced && sceneStarted) {
                 placeCube();
             }
         });
         
         // إصلاح مشكلة النقر - استخدام اللمس للأجهزة المحمولة
         document.addEventListener('touchstart', function(e) {
-            if (surfaceDetected && !cubePlaced) {
+            if (surfaceDetected && !cubePlaced && sceneStarted) {
                 e.preventDefault();
                 placeCube();
             }
@@ -503,24 +500,17 @@
         
         // دالة لوضع المكعب
         function placeCube() {
-            if (surfaceDetected && !cubePlaced) {
+            if (surfaceDetected && !cubePlaced && sceneStarted) {
                 const camera = document.querySelector('[camera]');
                 const cameraPosition = camera.getAttribute('position');
-                const cameraRotation = camera.getAttribute('rotation');
                 
-                // حساب الموضع أمام الكاميرا مباشرة
-                const distance = 1.5;
-                const yOffset = -0.5;
+                // وضع المكعب أمام الكاميرا مباشرة
+                cube.setAttribute('position', {
+                    x: cameraPosition.x,
+                    y: cameraPosition.y - 0.5,
+                    z: cameraPosition.z - 1.5
+                });
                 
-                // تحويل الزوايا من الدرجات إلى الراديان
-                const yaw = cameraRotation.y * (Math.PI / 180);
-                
-                // حساب الموضع النهائي
-                const x = cameraPosition.x - Math.sin(yaw) * distance;
-                const z = cameraPosition.z - Math.cos(yaw) * distance;
-                const y = cameraPosition.y + yOffset;
-                
-                cube.setAttribute('position', { x, y, z });
                 cube.setAttribute('visible', 'true');
                 cubePlaced = true;
                 
@@ -551,7 +541,7 @@
         
         // محاكاة فقدان السطح واكتشافه مرة أخرى (لأغراض العرض)
         setInterval(() => {
-            if (!cubePlaced && sceneLoaded) {
+            if (!cubePlaced && sceneStarted) {
                 surfaceDetected = !surfaceDetected;
                 
                 if (surfaceDetected) {
@@ -577,9 +567,17 @@
         // تحديث رقم الإصدار تلقائياً كل 10 ثوانٍ (لأغراض العرض)
         let versionCounter = 2.1;
         setInterval(() => {
-            if (!cubePlaced) {
+            if (!cubePlaced && sceneStarted) {
                 versionCounter += 0.1;
                 version.textContent = `الإصدار ${versionCounter.toFixed(1)}`;
+            }
+        }, 10000);
+        
+        // التحقق من أخطاء الكاميرا
+        setTimeout(() => {
+            if (!sceneStarted) {
+                errorMessage.style.display = 'block';
+                startButton.style.display = 'none';
             }
         }, 10000);
         
@@ -593,25 +591,6 @@
         document.addEventListener('gesturestart', function(e) {
             e.preventDefault();
         });
-        
-        // إضافة زر إعادة تحميد يدوي في حالة وجود مشاكل
-        const reloadButton = document.createElement('button');
-        reloadButton.textContent = 'إعادة التحميل';
-        reloadButton.style.position = 'absolute';
-        reloadButton.style.top = '60px';
-        reloadButton.style.right = '15px';
-        reloadButton.style.zIndex = '1000';
-        reloadButton.style.background = '#4fc3f7';
-        reloadButton.style.color = 'white';
-        reloadButton.style.border = 'none';
-        reloadButton.style.padding = '8px 16px';
-        reloadButton.style.borderRadius = '20px';
-        reloadButton.style.cursor = 'pointer';
-        reloadButton.style.fontSize = '14px';
-        reloadButton.addEventListener('click', function() {
-            window.location.reload();
-        });
-        document.body.appendChild(reloadButton);
     </script>
 </body>
 </html>
