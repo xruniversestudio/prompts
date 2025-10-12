@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Halloween AR Mirror</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: #8a2be2;
+            font-size: 24px;
+        }
+        #loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(138, 43, 226, 0.3);
+            border-radius: 50%;
+            border-top-color: #8a2be2;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4500;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
+            opacity: 0;
+            z-index: 10;
+            width: 80%;
+            line-height: 1.4;
+        }
+        #logo {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(45deg, #ff8c00, #ff4500);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            opacity: 0;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.7);
+        }
+        #stage-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #8a2be2;
+            font-size: 1rem;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #8a2be2;
+            font-size: 0.9rem;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Halloween AR Mirror...</div>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="stage-indicator">Stage 1: Initializing...</div>
+    
+    <div id="instructions">
+        Keep your face in frame and try smiling or opening your mouth!
+    </div>
+    
+    <div id="message">Face Your Shadow – Happy Halloween!</div>
+    
+    <div id="logo">SHADOW SHOP</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+    <script>
+        // Main application variables
+        let scene, camera, renderer, video, videoTexture;
+        let faceMesh, faceGeometry, faceMaterial, faceMeshObject;
+        let fogParticles = [];
+        let bats = [];
+        let sparks = [];
+        let stage = 0;
+        let stageStartTime = 0;
+        let faceDetected = false;
+        let currentFaceMask = null;
+        let audioContext, ambientSound, windSound, pulseSound;
+        
+        // Initialize the application
+        async function init() {
+            // Setup Three.js scene
+            setupThreeJS();
+            
+            // Setup MediaPipe Face Mesh
+            await setupFaceMesh();
+            
+            // Setup audio
+            setupAudio();
+            
+            // Start the animation loop
+            animate();
+            
+            // Hide loading screen after a short delay
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                stageStartTime = Date.now();
+            }, 2000);
+        }
+        
+        function setupThreeJS() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add ambient lighting
+            const ambientLight = new THREE.AmbientLight(0x330033, 0.3);
+            scene.add(ambientLight);
+            
+            // Add purple flickering light
+            const purpleLight = new THREE.PointLight(0x8a2be2, 0.8, 20);
+            purpleLight.position.set(0, 3, 5);
+            scene.add(purpleLight);
+            
+            // Animate the purple light
+            function animateLight() {
+                const time = Date.now() * 0.001;
+                purpleLight.intensity = 0.5 + Math.sin(time * 3) * 0.3;
+                requestAnimationFrame(animateLight);
+            }
+            animateLight();
+            
+            // Add orange light
+            const orangeLight = new THREE.PointLight(0xff4500, 0.5, 15);
+            orangeLight.position.set(3, -2, 4);
+            scene.add(orangeLight);
+            
+            // Create fog particles
+            createFogParticles();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createFogParticles() {
+            const particleCount = 100;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 20;     // x
+                positions[i+1] = (Math.random() - 0.5) * 20;   // y
+                positions[i+2] = (Math.random() - 0.5) * 10;   // z
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x8a2be2,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.3,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particleSystem);
+            fogParticles.push(particleSystem);
+        }
+        
+        async function setupFaceMesh() {
+            // Create video element for camera feed
+            video = document.createElement('video');
+            video.setAttribute('playsinline', '');
+            video.setAttribute('autoplay', '');
+            video.style.display = 'none';
+            document.body.appendChild(video);
+            
+            // Setup MediaPipe Face Mesh
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+            
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            faceMesh.onResults(onFaceResults);
+            
+            // Start camera
+            const camera = new Camera(video, {
+                onFrame: async () => {
+                    await faceMesh.send({image: video});
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+            
+            // Create face geometry and material
+            faceGeometry = new THREE.BufferGeometry();
+            faceMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                wireframe: false,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            faceMeshObject = new THREE.Mesh(faceGeometry, faceMaterial);
+            scene.add(faceMeshObject);
+        }
+        
+        function onFaceResults(results) {
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                if (!faceDetected) {
+                    faceDetected = true;
+                    console.log("Face detected!");
+                }
+                
+                const landmarks = results.multiFaceLandmarks[0];
+                updateFaceGeometry(landmarks);
+                detectFacialExpressions(landmarks);
+            } else {
+                faceDetected = false;
+            }
+        }
+        
+        function updateFaceGeometry(landmarks) {
+            const vertices = [];
+            const indices = [];
+            
+            // Convert landmarks to vertices
+            for (let i = 0; i < landmarks.length; i++) {
+                vertices.push(
+                    (landmarks[i].x - 0.5) * 10,
+                    (0.5 - landmarks[i].y) * 10,
+                    (landmarks[i].z || 0) * 10
+                );
+            }
+            
+            // Simple triangulation for face (this is a simplified version)
+            // In a real implementation, you would use the MediaPipe provided triangulation
+            for (let i = 0; i < landmarks.length - 3; i += 3) {
+                indices.push(i, i+1, i+2);
+            }
+            
+            faceGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            faceGeometry.setIndex(indices);
+            faceGeometry.computeVertexNormals();
+        }
+        
+        function detectFacialExpressions(landmarks) {
+            // Simplified mouth open detection
+            const upperLip = landmarks[13];
+            const lowerLip = landmarks[14];
+            const mouthOpen = Math.abs(upperLip.y - lowerLip.y) > 0.05;
+            
+            // Simplified smile detection
+            const leftMouthCorner = landmarks[61];
+            const rightMouthCorner = landmarks[291];
+            const smile = (rightMouthCorner.x - leftMouthCorner.x) > 0.3;
+            
+            // Trigger effects based on expressions
+            if (mouthOpen && stage >= 2) {
+                createBats();
+            }
+            
+            if (smile && stage >= 2) {
+                createSparks();
+            }
+        }
+        
+        function createBats() {
+            // Create bat particles
+            for (let i = 0; i < 5; i++) {
+                const batGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+                const batMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const bat = new THREE.Mesh(batGeometry, batMaterial);
+                
+                // Position bats around the face
+                bat.position.set(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                );
+                
+                // Add velocity
+                bat.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    Math.random() * 0.1,
+                    (Math.random() - 0.5) * 0.1
+                );
+                
+                scene.add(bat);
+                bats.push(bat);
+                
+                // Remove bats after a while
+                setTimeout(() => {
+                    scene.remove(bat);
+                    bats = bats.filter(b => b !== bat);
+                }, 3000);
+            }
+        }
+        
+        function createSparks() {
+            // Create spark particles
+            for (let i = 0; i < 10; i++) {
+                const sparkGeometry = new THREE.SphereGeometry(0.02, 4, 4);
+                const sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500 });
+                const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+                
+                // Position sparks around the face
+                spark.position.set(
+                    (Math.random() - 0.5) * 1.5,
+                    (Math.random() - 0.5) * 1.5,
+                    (Math.random() - 0.5) * 1.5
+                );
+                
+                // Add velocity
+                spark.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.05,
+                    Math.random() * 0.05,
+                    (Math.random() - 0.5) * 0.05
+                );
+                
+                spark.userData.life = 1.0;
+                
+                scene.add(spark);
+                sparks.push(spark);
+            }
+        }
+        
+        function setupAudio() {
+            // Create audio context
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create ambient whisper sound (simulated with noise)
+            const ambientNoise = audioContext.createOscillator();
+            const ambientGain = audioContext.createGain();
+            ambientNoise.type = 'sawtooth';
+            ambientNoise.frequency.value = 60;
+            ambientGain.gain.value = 0.05;
+            ambientNoise.connect(ambientGain);
+            ambientGain.connect(audioContext.destination);
+            ambientNoise.start();
+            
+            // Create wind sound (simulated with filtered noise)
+            const windNoise = audioContext.createOscillator();
+            const windFilter = audioContext.createBiquadFilter();
+            const windGain = audioContext.createGain();
+            windNoise.type = 'sawtooth';
+            windNoise.frequency.value = 40;
+            windFilter.type = 'lowpass';
+            windFilter.frequency.value = 200;
+            windGain.gain.value = 0.03;
+            windNoise.connect(windFilter);
+            windFilter.connect(windGain);
+            windGain.connect(audioContext.destination);
+            windNoise.start();
+            
+            // Store references for later control
+            ambientSound = ambientGain;
+            windSound = windGain;
+        }
+        
+        function playPulseSound() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+        
+        function updateStage() {
+            const currentTime = Date.now();
+            const elapsed = (currentTime - stageStartTime) / 1000;
+            
+            // Stage progression
+            if (elapsed < 3 && stage !== 1) {
+                stage = 1;
+                document.getElementById('stage-indicator').textContent = "Stage 1: Initializing...";
+            } else if (elapsed >= 3 && elapsed < 7 && stage !== 2) {
+                stage = 2;
+                document.getElementById('stage-indicator').textContent = "Stage 2: Face Transformation";
+                applyRandomFaceMask();
+                playPulseSound();
+            } else if (elapsed >= 7 && elapsed < 10 && stage !== 3) {
+                stage = 3;
+                document.getElementById('stage-indicator').textContent = "Stage 3: Interactive Effects";
+            } else if (elapsed >= 10 && elapsed < 15 && stage !== 4) {
+                stage = 4;
+                document.getElementById('stage-indicator').textContent = "Stage 4: Final Message";
+                showMessage();
+            } else if (elapsed >= 15) {
+                // Reset for looping
+                stageStartTime = currentTime;
+                resetEffects();
+            }
+        }
+        
+        function applyRandomFaceMask() {
+            // Remove current mask if exists
+            if (currentFaceMask) {
+                scene.remove(currentFaceMask);
+            }
+            
+            // Choose a random mask type
+            const maskType = Math.floor(Math.random() * 3);
+            
+            // Create mask geometry (simplified - in real implementation would be more detailed)
+            const maskGeometry = new THREE.SphereGeometry(1.2, 32, 32);
+            
+            let maskMaterial;
+            switch(maskType) {
+                case 0: // Witch
+                    maskMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x8a2be2,
+                        transparent: true,
+                        opacity: 0.7,
+                        emissive: 0x4b0082,
+                        emissiveIntensity: 0.5
+                    });
+                    break;
+                case 1: // Skeleton
+                    maskMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xf5f5f5,
+                        transparent: true,
+                        opacity: 0.8,
+                        emissive: 0x888888,
+                        emissiveIntensity: 0.3
+                    });
+                    break;
+                case 2: // Zombie
+                    maskMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00ff00,
+                        transparent: true,
+                        opacity: 0.6,
+                        emissive: 0x006400,
+                        emissiveIntensity: 0.4
+                    });
+                    break;
+            }
+            
+            currentFaceMask = new THREE.Mesh(maskGeometry, maskMaterial);
+            scene.add(currentFaceMask);
+        }
+        
+        function showMessage() {
+            const message = document.getElementById('message');
+            const logo = document.getElementById('logo');
+            
+            // Animate message appearance
+            message.style.opacity = 1;
+            message.style.transition = 'opacity 1s ease-in-out';
+            
+            // Animate logo appearance
+            setTimeout(() => {
+                logo.style.opacity = 1;
+                logo.style.transition = 'opacity 1s ease-in-out';
+            }, 1000);
+            
+            // Apply glitch effect
+            applyGlitchEffect();
+        }
+        
+        function applyGlitchEffect() {
+            // Simplified glitch effect by randomly shifting camera position
+            const originalX = camera.position.x;
+            const originalY = camera.position.y;
+            
+            let glitchCount = 0;
+            const glitchInterval = setInterval(() => {
+                camera.position.x = originalX + (Math.random() - 0.5) * 0.1;
+                camera.position.y = originalY + (Math.random() - 0.5) * 0.1;
+                
+                glitchCount++;
+                if (glitchCount > 10) {
+                    clearInterval(glitchInterval);
+                    camera.position.x = originalX;
+                    camera.position.y = originalY;
+                }
+            }, 100);
+        }
+        
+        function resetEffects() {
+            // Reset stage indicator
+            document.getElementById('stage-indicator').textContent = "Stage 1: Initializing...";
+            
+            // Hide message and logo
+            document.getElementById('message').style.opacity = 0;
+            document.getElementById('logo').style.opacity = 0;
+            
+            // Remove current mask
+            if (currentFaceMask) {
+                scene.remove(currentFaceMask);
+                currentFaceMask = null;
+            }
+            
+            // Clear particles
+            bats.forEach(bat => scene.remove(bat));
+            bats = [];
+            sparks.forEach(spark => scene.remove(spark));
+            sparks = [];
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update stage
+            updateStage();
+            
+            // Update fog particles
+            if (fogParticles.length > 0) {
+                fogParticles[0].rotation.y += 0.001;
+                fogParticles[0].position.y = Math.sin(Date.now() * 0.001) * 0.1;
+            }
+            
+            // Update bats
+            bats.forEach(bat => {
+                bat.position.add(bat.userData.velocity);
+                bat.userData.velocity.y -= 0.001; // gravity
+                
+                // Random movement
+                bat.userData.velocity.x += (Math.random() - 0.5) * 0.01;
+                bat.userData.velocity.z += (Math.random() - 0.5) * 0.01;
+            });
+            
+            // Update sparks
+            sparks.forEach(spark => {
+                spark.position.add(spark.userData.velocity);
+                spark.userData.life -= 0.02;
+                spark.material.opacity = spark.userData.life;
+                
+                if (spark.userData.life <= 0) {
+                    scene.remove(spark);
+                    sparks = sparks.filter(s => s !== spark);
+                }
+            });
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Start the application when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
