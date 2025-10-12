@@ -16,32 +16,54 @@
             font-family: 'Arial', sans-serif;
             color: white;
         }
-        #loading {
+        #start-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #000;
+            background: linear-gradient(135deg, #1a001a, #000);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 100;
+            text-align: center;
+            padding: 20px;
+        }
+        #start-screen h1 {
+            font-size: 3rem;
             color: #8a2be2;
-            font-size: 24px;
-        }
-        #loading .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(138, 43, 226, 0.3);
-            border-radius: 50%;
-            border-top-color: #8a2be2;
-            animation: spin 1s ease-in-out infinite;
+            text-shadow: 0 0 10px #8a2be2, 0 0 20px #8a2be2;
             margin-bottom: 20px;
+            animation: title-glow 3s infinite alternate;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes title-glow {
+            0% { text-shadow: 0 0 10px #8a2be2, 0 0 20px #8a2be2; }
+            100% { text-shadow: 0 0 15px #ff4500, 0 0 30px #ff4500; }
+        }
+        #start-screen p {
+            font-size: 1.2rem;
+            color: #ff8c00;
+            margin-bottom: 30px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+        #start-button {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #8a2be2, #ff4500);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        #start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 69, 0, 0.9);
         }
         #ar-container {
             position: fixed;
@@ -49,6 +71,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            display: none;
         }
         #video-container {
             position: absolute;
@@ -168,9 +191,42 @@
             z-index: 3;
             pointer-events: none;
         }
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 101;
+            color: #8a2be2;
+            font-size: 24px;
+        }
+        #loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(138, 43, 226, 0.3);
+            border-radius: 50%;
+            border-top-color: #8a2be2;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div id="start-screen">
+        <h1>Mirror of Shadows</h1>
+        <p>Step into the realm of Halloween magic. Activate your camera to reveal your shadow self with a spooky transformation that responds to your expressions.</p>
+        <button id="start-button">Awaken the Mirror</button>
+    </div>
+    
     <div id="loading">
         <div class="spinner"></div>
         <div>Mirror of Shadows is awakening...</div>
@@ -205,7 +261,6 @@
         let activeMask = null;
         let maskType = null;
         let audioContext, ambientSound, windSound, pulseSound;
-        let faceDetectionActive = false;
         let faceExpressions = {
             smile: false,
             mouthOpen: false,
@@ -237,8 +292,14 @@
             }
         };
         
-        // Initialize the application
+        // Initialize the application when start button is clicked
+        document.getElementById('start-button').addEventListener('click', init);
+        
         async function init() {
+            // Show loading screen
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('loading').style.display = 'flex';
+            
             // Setup camera first
             const cameraSuccess = await setupCamera();
             if (!cameraSuccess) {
@@ -262,8 +323,9 @@
             // Start face expression simulation
             startExpressionSimulation();
             
-            // Hide loading screen
+            // Show AR container
             document.getElementById('loading').style.display = 'none';
+            document.getElementById('ar-container').style.display = 'block';
         }
         
         async function setupCamera() {
@@ -387,6 +449,9 @@
         }
         
         function startEffects() {
+            // Initialize particles
+            initParticles();
+            
             // Draw all effects continuously
             function draw() {
                 // Clear canvas with transparency
@@ -823,12 +888,6 @@
             document.getElementById('loading').style.display = 'flex';
             init();
         });
-        
-        // Initialize particles
-        initParticles();
-        
-        // Start the application when the page loads
-        window.addEventListener('load', init);
     </script>
 </body>
 </html>
