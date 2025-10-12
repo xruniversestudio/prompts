@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Halloween AR Mirror</title>
+    <title>مرآة هالوين التفاعلية</title>
     <style>
         * {
             margin: 0;
@@ -48,6 +48,21 @@
             left: 0;
             width: 100%;
             height: 100%;
+        }
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: none;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* مرآة */
         }
         #message {
             position: fixed;
@@ -105,54 +120,87 @@
             border-radius: 5px;
             max-width: 200px;
         }
+        #camera-error {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            color: #ff4500;
+            text-align: center;
+            padding: 20px;
+        }
+        #retry-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8a2be2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div id="loading">
         <div class="spinner"></div>
-        <div>Loading Halloween AR Mirror...</div>
+        <div>جاري تحميل مرآة هالوين التفاعلية...</div>
+    </div>
+    
+    <div id="camera-error">
+        <h2>تعذر الوصول إلى الكاميرا</h2>
+        <p>يجب السماح بتشغيل الكاميرا لاستخدام هذه التجربة.</p>
+        <p>يرجى التحقق من إعدادات الكاميرا والمتصفح ثم المحاولة مرة أخرى.</p>
+        <button id="retry-button">إعادة المحاولة</button>
+    </div>
+    
+    <div id="video-container">
+        <video id="video" autoplay muted playsinline></video>
     </div>
     
     <div id="canvas-container"></div>
     
-    <div id="stage-indicator">Stage 1: Initializing...</div>
+    <div id="stage-indicator">المرحلة 1: التهيئة...</div>
     
     <div id="instructions">
-        Keep your face in frame and try smiling or opening your mouth!
+        حافظ على وجهك في الإطار وحاول الابتسام أو فتح فمك!
     </div>
     
-    <div id="message">Face Your Shadow – Happy Halloween!</div>
+    <div id="message">واجه شبحك - عيد هالوين سعيد!</div>
     
-    <div id="logo">SHADOW SHOP</div>
+    <div id="logo">متجر الشبح</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-
     <script>
         // Main application variables
-        let scene, camera, renderer, video, videoTexture;
-        let faceMesh, faceGeometry, faceMaterial, faceMeshObject;
+        let scene, camera, renderer;
         let fogParticles = [];
         let bats = [];
         let sparks = [];
         let stage = 0;
         let stageStartTime = 0;
-        let faceDetected = false;
-        let currentFaceMask = null;
+        let video, videoTexture;
         let audioContext, ambientSound, windSound, pulseSound;
         
         // Initialize the application
         async function init() {
+            // Setup camera first
+            const cameraSuccess = await setupCamera();
+            if (!cameraSuccess) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('camera-error').style.display = 'flex';
+                return;
+            }
+            
             // Setup Three.js scene
             setupThreeJS();
-            
-            // Setup MediaPipe Face Mesh
-            await setupFaceMesh();
             
             // Setup audio
             setupAudio();
@@ -167,10 +215,45 @@
             }, 2000);
         }
         
+        async function setupCamera() {
+            try {
+                // Get video element
+                video = document.getElementById('video');
+                
+                // Request front camera
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                // Set video source
+                video.srcObject = stream;
+                
+                // Show video container
+                document.getElementById('video-container').style.display = 'block';
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                return false;
+            }
+        }
+        
         function setupThreeJS() {
             // Create scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a1a);
             
             // Create camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -207,6 +290,9 @@
             // Create fog particles
             createFogParticles();
             
+            // Create face overlay effect
+            createFaceOverlay();
+            
             // Handle window resize
             window.addEventListener('resize', onWindowResize);
         }
@@ -237,111 +323,68 @@
             fogParticles.push(particleSystem);
         }
         
-        async function setupFaceMesh() {
-            // Create video element for camera feed
-            video = document.createElement('video');
-            video.setAttribute('playsinline', '');
-            video.setAttribute('autoplay', '');
-            video.style.display = 'none';
-            document.body.appendChild(video);
-            
-            // Setup MediaPipe Face Mesh
-            faceMesh = new FaceMesh({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-                }
-            });
-            
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            
-            faceMesh.onResults(onFaceResults);
-            
-            // Start camera
-            const camera = new Camera(video, {
-                onFrame: async () => {
-                    await faceMesh.send({image: video});
-                },
-                width: 640,
-                height: 480
-            });
-            camera.start();
-            
-            // Create face geometry and material
-            faceGeometry = new THREE.BufferGeometry();
-            faceMaterial = new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                wireframe: false,
+        function createFaceOverlay() {
+            // Create a simple face overlay that will be animated
+            const faceGeometry = new THREE.SphereGeometry(1, 32, 32);
+            const faceMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8a2be2,
                 transparent: true,
-                opacity: 0.9
+                opacity: 0.0  // Initially invisible
             });
             
-            faceMeshObject = new THREE.Mesh(faceGeometry, faceMaterial);
-            scene.add(faceMeshObject);
+            const faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
+            scene.add(faceMesh);
+            
+            // Store reference for later use
+            window.faceMesh = faceMesh;
         }
         
-        function onFaceResults(results) {
-            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-                if (!faceDetected) {
-                    faceDetected = true;
-                    console.log("Face detected!");
+        function applyRandomFaceMask() {
+            if (!window.faceMesh) return;
+            
+            // Choose a random mask type
+            const maskType = Math.floor(Math.random() * 3);
+            
+            let maskColor, maskEmissive;
+            switch(maskType) {
+                case 0: // Witch
+                    maskColor = 0x8a2be2;
+                    maskEmissive = 0x4b0082;
+                    break;
+                case 1: // Skeleton
+                    maskColor = 0xf5f5f5;
+                    maskEmissive = 0x888888;
+                    break;
+                case 2: // Zombie
+                    maskColor = 0x00ff00;
+                    maskEmissive = 0x006400;
+                    break;
+            }
+            
+            // Animate the mask appearance
+            window.faceMesh.material.color.setHex(maskColor);
+            window.faceMesh.material.opacity = 0.7;
+            
+            // Add emissive effect
+            window.faceMesh.material.emissive = new THREE.Color(maskEmissive);
+            window.faceMesh.material.emissiveIntensity = 0.5;
+            
+            // Pulse animation
+            let pulseDirection = 1;
+            const pulseInterval = setInterval(() => {
+                window.faceMesh.material.emissiveIntensity += 0.02 * pulseDirection;
+                
+                if (window.faceMesh.material.emissiveIntensity >= 0.8) {
+                    pulseDirection = -1;
+                } else if (window.faceMesh.material.emissiveIntensity <= 0.3) {
+                    pulseDirection = 1;
                 }
                 
-                const landmarks = results.multiFaceLandmarks[0];
-                updateFaceGeometry(landmarks);
-                detectFacialExpressions(landmarks);
-            } else {
-                faceDetected = false;
-            }
-        }
-        
-        function updateFaceGeometry(landmarks) {
-            const vertices = [];
-            const indices = [];
-            
-            // Convert landmarks to vertices
-            for (let i = 0; i < landmarks.length; i++) {
-                vertices.push(
-                    (landmarks[i].x - 0.5) * 10,
-                    (0.5 - landmarks[i].y) * 10,
-                    (landmarks[i].z || 0) * 10
-                );
-            }
-            
-            // Simple triangulation for face (this is a simplified version)
-            // In a real implementation, you would use the MediaPipe provided triangulation
-            for (let i = 0; i < landmarks.length - 3; i += 3) {
-                indices.push(i, i+1, i+2);
-            }
-            
-            faceGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            faceGeometry.setIndex(indices);
-            faceGeometry.computeVertexNormals();
-        }
-        
-        function detectFacialExpressions(landmarks) {
-            // Simplified mouth open detection
-            const upperLip = landmarks[13];
-            const lowerLip = landmarks[14];
-            const mouthOpen = Math.abs(upperLip.y - lowerLip.y) > 0.05;
-            
-            // Simplified smile detection
-            const leftMouthCorner = landmarks[61];
-            const rightMouthCorner = landmarks[291];
-            const smile = (rightMouthCorner.x - leftMouthCorner.x) > 0.3;
-            
-            // Trigger effects based on expressions
-            if (mouthOpen && stage >= 2) {
-                createBats();
-            }
-            
-            if (smile && stage >= 2) {
-                createSparks();
-            }
+                // Stop pulsing after stage 3
+                if (stage >= 3) {
+                    clearInterval(pulseInterval);
+                }
+            }, 100);
         }
         
         function createBats() {
@@ -405,36 +448,40 @@
         }
         
         function setupAudio() {
-            // Create audio context
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Create ambient whisper sound (simulated with noise)
-            const ambientNoise = audioContext.createOscillator();
-            const ambientGain = audioContext.createGain();
-            ambientNoise.type = 'sawtooth';
-            ambientNoise.frequency.value = 60;
-            ambientGain.gain.value = 0.05;
-            ambientNoise.connect(ambientGain);
-            ambientGain.connect(audioContext.destination);
-            ambientNoise.start();
-            
-            // Create wind sound (simulated with filtered noise)
-            const windNoise = audioContext.createOscillator();
-            const windFilter = audioContext.createBiquadFilter();
-            const windGain = audioContext.createGain();
-            windNoise.type = 'sawtooth';
-            windNoise.frequency.value = 40;
-            windFilter.type = 'lowpass';
-            windFilter.frequency.value = 200;
-            windGain.gain.value = 0.03;
-            windNoise.connect(windFilter);
-            windFilter.connect(windGain);
-            windGain.connect(audioContext.destination);
-            windNoise.start();
-            
-            // Store references for later control
-            ambientSound = ambientGain;
-            windSound = windGain;
+            try {
+                // Create audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create ambient whisper sound (simulated with noise)
+                const ambientNoise = audioContext.createOscillator();
+                const ambientGain = audioContext.createGain();
+                ambientNoise.type = 'sawtooth';
+                ambientNoise.frequency.value = 60;
+                ambientGain.gain.value = 0.05;
+                ambientNoise.connect(ambientGain);
+                ambientGain.connect(audioContext.destination);
+                ambientNoise.start();
+                
+                // Create wind sound (simulated with filtered noise)
+                const windNoise = audioContext.createOscillator();
+                const windFilter = audioContext.createBiquadFilter();
+                const windGain = audioContext.createGain();
+                windNoise.type = 'sawtooth';
+                windNoise.frequency.value = 40;
+                windFilter.type = 'lowpass';
+                windFilter.frequency.value = 200;
+                windGain.gain.value = 0.03;
+                windNoise.connect(windFilter);
+                windFilter.connect(windGain);
+                windGain.connect(audioContext.destination);
+                windNoise.start();
+                
+                // Store references for later control
+                ambientSound = ambientGain;
+                windSound = windGain;
+            } catch (error) {
+                console.error('Audio setup failed:', error);
+            }
         }
         
         function playPulseSound() {
@@ -464,18 +511,21 @@
             // Stage progression
             if (elapsed < 3 && stage !== 1) {
                 stage = 1;
-                document.getElementById('stage-indicator').textContent = "Stage 1: Initializing...";
+                document.getElementById('stage-indicator').textContent = "المرحلة 1: التهيئة...";
             } else if (elapsed >= 3 && elapsed < 7 && stage !== 2) {
                 stage = 2;
-                document.getElementById('stage-indicator').textContent = "Stage 2: Face Transformation";
+                document.getElementById('stage-indicator').textContent = "المرحلة 2: تحويل الوجه";
                 applyRandomFaceMask();
                 playPulseSound();
+                
+                // Simulate facial expression detection
+                startExpressionDetection();
             } else if (elapsed >= 7 && elapsed < 10 && stage !== 3) {
                 stage = 3;
-                document.getElementById('stage-indicator').textContent = "Stage 3: Interactive Effects";
+                document.getElementById('stage-indicator').textContent = "المرحلة 3: التأثيرات التفاعلية";
             } else if (elapsed >= 10 && elapsed < 15 && stage !== 4) {
                 stage = 4;
-                document.getElementById('stage-indicator').textContent = "Stage 4: Final Message";
+                document.getElementById('stage-indicator').textContent = "المرحلة 4: الرسالة النهائية";
                 showMessage();
             } else if (elapsed >= 15) {
                 // Reset for looping
@@ -484,51 +534,19 @@
             }
         }
         
-        function applyRandomFaceMask() {
-            // Remove current mask if exists
-            if (currentFaceMask) {
-                scene.remove(currentFaceMask);
-            }
-            
-            // Choose a random mask type
-            const maskType = Math.floor(Math.random() * 3);
-            
-            // Create mask geometry (simplified - in real implementation would be more detailed)
-            const maskGeometry = new THREE.SphereGeometry(1.2, 32, 32);
-            
-            let maskMaterial;
-            switch(maskType) {
-                case 0: // Witch
-                    maskMaterial = new THREE.MeshBasicMaterial({
-                        color: 0x8a2be2,
-                        transparent: true,
-                        opacity: 0.7,
-                        emissive: 0x4b0082,
-                        emissiveIntensity: 0.5
-                    });
-                    break;
-                case 1: // Skeleton
-                    maskMaterial = new THREE.MeshBasicMaterial({
-                        color: 0xf5f5f5,
-                        transparent: true,
-                        opacity: 0.8,
-                        emissive: 0x888888,
-                        emissiveIntensity: 0.3
-                    });
-                    break;
-                case 2: // Zombie
-                    maskMaterial = new THREE.MeshBasicMaterial({
-                        color: 0x00ff00,
-                        transparent: true,
-                        opacity: 0.6,
-                        emissive: 0x006400,
-                        emissiveIntensity: 0.4
-                    });
-                    break;
-            }
-            
-            currentFaceMask = new THREE.Mesh(maskGeometry, maskMaterial);
-            scene.add(currentFaceMask);
+        function startExpressionDetection() {
+            // Simulate random facial expressions for demo purposes
+            setInterval(() => {
+                if (stage === 2 || stage === 3) {
+                    const randomAction = Math.random();
+                    
+                    if (randomAction < 0.3) {
+                        createBats();
+                    } else if (randomAction < 0.6) {
+                        createSparks();
+                    }
+                }
+            }, 2000);
         }
         
         function showMessage() {
@@ -570,16 +588,15 @@
         
         function resetEffects() {
             // Reset stage indicator
-            document.getElementById('stage-indicator').textContent = "Stage 1: Initializing...";
+            document.getElementById('stage-indicator').textContent = "المرحلة 1: التهيئة...";
             
             // Hide message and logo
             document.getElementById('message').style.opacity = 0;
             document.getElementById('logo').style.opacity = 0;
             
-            // Remove current mask
-            if (currentFaceMask) {
-                scene.remove(currentFaceMask);
-                currentFaceMask = null;
+            // Reset face overlay
+            if (window.faceMesh) {
+                window.faceMesh.material.opacity = 0.0;
             }
             
             // Clear particles
@@ -632,6 +649,13 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
+        
+        // Retry camera access
+        document.getElementById('retry-button').addEventListener('click', function() {
+            document.getElementById('camera-error').style.display = 'none';
+            document.getElementById('loading').style.display = 'flex';
+            init();
+        });
         
         // Start the application when the page loads
         window.addEventListener('load', init);
