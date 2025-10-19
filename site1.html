@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nomair International - Professional Plumbing & Sanitary Services</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Base Styles */
         :root {
@@ -13,11 +14,13 @@
             --light-blue: #e3f2fd;
             --gradient-blue: linear-gradient(135deg, #1a73e8, #0d47a1);
             --gradient-water: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            --gradient-water-animated: linear-gradient(-45deg, #e3f2fd, #bbdefb, #90caf9, #64b5f6);
             --white: #ffffff;
             --gray: #f5f5f5;
             --text-dark: #333333;
             --text-light: #666666;
             --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.15);
             --radius: 8px;
         }
 
@@ -25,7 +28,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Poppins', sans-serif;
         }
 
         html {
@@ -36,6 +39,7 @@
             color: var(--text-dark);
             line-height: 1.6;
             overflow-x: hidden;
+            background-color: var(--white);
         }
 
         .container {
@@ -46,7 +50,8 @@
         }
 
         section {
-            padding: 80px 0;
+            padding: 100px 0;
+            position: relative;
         }
 
         h1, h2, h3, h4 {
@@ -55,15 +60,15 @@
         }
 
         h1 {
-            font-size: 2.8rem;
+            font-size: 3.2rem;
             font-weight: 700;
         }
 
         h2 {
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             font-weight: 600;
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 60px;
             position: relative;
         }
 
@@ -86,7 +91,7 @@
 
         .btn {
             display: inline-block;
-            padding: 14px 32px;
+            padding: 16px 36px;
             background: var(--gradient-blue);
             color: var(--white);
             border: none;
@@ -94,14 +99,56 @@
             font-weight: 600;
             font-size: 1rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
             text-decoration: none;
             box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+
+        .btn:hover:before {
+            left: 100%;
         }
 
         .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Water Drop Animation */
+        .water-drop {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(26, 115, 232, 0.3);
+            border-radius: 50%;
+            animation: drop 8s infinite ease-in-out;
+            z-index: 1;
+        }
+
+        @keyframes drop {
+            0% {
+                transform: translateY(-100px) scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(100vh) scale(1);
+                opacity: 0;
+            }
         }
 
         /* Navigation */
@@ -111,9 +158,10 @@
             left: 0;
             width: 100%;
             z-index: 1000;
-            background: var(--white);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
         }
 
         .navbar {
@@ -130,6 +178,11 @@
             font-weight: 700;
             color: var(--primary-blue);
             text-decoration: none;
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
         }
 
         .logo i {
@@ -144,6 +197,7 @@
 
         .nav-links li {
             margin-left: 30px;
+            position: relative;
         }
 
         .nav-links a {
@@ -151,16 +205,37 @@
             color: var(--text-dark);
             font-weight: 500;
             transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-blue);
+            transition: width 0.3s ease;
         }
 
         .nav-links a:hover {
             color: var(--primary-blue);
         }
 
+        .nav-links a:hover:after {
+            width: 100%;
+        }
+
         .mobile-menu {
             display: none;
             font-size: 1.5rem;
             cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .mobile-menu:hover {
+            transform: scale(1.1);
         }
 
         /* Hero Section */
@@ -168,14 +243,34 @@
             height: 100vh;
             display: flex;
             align-items: center;
-            background: var(--gradient-water);
+            background: var(--gradient-water-animated);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             position: relative;
             overflow: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .hero-content {
             width: 50%;
             z-index: 2;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .hero h1 {
@@ -197,11 +292,19 @@
             width: 60%;
             background: url('https://images.unsplash.com/photo-1621905252507-b35492cc74b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80') no-repeat center center/cover;
             border-radius: 0 0 0 100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
         }
 
         /* About Section */
         .about {
             background: var(--white);
+            overflow: hidden;
         }
 
         .about-content {
@@ -219,6 +322,13 @@
             border-radius: var(--radius);
             overflow: hidden;
             box-shadow: var(--shadow);
+            transform: perspective(1000px) rotateY(-5deg);
+            transition: all 0.5s ease;
+        }
+
+        .about-image:hover {
+            transform: perspective(1000px) rotateY(0deg);
+            box-shadow: var(--shadow-hover);
         }
 
         .about-image img {
@@ -235,6 +345,7 @@
         /* Services Section */
         .services {
             background: var(--gray);
+            position: relative;
         }
 
         .services-grid {
@@ -249,12 +360,36 @@
             border-radius: var(--radius);
             text-align: center;
             box-shadow: var(--shadow);
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .service-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: var(--gradient-blue);
+            transition: 0.4s ease;
+            z-index: -1;
+        }
+
+        .service-card:hover:before {
+            height: 100%;
         }
 
         .service-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(-15px);
+            box-shadow: var(--shadow-hover);
+            color: var(--white);
+        }
+
+        .service-card:hover p {
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .service-icon {
@@ -268,11 +403,19 @@
             justify-content: center;
             color: var(--white);
             font-size: 2rem;
+            transition: all 0.4s ease;
+        }
+
+        .service-card:hover .service-icon {
+            background: var(--white);
+            color: var(--primary-blue);
+            transform: scale(1.1) rotate(10deg);
         }
 
         .service-card h3 {
             font-size: 1.5rem;
             margin-bottom: 15px;
+            transition: color 0.3s ease;
         }
 
         /* Projects Section */
@@ -290,17 +433,35 @@
             border-radius: var(--radius);
             overflow: hidden;
             box-shadow: var(--shadow);
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
+            position: relative;
         }
 
         .project-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(-15px);
+            box-shadow: var(--shadow-hover);
         }
 
         .project-image {
             height: 200px;
             overflow: hidden;
+            position: relative;
+        }
+
+        .project-image:after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 115, 232, 0.1);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .project-card:hover .project-image:after {
+            opacity: 1;
         }
 
         .project-image img {
@@ -316,6 +477,7 @@
 
         .project-content {
             padding: 20px;
+            position: relative;
         }
 
         .project-content h3 {
@@ -325,7 +487,11 @@
 
         /* Contact Section */
         .contact {
-            background: var(--gradient-water);
+            background: var(--gradient-water-animated);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            position: relative;
+            overflow: hidden;
         }
 
         .contact-container {
@@ -344,6 +510,11 @@
             display: flex;
             align-items: flex-start;
             gap: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .contact-item:hover {
+            transform: translateX(10px);
         }
 
         .contact-icon {
@@ -357,6 +528,11 @@
             color: var(--white);
             font-size: 1.2rem;
             flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover .contact-icon {
+            transform: scale(1.1) rotate(10deg);
         }
 
         .contact-text h3 {
@@ -364,11 +540,46 @@
             font-size: 1.2rem;
         }
 
+        /* Floating Elements */
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(26, 115, 232, 0.1);
+            animation: float 6s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        .floating-element:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+
+        .floating-element:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 20%;
+            right: 10%;
+            animation-delay: 1s;
+        }
+
+        .floating-element:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            bottom: 15%;
+            left: 15%;
+            animation-delay: 2s;
+        }
+
         /* Footer */
         footer {
             background: var(--dark-blue);
             color: var(--white);
             padding: 60px 0 20px;
+            position: relative;
+            overflow: hidden;
         }
 
         .footer-content {
@@ -417,6 +628,11 @@
 
         .footer-links li, .footer-services li {
             margin-bottom: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .footer-links li:hover, .footer-services li:hover {
+            transform: translateX(5px);
         }
 
         .footer-links a, .footer-services a {
@@ -462,7 +678,7 @@
 
         .social-icon:hover {
             background: var(--primary-blue);
-            transform: translateY(-3px);
+            transform: translateY(-5px) scale(1.1);
         }
 
         .footer-bottom {
@@ -473,14 +689,45 @@
             font-size: 0.9rem;
         }
 
+        /* Scroll to Top Button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-blue);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            z-index: 999;
+            box-shadow: var(--shadow);
+        }
+
+        .scroll-to-top.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             h1 {
-                font-size: 2.4rem;
+                font-size: 2.6rem;
             }
             
             h2 {
-                font-size: 2rem;
+                font-size: 2.2rem;
             }
             
             .hero-content {
@@ -523,6 +770,18 @@
                 flex-direction: column;
                 padding: 20px;
                 box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                animation: slideDown 0.4s ease;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
             
             .nav-links.active {
@@ -563,6 +822,15 @@
     </style>
 </head>
 <body>
+    <!-- Water Drop Animations -->
+    <div class="water-drops">
+        <div class="water-drop" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="water-drop" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="water-drop" style="left: 50%; animation-delay: 4s;"></div>
+        <div class="water-drop" style="left: 70%; animation-delay: 1s;"></div>
+        <div class="water-drop" style="left: 90%; animation-delay: 3s;"></div>
+    </div>
+
     <!-- Header & Navigation -->
     <header>
         <div class="container">
@@ -587,6 +855,9 @@
 
     <!-- Hero Section -->
     <section id="home" class="hero">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
         <div class="container">
             <div class="hero-content">
                 <h1>Reliable Sanitary Installation & Maintenance Services</h1>
@@ -683,6 +954,9 @@
 
     <!-- Contact Section -->
     <section id="contact" class="contact">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
         <div class="container">
             <h2>Contact Us</h2>
             <div class="contact-container">
@@ -777,13 +1051,18 @@
         </div>
     </footer>
 
+    <!-- Scroll to Top Button -->
+    <div class="scroll-to-top">
+        <i class="fas fa-chevron-up"></i>
+    </div>
+
     <script>
-        // Mobile menu toggle - تم إصلاح المشكلة
+        // Mobile menu toggle
         document.querySelector('.mobile-menu').addEventListener('click', function() {
             document.querySelector('.nav-links').classList.toggle('active');
         });
 
-        // إغلاق القائمة عند النقر على رابط
+        // Close menu when clicking on a link
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.addEventListener('click', () => {
                 document.querySelector('.nav-links').classList.remove('active');
@@ -793,14 +1072,72 @@
         // Navbar scroll effect
         window.addEventListener('scroll', function() {
             const header = document.querySelector('header');
+            const scrollToTop = document.querySelector('.scroll-to-top');
+            
             if (window.scrollY > 100) {
                 header.style.padding = '0';
                 header.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.1)';
+                scrollToTop.classList.add('active');
             } else {
                 header.style.padding = '';
                 header.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+                scrollToTop.classList.remove('active');
             }
         });
+
+        // Scroll to top functionality
+        document.querySelector('.scroll-to-top').addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Add animation on scroll
+        const animateOnScroll = function() {
+            const elements = document.querySelectorAll('.service-card, .project-card, .about-image, .contact-item');
+            
+            elements.forEach(element => {
+                const elementPosition = element.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.2;
+                
+                if (elementPosition < screenPosition) {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }
+            });
+        };
+
+        // Set initial state for animated elements
+        window.addEventListener('DOMContentLoaded', function() {
+            const elements = document.querySelectorAll('.service-card, .project-card, .about-image, .contact-item');
+            
+            elements.forEach(element => {
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            });
+            
+            // Trigger animation on scroll
+            window.addEventListener('scroll', animateOnScroll);
+            // Trigger once on load
+            animateOnScroll();
+        });
+
+        // Add water drops dynamically
+        function createWaterDrops() {
+            const waterDropsContainer = document.querySelector('.water-drops');
+            for (let i = 0; i < 10; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'water-drop';
+                drop.style.left = `${Math.random() * 100}%`;
+                drop.style.animationDelay = `${Math.random() * 8}s`;
+                waterDropsContainer.appendChild(drop);
+            }
+        }
+
+        // Initialize water drops
+        createWaterDrops();
     </script>
 </body>
 </html>
