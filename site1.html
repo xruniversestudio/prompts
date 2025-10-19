@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AquaFix Solutions - Professional Plumbing & Sanitary Services</title>
+    <title>AquaFix Solutions - خدمات السباكة والتركيبات الصحية</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Base Styles */
@@ -71,8 +71,8 @@
             content: '';
             position: absolute;
             bottom: -15px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 50%;
+            transform: translateX(50%);
             width: 80px;
             height: 4px;
             background: var(--gradient-blue);
@@ -108,7 +108,7 @@
         header {
             position: fixed;
             top: 0;
-            left: 0;
+            right: 0;
             width: 100%;
             z-index: 1000;
             background: var(--white);
@@ -133,7 +133,7 @@
         }
 
         .logo i {
-            margin-right: 10px;
+            margin-left: 10px;
             font-size: 2rem;
         }
 
@@ -191,12 +191,12 @@
 
         .hero-image {
             position: absolute;
-            right: 0;
+            left: 0;
             top: 0;
             height: 100%;
             width: 60%;
             background: url('https://images.unsplash.com/photo-1621905252507-b35492cc74b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80') no-repeat center center/cover;
-            border-radius: 0 0 0 100px;
+            border-radius: 0 0 100px 0;
         }
 
         /* About Section */
@@ -364,37 +364,6 @@
             font-size: 1.2rem;
         }
 
-        .contact-form {
-            background: var(--white);
-            padding: 30px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: var(--radius);
-            font-size: 1rem;
-            transition: border 0.3s ease;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-blue);
-            outline: none;
-        }
-
         /* Footer */
         footer {
             background: var(--dark-blue);
@@ -418,7 +387,7 @@
         }
 
         .footer-logo i {
-            margin-right: 10px;
+            margin-left: 10px;
         }
 
         .footer-about p {
@@ -436,7 +405,7 @@
             content: '';
             position: absolute;
             bottom: -10px;
-            left: 0;
+            right: 0;
             width: 40px;
             height: 3px;
             background: var(--primary-blue);
@@ -468,7 +437,7 @@
         }
 
         .footer-contact i {
-            margin-right: 10px;
+            margin-left: 10px;
             color: var(--primary-blue);
         }
 
@@ -546,6 +515,23 @@
             
             .nav-links {
                 display: none;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                width: 100%;
+                background: var(--white);
+                flex-direction: column;
+                padding: 20px;
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-links.active {
+                display: flex;
+            }
+            
+            .nav-links li {
+                margin: 10px 0;
+                text-align: center;
             }
             
             .mobile-menu {
@@ -586,11 +572,11 @@
                     AquaFix Solutions
                 </a>
                 <ul class="nav-links">
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#services">Services</a></li>
-                    <li><a href="#projects">Projects</a></li>
-                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#home">الرئيسية</a></li>
+                    <li><a href="#about">من نحن</a></li>
+                    <li><a href="#services">خدماتنا</a></li>
+                    <li><a href="#projects">مشاريعنا</a></li>
+                    <li><a href="#contact">اتصل بنا</a></li>
                 </ul>
                 <div class="mobile-menu">
                     <i class="fas fa-bars"></i>
@@ -603,9 +589,9 @@
     <section id="home" class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>Reliable Sanitary Installation & Maintenance Services</h1>
-                <p>From leaks to luxury bathrooms — we handle it all. Professional plumbing solutions with 10+ years of experience.</p>
-                <a href="#contact" class="btn">Request a Quote</a>
+                <h1>خدمات تركيب وصيانة صحية موثوقة</h1>
+                <p>من التسريبات إلى الحمامات الفاخرة — نحن نتعامل مع كل شيء. حلول سباكة احترافية مع أكثر من 10 سنوات من الخبرة.</p>
+                <a href="#contact" class="btn">اطلب عرض سعر</a>
             </div>
         </div>
         <div class="hero-image"></div>
@@ -614,16 +600,16 @@
     <!-- About Section -->
     <section id="about" class="about">
         <div class="container">
-            <h2>About AquaFix Solutions</h2>
+            <h2>عن AquaFix Solutions</h2>
             <div class="about-content">
                 <div class="about-text">
-                    <p>With over a decade of experience in the plumbing industry, AquaFix Solutions has established itself as a trusted name for professional sanitary installation and maintenance services.</p>
-                    <p>Our team of certified technicians is committed to delivering high-quality workmanship using the latest tools and techniques. We pride ourselves on our attention to detail and commitment to customer satisfaction.</p>
-                    <p>We're dedicated to implementing eco-friendly solutions that conserve water and reduce environmental impact, while ensuring optimal performance for your plumbing systems.</p>
-                    <a href="#contact" class="btn">Contact Us</a>
+                    <p>مع أكثر من عقد من الخبرة في صناعة السباكة، أثبتت AquaFix Solutions نفسها كاسم موثوق لخدمات التركيب والصيانة الصحية المهنية.</p>
+                    <p>يتميز فريقنا من الفنيين المعتمدين بالتزامه بتقديم حرفية عالية الجودة باستخدام أحدث الأدوات والتقنيات. نحن نفخر باهتمامنا بالتفاصيل والتزامنا برضا العملاء.</p>
+                    <p>نحن ملتزمون بتنفيذ الحلول الصديقة للبيئة التي تحافظ على المياه وتقلل من التأثير البيئي، مع ضمان الأداء الأمثل لأنظمة السباكة الخاصة بك.</p>
+                    <a href="#contact" class="btn">اتصل بنا</a>
                 </div>
                 <div class="about-image">
-                    <img src="https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80" alt="Professional plumbing technician">
+                    <img src="https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80" alt="فني سباكة محترف">
                 </div>
             </div>
         </div>
@@ -632,28 +618,28 @@
     <!-- Services Section -->
     <section id="services" class="services">
         <div class="container">
-            <h2>Our Services</h2>
+            <h2>خدماتنا</h2>
             <div class="services-grid">
                 <div class="service-card">
                     <div class="service-icon">
                         <i class="fas fa-wrench"></i>
                     </div>
-                    <h3>Plumbing Installation</h3>
-                    <p>Professional installation of pipes, fixtures, and appliances for residential and commercial properties. We ensure everything is set up correctly from the start.</p>
+                    <h3>تركيب السباكة</h3>
+                    <p>تركيب احترافي للأنابيب والتركيبات والأجهزة للممتلكات السكنية والتجارية. نحن نضمن إعداد كل شيء بشكل صحيح من البداية.</p>
                 </div>
                 <div class="service-card">
                     <div class="service-icon">
                         <i class="fas fa-tools"></i>
                     </div>
-                    <h3>Maintenance</h3>
-                    <p>Regular maintenance services to keep your plumbing systems running smoothly and prevent costly repairs down the line.</p>
+                    <h3>الصيانة</h3>
+                    <p>خدمات الصيانة المنتظمة للحفاظ على أنظمة السباكة الخاصة بك تعمل بسلولة ومنع الإصلاحات المكلفة في المستقبل.</p>
                 </div>
                 <div class="service-card">
                     <div class="service-icon">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h3>Emergency Repair</h3>
-                    <p>24/7 emergency plumbing services to address urgent issues like leaks, burst pipes, and clogged drains when you need them most.</p>
+                    <h3>الإصلاحات الطارئة</h3>
+                    <p>خدمات السباكة الطارئة على مدار الساعة لمعالجة المشكلات العاجلة مثل التسريبات والأنابيب المنفجرة والمصارف المسدودة عندما تحتاج إليها بشدة.</p>
                 </div>
             </div>
         </div>
@@ -662,33 +648,33 @@
     <!-- Projects Section -->
     <section id="projects" class="projects">
         <div class="container">
-            <h2>Featured Projects</h2>
+            <h2>مشاريعنا المميزة</h2>
             <div class="projects-grid">
                 <div class="project-card">
                     <div class="project-image">
-                        <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Modern bathroom renovation">
+                        <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="ترميم حمام فاخر">
                     </div>
                     <div class="project-content">
-                        <h3>Luxury Bathroom Renovation</h3>
-                        <p>Complete bathroom remodel with premium fixtures, custom shower installation, and efficient water-saving technology.</p>
+                        <h3>ترميم حمام فاخر</h3>
+                        <p>تجديد كامل للحمام مع تركيبات فاخرة، تركيب دش مخصص، وتقنية توفير المياه بكفاءة.</p>
                     </div>
                 </div>
                 <div class="project-card">
                     <div class="project-image">
-                        <img src="https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1228&q=80" alt="Commercial plumbing installation">
+                        <img src="https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1228&q=80" alt="تركيب نظام سباكة تجاري">
                     </div>
                     <div class="project-content">
-                        <h3>Commercial Plumbing System</h3>
-                        <p>Full plumbing installation for a new office building, including restrooms, kitchen facilities, and water filtration systems.</p>
+                        <h3>نظام السباكة التجاري</h3>
+                        <p>تركيب سباكة كامل لمبنى مكتبي جديد، يشمل دورات المياه، مرافق المطبخ، وأنظمة ترشيح المياه.</p>
                     </div>
                 </div>
                 <div class="project-card">
                     <div class="project-image">
-                        <img src="https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Kitchen plumbing upgrade">
+                        <img src="https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="ترقية سباكة المطبخ">
                     </div>
                     <div class="project-content">
-                        <h3>Kitchen Plumbing Upgrade</h3>
-                        <p>Modernization of kitchen plumbing with new pipes, energy-efficient dishwasher installation, and garbage disposal setup.</p>
+                        <h3>ترقية سباكة المطبخ</h3>
+                        <p>تحديث سباكة المطبخ مع أنابيب جديدة، تركيب غسالة صحون موفرة للطاقة، وإعداد التخلص من النفايات.</p>
                     </div>
                 </div>
             </div>
@@ -698,7 +684,7 @@
     <!-- Contact Section -->
     <section id="contact" class="contact">
         <div class="container">
-            <h2>Contact Us</h2>
+            <h2>اتصل بنا</h2>
             <div class="contact-container">
                 <div class="contact-info">
                     <div class="contact-item">
@@ -706,8 +692,8 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <div class="contact-text">
-                            <h3>Our Address</h3>
-                            <p>123 Waterway Street, Suite 100<br>Sanitary City, SC 12345</p>
+                            <h3>عنواننا</h3>
+                            <p>العنوان: xxxxxxx</p>
                         </div>
                     </div>
                     <div class="contact-item">
@@ -715,8 +701,8 @@
                             <i class="fas fa-phone"></i>
                         </div>
                         <div class="contact-text">
-                            <h3>Phone Number</h3>
-                            <p>+1 (555) 123-4567</p>
+                            <h3>رقم الهاتف</h3>
+                            <p>+xxx-xxx-xxxx</p>
                         </div>
                     </div>
                     <div class="contact-item">
@@ -724,42 +710,18 @@
                             <i class="fab fa-whatsapp"></i>
                         </div>
                         <div class="contact-text">
-                            <h3>WhatsApp</h3>
-                            <p>+1 (555) 123-4567</p>
-                            <a href="https://wa.me/15551234567" class="btn" style="margin-top: 10px;">Message Us</a>
+                            <h3>واتساب</h3>
+                            <p>+xxx-xxx-xxxx</p>
+                            <a href="#" class="btn" style="margin-top: 10px;">راسلنا</a>
                         </div>
                     </div>
                 </div>
-                <div class="contact-form">
-                    <form id="contactForm">
-                        <div class="form-group">
-                            <label for="name">Your Name</label>
-                            <input type="text" id="name" class="form-control" placeholder="John Doe" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" class="form-control" placeholder="john@example.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Phone Number</label>
-                            <input type="tel" id="phone" class="form-control" placeholder="(555) 123-4567">
-                        </div>
-                        <div class="form-group">
-                            <label for="service">Service Needed</label>
-                            <select id="service" class="form-control">
-                                <option value="">Select a service</option>
-                                <option value="installation">Plumbing Installation</option>
-                                <option value="maintenance">Maintenance</option>
-                                <option value="repair">Emergency Repair</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea id="message" class="form-control" rows="5" placeholder="Describe your plumbing needs..."></textarea>
-                        </div>
-                        <button type="submit" class="btn" style="width: 100%;">Send Message</button>
-                    </form>
+                <div class="contact-info">
+                    <h3>ساعات العمل</h3>
+                    <p>الأحد - الخميس: 8:00 ص - 6:00 م</p>
+                    <p>الجمعة: 9:00 ص - 1:00 م</p>
+                    <p>السبت: مغلق</p>
+                    <p>للحالات الطارئة: متاحون على مدار 24 ساعة</p>
                 </div>
             </div>
         </div>
@@ -774,7 +736,7 @@
                         <i class="fas fa-faucet"></i>
                         AquaFix Solutions
                     </div>
-                    <p>Professional plumbing and sanitary installation services with over 10 years of experience. We're committed to quality workmanship and customer satisfaction.</p>
+                    <p>خدمات تركيب وصيانة صحية احترافية مع أكثر من 10 سنوات من الخبرة. نحن ملتزمون بحرفية عالية الجودة ورضا العملاء.</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
@@ -783,49 +745,49 @@
                     </div>
                 </div>
                 <div class="footer-links">
-                    <h3>Quick Links</h3>
+                    <h3>روابط سريعة</h3>
                     <ul>
-                        <li><a href="#home">Home</a></li>
-                        <li><a href="#about">About Us</a></li>
-                        <li><a href="#services">Services</a></li>
-                        <li><a href="#projects">Projects</a></li>
-                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#home">الرئيسية</a></li>
+                        <li><a href="#about">من نحن</a></li>
+                        <li><a href="#services">خدماتنا</a></li>
+                        <li><a href="#projects">مشاريعنا</a></li>
+                        <li><a href="#contact">اتصل بنا</a></li>
                     </ul>
                 </div>
                 <div class="footer-services">
-                    <h3>Our Services</h3>
+                    <h3>خدماتنا</h3>
                     <ul>
-                        <li><a href="#">Plumbing Installation</a></li>
-                        <li><a href="#">Maintenance</a></li>
-                        <li><a href="#">Emergency Repair</a></li>
-                        <li><a href="#">Bathroom Renovation</a></li>
-                        <li><a href="#">Water Heater Services</a></li>
+                        <li><a href="#">تركيب السباكة</a></li>
+                        <li><a href="#">الصيانة</a></li>
+                        <li><a href="#">الإصلاحات الطارئة</a></li>
+                        <li><a href="#">ترميم الحمامات</a></li>
+                        <li><a href="#">خدمات سخانات المياه</a></li>
                     </ul>
                 </div>
                 <div class="footer-contact">
-                    <h3>Contact Info</h3>
-                    <p><i class="fas fa-map-marker-alt"></i> 123 Waterway Street, Sanitary City</p>
-                    <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                    <h3>معلومات الاتصال</h3>
+                    <p><i class="fas fa-map-marker-alt"></i> العنوان: xxxxxxx</p>
+                    <p><i class="fas fa-phone"></i> +xxx-xxx-xxxx</p>
                     <p><i class="fas fa-envelope"></i> info@aquafixsolutions.com</p>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2023 AquaFix Solutions. All Rights Reserved.</p>
+                <p>© 2023 AquaFix Solutions. جميع الحقوق محفوظة.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Mobile menu toggle
+        // Mobile menu toggle - تم إصلاح المشكلة
         document.querySelector('.mobile-menu').addEventListener('click', function() {
             document.querySelector('.nav-links').classList.toggle('active');
         });
 
-        // Form submission
-        document.getElementById('contactForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Thank you for your message! We will get back to you soon.');
-            this.reset();
+        // إغلاق القائمة عند النقر على رابط
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelector('.nav-links').classList.remove('active');
+            });
         });
 
         // Navbar scroll effect
