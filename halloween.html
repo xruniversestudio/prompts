@@ -1,893 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <title>AR Tap to Place Cube</title>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mirror of Shadows - Halloween AR</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            overflow: hidden;
-            background-color: #000;
-            font-family: 'Arial', sans-serif;
-            color: white;
-        }
-        #start-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a001a, #000);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            text-align: center;
-            padding: 20px;
-        }
-        #start-screen h1 {
-            font-size: 3rem;
-            color: #8a2be2;
-            text-shadow: 0 0 10px #8a2be2, 0 0 20px #8a2be2;
-            margin-bottom: 20px;
-            animation: title-glow 3s infinite alternate;
-        }
-        @keyframes title-glow {
-            0% { text-shadow: 0 0 10px #8a2be2, 0 0 20px #8a2be2; }
-            100% { text-shadow: 0 0 15px #ff4500, 0 0 30px #ff4500; }
-        }
-        #start-screen p {
-            font-size: 1.2rem;
-            color: #ff8c00;
-            margin-bottom: 30px;
-            max-width: 500px;
-            line-height: 1.6;
-        }
-        #start-button {
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            background: linear-gradient(45deg, #8a2be2, #ff4500);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-        #start-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 69, 0, 0.9);
-        }
-        #ar-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-        }
-        #video-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Mirror effect */
-        }
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-        }
-        #message {
-            position: absolute;
-            top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ff4500;
-            font-size: 2.5rem;
-            font-weight: bold;
-            text-align: center;
-            text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
-            width: 80%;
-            line-height: 1.4;
-            animation: text-glow 3s infinite alternate;
-        }
-        @keyframes text-glow {
-            0% { text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500; }
-            100% { text-shadow: 0 0 15px #ff8c00, 0 0 30px #ff8c00; }
-        }
-        #logo {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            width: 120px;
-            height: 60px;
-            background: linear-gradient(45deg, #ff8c00, #ff4500);
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            box-shadow: 0 0 15px rgba(255, 140, 0, 0.7);
-            animation: logo-shimmer 3s infinite alternate;
-        }
-        @keyframes logo-shimmer {
-            0% { box-shadow: 0 0 15px rgba(255, 140, 0, 0.7); }
-            100% { box-shadow: 0 0 25px rgba(255, 69, 0, 1); }
-        }
-        #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #8a2be2;
-            font-size: 0.9rem;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-            max-width: 200px;
-        }
-        #mask-indicator {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #8a2be2;
-            font-size: 1rem;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        #camera-error {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-            color: #ff4500;
-            text-align: center;
-            padding: 20px;
-        }
-        #retry-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: #8a2be2;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 3;
-            pointer-events: none;
-        }
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 101;
-            color: #8a2be2;
-            font-size: 24px;
-        }
-        #loading .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(138, 43, 226, 0.3);
-            border-radius: 50%;
-            border-top-color: #8a2be2;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        body { margin: 0; background-color: #333; color: white; font-family: sans-serif; overflow: hidden; }
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; z-index: 100; pointer-events: none; }
+        p { font-size: 1.2em; margin: 5px; text-shadow: 1px 1px 2px black; }
     </style>
 </head>
 <body>
-    <div id="start-screen">
-        <h1>Mirror of Shadows</h1>
-        <p>Step into the realm of Halloween magic. Activate your camera to reveal your shadow self with a spooky transformation that responds to your expressions.</p>
-        <button id="start-button">Awaken the Mirror</button>
-    </div>
-    
-    <div id="loading">
-        <div class="spinner"></div>
-        <div>Mirror of Shadows is awakening...</div>
-    </div>
-    
-    <div id="camera-error">
-        <h2>Camera Access Required</h2>
-        <p>Please allow camera access to experience the Mirror of Shadows.</p>
-        <p>Check your browser and device permissions, then try again.</p>
-        <button id="retry-button">Try Again</button>
-    </div>
-    
-    <div id="ar-container">
-        <div id="video-container">
-            <video id="video" autoplay muted playsinline></video>
-        </div>
-        
-        <div id="overlay">
-            <div id="message">Face Your Shadow – Happy Halloween!</div>
-            <div id="logo">SHADOW SHOP</div>
-            <div id="mask-indicator">Mask: Loading...</div>
-            <div id="instructions">Move your face and try different expressions!</div>
-        </div>
-        
-        <canvas id="effects-canvas"></canvas>
+
+    <div id="info">
+        <p>AR Hit Test Demo</p>
+        <small>1. Click Start AR<br>2. Point camera at floor/table<br>3. Tap to place Cube</small>
     </div>
 
-    <script>
-        // Main application variables
-        let video, videoTexture;
-        let canvas, ctx;
-        let activeMask = null;
-        let maskType = null;
-        let audioContext, ambientSound, windSound, pulseSound;
-        let faceExpressions = {
-            smile: false,
-            mouthOpen: false,
-            eyebrowsRaised: false
-        };
-        
-        // Mask configurations
-        const masks = {
-            witch: {
-                name: "Witch",
-                color: "#8a2be2",
-                glowColor: "#4b0082",
-                eyeGlow: true,
-                texture: "shimmer"
-            },
-            skeleton: {
-                name: "Skeleton",
-                color: "#f5f5f5",
-                glowColor: "#888888",
-                bonePattern: true,
-                emissive: true
-            },
-            zombie: {
-                name: "Zombie",
-                color: "#00ff00",
-                glowColor: "#006400",
-                skinTone: "greenish",
-                pulsating: true
-            }
-        };
-        
-        // Initialize the application when start button is clicked
-        document.getElementById('start-button').addEventListener('click', init);
-        
-        async function init() {
-            // Show loading screen
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('loading').style.display = 'flex';
-            
-            // Setup camera first
-            const cameraSuccess = await setupCamera();
-            if (!cameraSuccess) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('camera-error').style.display = 'flex';
-                return;
-            }
-            
-            // Setup canvas for effects
-            setupCanvas();
-            
-            // Setup audio
-            setupAudio();
-            
-            // Apply random mask
-            applyRandomMask();
-            
-            // Start effects loop
-            startEffects();
-            
-            // Start face expression simulation
-            startExpressionSimulation();
-            
-            // Show AR container
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('ar-container').style.display = 'block';
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+        import { ARButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/ARButton.js';
+
+        let container;
+        let camera, scene, renderer;
+        let controller;
+        let reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+
+        init();
+        animate();
+
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+            scene = new THREE.Scene();
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+            // Lighting
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            light.position.set(0.5, 1, 0.25);
+            scene.add(light);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // AR Button - Requesting "hit-test" feature
+            document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+
+            // The Reticle (The guidance ring)
+            // This shows where the surface is detected
+            const ringGeometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            reticle = new THREE.Mesh(ringGeometry, ringMaterial);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false; // Hidden until surface found
+            scene.add(reticle);
+
+            // Controller (Input)
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect); // Trigger on tap
+            scene.add(controller);
+
+            window.addEventListener('resize', onWindowResize);
         }
-        
-        async function setupCamera() {
-            try {
-                // Get video element
-                video = document.getElementById('video');
+
+        // Function called when user Taps the screen
+        function onSelect() {
+            if (reticle.visible) {
+                // Create a Cube
+                const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1); // 10cm cube
+                const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 * Math.random(), roughness: 0.1, metalness: 0.5 });
+                const cube = new THREE.Mesh(geometry, material);
                 
-                // Request front camera
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'user',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
+                // Place cube at the Reticle's position
+                reticle.matrix.decompose(cube.position, cube.quaternion, cube.scale);
                 
-                // Set video source
-                video.srcObject = stream;
-                
-                // Wait for video to be ready
-                await new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        video.play();
-                        resolve();
-                    };
-                });
-                
-                return true;
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                return false;
+                scene.add(cube);
             }
         }
-        
-        function setupCanvas() {
-            canvas = document.getElementById('effects-canvas');
-            ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            // Handle window resize
-            window.addEventListener('resize', () => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            });
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        
-        function setupAudio() {
-            try {
-                // Create audio context
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Create ambient whisper sound (simulated with noise)
-                const ambientNoise = audioContext.createOscillator();
-                const ambientGain = audioContext.createGain();
-                ambientNoise.type = 'sawtooth';
-                ambientNoise.frequency.value = 60;
-                ambientGain.gain.value = 0.05;
-                ambientNoise.connect(ambientGain);
-                ambientGain.connect(audioContext.destination);
-                ambientNoise.start();
-                
-                // Create wind sound (simulated with filtered noise)
-                const windNoise = audioContext.createOscillator();
-                const windFilter = audioContext.createBiquadFilter();
-                const windGain = audioContext.createGain();
-                windNoise.type = 'sawtooth';
-                windNoise.frequency.value = 40;
-                windFilter.type = 'lowpass';
-                windFilter.frequency.value = 200;
-                windGain.gain.value = 0.03;
-                windNoise.connect(windFilter);
-                windFilter.connect(windGain);
-                windGain.connect(audioContext.destination);
-                windNoise.start();
-                
-                // Create pulse loop
-                startPulseLoop();
-                
-                // Store references for later control
-                ambientSound = ambientGain;
-                windSound = windGain;
-            } catch (error) {
-                console.error('Audio setup failed:', error);
-            }
+
+        function animate() {
+            renderer.setAnimationLoop(render);
         }
-        
-        function startPulseLoop() {
-            setInterval(() => {
-                if (!audioContext) return;
-                
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.5);
-                
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.start();
-                oscillator.stop(audioContext.currentTime + 0.8);
-            }, 3000);
-        }
-        
-        function applyRandomMask() {
-            // Choose a random mask type
-            const maskKeys = Object.keys(masks);
-            maskType = maskKeys[Math.floor(Math.random() * maskKeys.length)];
-            activeMask = masks[maskType];
-            
-            // Update UI
-            document.getElementById('mask-indicator').textContent = `Mask: ${activeMask.name}`;
-            
-            console.log(`Applied ${activeMask.name} mask`);
-        }
-        
-        function startEffects() {
-            // Initialize particles
-            initParticles();
-            
-            // Draw all effects continuously
-            function draw() {
-                // Clear canvas with transparency
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw fog layer
-                drawFog();
-                
-                // Draw mask effects based on type
-                drawMaskEffects();
-                
-                // Draw particles (bats and sparks)
-                drawParticles();
-                
-                // Apply post-processing effects
-                applyPostEffects();
-                
-                requestAnimationFrame(draw);
-            }
-            
-            draw();
-        }
-        
-        function drawFog() {
-            // Create a semi-transparent fog overlay
-            const gradient = ctx.createRadialGradient(
-                canvas.width / 2, canvas.height / 2, 0,
-                canvas.width / 2, canvas.height / 2, canvas.width / 1.5
-            );
-            
-            gradient.addColorStop(0, 'rgba(138, 43, 226, 0.1)');
-            gradient.addColorStop(0.5, 'rgba(138, 43, 226, 0.2)');
-            gradient.addColorStop(1, 'rgba(138, 43, 226, 0.3)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Add subtle movement to fog
-            const time = Date.now() * 0.001;
-            ctx.globalAlpha = 0.3 + Math.sin(time) * 0.1;
-        }
-        
-        function drawMaskEffects() {
-            if (!activeMask) return;
-            
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const faceRadius = Math.min(canvas.width, canvas.height) * 0.2;
-            const time = Date.now() * 0.001;
-            
-            // Base mask glow
-            const gradient = ctx.createRadialGradient(
-                centerX, centerY, faceRadius * 0.8,
-                centerX, centerY, faceRadius * 1.5
-            );
-            
-            gradient.addColorStop(0, activeMask.color);
-            gradient.addColorStop(0.5, activeMask.glowColor);
-            gradient.addColorStop(1, 'transparent');
-            
-            ctx.fillStyle = gradient;
-            ctx.globalAlpha = 0.3;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Mask-specific effects
-            switch(maskType) {
-                case 'witch':
-                    drawWitchEffects(centerX, centerY, faceRadius, time);
-                    break;
-                case 'skeleton':
-                    drawSkeletonEffects(centerX, centerY, faceRadius, time);
-                    break;
-                case 'zombie':
-                    drawZombieEffects(centerX, centerY, faceRadius, time);
-                    break;
-            }
-            
-            // Expression-based effects
-            if (faceExpressions.smile) {
-                drawSmileEffects(centerX, centerY, faceRadius);
-            }
-            
-            if (faceExpressions.mouthOpen) {
-                drawMouthOpenEffects(centerX, centerY, faceRadius);
-            }
-            
-            if (faceExpressions.eyebrowsRaised) {
-                drawEyebrowEffects(centerX, centerY, faceRadius);
-            }
-            
-            ctx.globalAlpha = 1.0;
-        }
-        
-        function drawWitchEffects(centerX, centerY, faceRadius, time) {
-            // Purple glowing eyes
-            const eyeSpacing = faceRadius * 0.5;
-            const eyeSize = faceRadius * 0.15;
-            
-            // Left eye
-            ctx.beginPath();
-            ctx.arc(centerX - eyeSpacing, centerY, eyeSize, 0, Math.PI * 2);
-            ctx.fillStyle = '#8a2be2';
-            ctx.globalAlpha = 0.7 + Math.sin(time * 5) * 0.3;
-            ctx.fill();
-            
-            // Right eye
-            ctx.beginPath();
-            ctx.arc(centerX + eyeSpacing, centerY, eyeSize, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Eye glow
-            const eyeGlow = ctx.createRadialGradient(
-                centerX, centerY, eyeSize,
-                centerX, centerY, eyeSize * 3
-            );
-            eyeGlow.addColorStop(0, '#8a2be2');
-            eyeGlow.addColorStop(1, 'transparent');
-            
-            ctx.fillStyle = eyeGlow;
-            ctx.globalAlpha = 0.3;
-            ctx.fillRect(centerX - eyeSpacing - eyeSize * 3, centerY - eyeSize * 3, 
-                        eyeSize * 6, eyeSize * 6);
-            ctx.fillRect(centerX + eyeSpacing - eyeSize * 3, centerY - eyeSize * 3, 
-                        eyeSize * 6, eyeSize * 6);
-            
-            // Shimmer effect
-            for (let i = 0; i < 5; i++) {
-                const x = centerX + (Math.random() - 0.5) * faceRadius * 1.5;
-                const y = centerY + (Math.random() - 0.5) * faceRadius * 1.5;
-                const size = Math.random() * 5 + 2;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fillStyle = '#ff00ff';
-                ctx.globalAlpha = 0.5;
-                ctx.fill();
-            }
-        }
-        
-        function drawSkeletonEffects(centerX, centerY, faceRadius, time) {
-            // Bone pattern overlay
-            ctx.strokeStyle = '#f5f5f5';
-            ctx.lineWidth = 3;
-            ctx.globalAlpha = 0.6;
-            
-            // Skull outline
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, faceRadius, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // Eye sockets
-            const eyeSpacing = faceRadius * 0.4;
-            const eyeWidth = faceRadius * 0.3;
-            const eyeHeight = faceRadius * 0.2;
-            
-            ctx.beginPath();
-            ctx.ellipse(centerX - eyeSpacing, centerY, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.ellipse(centerX + eyeSpacing, centerY, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // Nasal cavity
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY - faceRadius * 0.2);
-            ctx.lineTo(centerX, centerY + faceRadius * 0.3);
-            ctx.stroke();
-            
-            // Jaw line
-            ctx.beginPath();
-            ctx.arc(centerX, centerY + faceRadius * 0.2, faceRadius * 0.7, 0, Math.PI);
-            ctx.stroke();
-            
-            // Emissive glow
-            if (Math.sin(time * 2) > 0.5) {
-                const glow = ctx.createRadialGradient(
-                    centerX, centerY, faceRadius * 0.8,
-                    centerX, centerY, faceRadius * 1.5
-                );
-                glow.addColorStop(0, 'rgba(245, 245, 245, 0.5)');
-                glow.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = glow;
-                ctx.globalAlpha = 0.3;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-        
-        function drawZombieEffects(centerX, centerY, faceRadius, time) {
-            // Greenish skin tone with pulsating highlights
-            const pulseIntensity = 0.3 + Math.sin(time * 3) * 0.2;
-            
-            // Base green overlay
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-            ctx.globalAlpha = 0.4;
-            ctx.fillRect(centerX - faceRadius, centerY - faceRadius, 
-                        faceRadius * 2, faceRadius * 2);
-            
-            // Pulsating highlights
-            ctx.fillStyle = 'rgba(0, 255, 0, ' + pulseIntensity + ')';
-            ctx.globalAlpha = 0.6;
-            
-            // Random zombie skin patches
-            for (let i = 0; i < 8; i++) {
-                const x = centerX + (Math.random() - 0.5) * faceRadius * 1.5;
-                const y = centerY + (Math.random() - 0.5) * faceRadius * 1.5;
-                const size = Math.random() * faceRadius * 0.3 + faceRadius * 0.1;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Wound effects
-            ctx.fillStyle = 'rgba(139, 0, 0, 0.7)';
-            ctx.globalAlpha = 0.8;
-            
-            // Forehead wound
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - faceRadius * 0.3, faceRadius * 0.1, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Cheek wounds
-            ctx.beginPath();
-            ctx.arc(centerX - faceRadius * 0.4, centerY + faceRadius * 0.2, 
-                    faceRadius * 0.08, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.arc(centerX + faceRadius * 0.4, centerY + faceRadius * 0.2, 
-                    faceRadius * 0.08, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        function drawSmileEffects(centerX, centerY, faceRadius) {
-            // Spark effects when smiling
-            for (let i = 0; i < 5; i++) {
-                const x = centerX + (Math.random() - 0.5) * faceRadius;
-                const y = centerY + faceRadius * 0.5 + Math.random() * faceRadius * 0.3;
-                const size = Math.random() * 4 + 2;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fillStyle = '#ff4500';
-                ctx.globalAlpha = 0.7;
-                ctx.fill();
-            }
-        }
-        
-        function drawMouthOpenEffects(centerX, centerY, faceRadius) {
-            // Bat effects when mouth is open
-            for (let i = 0; i < 3; i++) {
-                const x = centerX + (Math.random() - 0.5) * faceRadius * 0.8;
-                const y = centerY + faceRadius * 0.4;
-                const size = Math.random() * 6 + 4;
-                
-                // Simple bat shape
-                ctx.fillStyle = '#000000';
-                ctx.globalAlpha = 0.8;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Wings
-                ctx.beginPath();
-                ctx.moveTo(x - size, y);
-                ctx.lineTo(x - size * 1.5, y - size);
-                ctx.lineTo(x - size * 0.5, y);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.moveTo(x + size, y);
-                ctx.lineTo(x + size * 1.5, y - size);
-                ctx.lineTo(x + size * 0.5, y);
-                ctx.fill();
-            }
-        }
-        
-        function drawEyebrowEffects(centerX, centerY, faceRadius) {
-            // Glowing effect when eyebrows are raised
-            const gradient = ctx.createRadialGradient(
-                centerX, centerY - faceRadius * 0.5, 0,
-                centerX, centerY - faceRadius * 0.5, faceRadius
-            );
-            
-            gradient.addColorStop(0, 'rgba(255, 140, 0, 0.7)');
-            gradient.addColorStop(1, 'transparent');
-            
-            ctx.fillStyle = gradient;
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect(centerX - faceRadius, centerY - faceRadius * 1.5, 
-                        faceRadius * 2, faceRadius * 1.5);
-        }
-        
-        // Particle systems
-        const bats = [];
-        const sparks = [];
-        
-        function initParticles() {
-            // Initialize bats
-            for (let i = 0; i < 10; i++) {
-                bats.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    size: Math.random() * 5 + 3,
-                    speed: Math.random() * 2 + 1,
-                    angle: Math.random() * Math.PI * 2
-                });
-            }
-            
-            // Initialize sparks
-            for (let i = 0; i < 20; i++) {
-                sparks.push({
-                    x: Math.random() * canvas.width,
-                    y: canvas.height + Math.random() * 100,
-                    size: Math.random() * 3 + 1,
-                    speed: Math.random() * 3 + 1,
-                    life: 1.0
-                });
-            }
-        }
-        
-        function drawParticles() {
-            const time = Date.now() * 0.001;
-            
-            // Draw and update bats
-            bats.forEach(bat => {
-                // Update position
-                bat.x += Math.cos(bat.angle) * bat.speed;
-                bat.y += Math.sin(bat.angle) * bat.speed;
-                
-                // Wrap around edges
-                if (bat.x < -bat.size) bat.x = canvas.width + bat.size;
-                if (bat.x > canvas.width + bat.size) bat.x = -bat.size;
-                if (bat.y < -bat.size) bat.y = canvas.height + bat.size;
-                if (bat.y > canvas.height + bat.size) bat.y = -bat.size;
-                
-                // Change direction occasionally
-                if (Math.random() < 0.02) {
-                    bat.angle = Math.random() * Math.PI * 2;
+
+        function render(timestamp, frame) {
+            if (frame) {
+                // 1. Request Hit Test Source (only once)
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
+                            hitTestSource = source;
+                        });
+                    });
+                    session.addEventListener('end', function () {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                    });
+                    hitTestSourceRequested = true;
                 }
-                
-                // Draw bat
-                ctx.fillStyle = '#000000';
-                ctx.globalAlpha = 0.8;
-                ctx.beginPath();
-                ctx.arc(bat.x, bat.y, bat.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Wings
-                ctx.beginPath();
-                ctx.moveTo(bat.x - bat.size, bat.y);
-                ctx.lineTo(bat.x - bat.size * 1.5, bat.y - bat.size);
-                ctx.lineTo(bat.x - bat.size * 0.5, bat.y);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.moveTo(bat.x + bat.size, bat.y);
-                ctx.lineTo(bat.x + bat.size * 1.5, bat.y - bat.size);
-                ctx.lineTo(bat.x + bat.size * 0.5, bat.y);
-                ctx.fill();
-            });
-            
-            // Draw and update sparks
-            sparks.forEach((spark, index) => {
-                // Update position and life
-                spark.y -= spark.speed;
-                spark.life -= 0.01;
-                
-                // Reset spark if it goes off screen or dies
-                if (spark.y < -spark.size || spark.life <= 0) {
-                    spark.y = canvas.height + Math.random() * 100;
-                    spark.x = Math.random() * canvas.width;
-                    spark.life = 1.0;
-                }
-                
-                // Draw spark
-                const alpha = spark.life * 0.7;
-                ctx.fillStyle = '#ff4500';
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-        
-        function applyPostEffects() {
-            // Apply subtle glitch effect occasionally
-            if (Math.random() < 0.05) {
-                const glitchAmount = 1 + Math.random() * 3;
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-                
-                // Shift some pixels horizontally
-                for (let i = 0; i < data.length; i += 4) {
-                    if (Math.random() < 0.1) {
-                        // Randomly shift red channel
-                        if (i + glitchAmount * 4 < data.length) {
-                            data[i] = data[i + glitchAmount * 4];
-                        }
+
+                // 2. Perform Hit Test
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        // Move reticle to the detected surface
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
                     }
                 }
-                
-                ctx.putImageData(imageData, 0, 0);
             }
-            
-            // Add vignette effect
-            const vignette = ctx.createRadialGradient(
-                canvas.width / 2, canvas.height / 2, canvas.width * 0.4,
-                canvas.width / 2, canvas.height / 2, canvas.width * 0.7
-            );
-            vignette.addColorStop(0, 'transparent');
-            vignette.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
-            
-            ctx.fillStyle = vignette;
-            ctx.globalAlpha = 0.6;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            renderer.render(scene, camera);
         }
-        
-        function startExpressionSimulation() {
-            // Simulate facial expression changes for demo purposes
-            setInterval(() => {
-                // Randomly change expressions
-                faceExpressions.smile = Math.random() < 0.3;
-                faceExpressions.mouthOpen = Math.random() < 0.2;
-                faceExpressions.eyebrowsRaised = Math.random() < 0.25;
-            }, 2000);
-        }
-        
-        // Retry camera access
-        document.getElementById('retry-button').addEventListener('click', function() {
-            document.getElementById('camera-error').style.display = 'none';
-            document.getElementById('loading').style.display = 'flex';
-            init();
-        });
     </script>
 </body>
 </html>
