@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- ✅ WhatsApp/SEO Title -->
-  <title>Hooks</title>
+  <title>Prompts</title>
 
   <!-- ✅ Canonical -->
   <link rel="canonical" href="https://YOUR-DOMAIN.com/your-page" />
@@ -14,21 +14,21 @@
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
 
   <!-- ✅ Description (SEO) -->
-  <meta name="description" content="Hooks prompt page: generate 60 stop-the-scroll hooks for Instagram (Arabic/English) with one-click copy. Includes official Instagram profile references." />
+  <meta name="description" content="Prompts page: image & video prompts (Arabic/English) with one-click copy. Includes official Instagram profile references." />
 
   <!-- ✅ Open Graph (WhatsApp reads this) -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://YOUR-DOMAIN.com/your-page" />
-  <meta property="og:site_name" content="Hooks" />
+  <meta property="og:site_name" content="Prompts" />
 
   <!-- ✅ IMPORTANT: This is what WhatsApp shows -->
-  <meta property="og:title" content="Hooks" />
-  <meta property="og:description" content="Copy-ready prompt to generate 60 Instagram hooks (Arabic/English)." />
+  <meta property="og:title" content="Prompts" />
+  <meta property="og:description" content="Copy-ready Image & Video prompts (Arabic/English)." />
 
   <!-- ✅ Twitter -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Hooks" />
-  <meta name="twitter:description" content="Copy-ready prompt to generate 60 Instagram hooks (Arabic/English)." />
+  <meta name="twitter:title" content="Prompts" />
+  <meta name="twitter:description" content="Copy-ready Image & Video prompts (Arabic/English)." />
 
   <!-- ✅ Hidden identity links (SEO signal, not visible) -->
   <link rel="me" href="https://www.instagram.com/laith.ibra/" />
@@ -40,14 +40,14 @@
   <meta property="og:see_also" content="https://www.instagram.com/xr.universe.studio/" />
   <meta property="og:see_also" content="https://www.instagram.com/ai.exper/" />
 
-  <!-- ✅ Structured Data (keeps SEO benefit for the IG accounts) -->
+  <!-- ✅ Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "name": "Hooks",
+    "name": "Prompts",
     "url": "https://YOUR-DOMAIN.com/your-page",
-    "description": "Hooks prompt page for generating Instagram hooks in Arabic and English. References official Instagram profiles.",
+    "description": "Image & video prompts page in Arabic and English. References official Instagram profiles.",
     "mainEntity": {
       "@type": "ItemList",
       "itemListElement": [
@@ -211,11 +211,34 @@
       cursor:pointer;
       transition: all .3s ease;
       font-size:14px;
+      width: fit-content;
     }
     .copy-btn:hover{
       background-color: rgba(255,255,255,0.35);
       transform: translateY(-2px);
     }
+
+    .block{
+      margin-top:18px;
+      padding:14px 12px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .block-title{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .block-title h3{
+      font-size:16px;
+      margin:0;
+      opacity:.95;
+    }
+
     .text{
       font-size:16px;
       line-height:1.7;
@@ -224,10 +247,15 @@
       border-radius:14px;
       border:1px solid rgba(255,255,255,0.18);
       background: rgba(255,255,255,0.06);
-      min-height:280px;
+      min-height:240px;
     }
-    .text[dir="ltr"]{ direction:ltr; text-align:left; font-family:'Segoe UI',Tahoma,Arial,sans-serif; }
+    .text[dir="ltr"]{
+      direction:ltr;
+      text-align:left;
+      font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    }
     .hint{ margin-top:10px; font-size:12px; color:var(--muted); padding:0 4px; }
+
     .copied{
       position:fixed; top:20px; right:100px;
       background-color: rgba(255,255,255,0.25);
@@ -241,6 +269,13 @@
       z-index:200;
     }
     .copied.show{ opacity:1; }
+
+    hr.sep{
+      border:0;
+      height:1px;
+      background: rgba(255,255,255,0.22);
+      margin:18px 0 0 0;
+    }
 
     @media (max-width:768px){
       .container{ padding:15px; margin-top:70px; }
@@ -261,20 +296,38 @@
 
   <div class="container">
     <div class="header">
-      <h2>برومبت توليد 60 Hook</h2>
+      <h2 id="pageTitle">برومبتات جاهزة للنسخ</h2>
 
       <div class="controls">
         <div class="lang-toggle" aria-label="Language toggle">
           <button class="lang-btn active" id="btnAR" type="button">عربي</button>
           <button class="lang-btn" id="btnEN" type="button">English</button>
         </div>
-
-        <button class="copy-btn" id="copyButton" type="button">نسخ النص</button>
       </div>
     </div>
 
-    <div class="text" id="textToCopy" dir="rtl"></div>
-    <div class="hint">اضغط "نسخ النص" لنسخ البرومبت الحالي (حسب اللغة المختارة).</div>
+    <!-- Image Prompt -->
+    <div class="block">
+      <div class="block-title">
+        <h3 id="imgTitle">🖼️ برومبت الصورة</h3>
+        <button class="copy-btn" id="copyImage" type="button">نسخ برومبت الصورة</button>
+      </div>
+      <div class="text" id="imgText" dir="rtl"></div>
+      <div class="hint" id="imgHint">انسخ برومبت الصورة (عربي/إنكليزي) حسب اللغة المختارة.</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <!-- Video Prompt -->
+    <div class="block">
+      <div class="block-title">
+        <h3 id="vidTitle">🎥 برومبت الفيديو</h3>
+        <button class="copy-btn" id="copyVideo" type="button">نسخ برومبت الفيديو</button>
+      </div>
+      <div class="text" id="vidText" dir="rtl"></div>
+      <div class="hint" id="vidHint">انسخ برومبت الفيديو (عربي/إنكليزي) حسب اللغة المختارة.</div>
+    </div>
+
   </div>
 
   <div class="copied" id="copiedMsg">تم النسخ بنجاح!</div>
@@ -283,108 +336,133 @@
     document.addEventListener('DOMContentLoaded', function () {
       const btnAR = document.getElementById('btnAR');
       const btnEN = document.getElementById('btnEN');
-      const copyButton = document.getElementById('copyButton');
-      const textToCopy = document.getElementById('textToCopy');
+
+      const imgText   = document.getElementById('imgText');
+      const vidText   = document.getElementById('vidText');
+
+      const copyImage = document.getElementById('copyImage');
+      const copyVideo = document.getElementById('copyVideo');
+
+      const pageTitle = document.getElementById('pageTitle');
+      const imgTitle  = document.getElementById('imgTitle');
+      const vidTitle  = document.getElementById('vidTitle');
+
+      const imgHint   = document.getElementById('imgHint');
+      const vidHint   = document.getElementById('vidHint');
+
       const copiedMsg = document.getElementById('copiedMsg');
 
-      const PROMPT_AR = `أنت خبير سوشال ميديا وكاتب إعلانات. أنا رح أعطيك فقط: موضوع البوست. مهمتك توليد 60 Hook قوية “توقف السكرول” على إنستغرام (Reels + Carousel) باللهجة العربية (مفهومة لكل الشباب)، سطر واحد لكل Hook، قصيرة وواضحة وواقعية بدون مبالغة أو وعود كاذبة أو تخويف أو إساءة.
+      // =========================
+      // PROMPTS (IMAGE)
+      // =========================
+      const PROMPT_IMAGE_AR = `أنشئ صورة تُظهر المرأة من الصورة المرجعية وهي تتحرك بشكل طبيعي لالتقاط صورة سيلفي مع (اسم الممثل أو الشخصية) في موقع تصوير (اسم الفيلم أو المسلسل).
 
-الموضوع: [اكتب موضوع البوست هنا]
+حافظ على تفاصيل الوجه الأصلية للصورة المرجعية دون أي تعديل. حافظ على الملامح الطبيعية وملمس البشرة الحقيقي، مع عدم تغيير الملابس الأصلية.
 
-قسّم الـ 60 Hook إلى 12 مجموعة، كل مجموعة 5 Hooks، واكتب اسم المجموعة كسطر مستقل قبل هوكاتها. المجموعات (بهالأسماء بالضبط):
+في الخلفية، أظهر موقع التصوير بوضوح بما يشمل الإضاءة، الدعائم، وطاقم العمل.
 
-1. الفضول (Curiosity)
+احفظ تفاصيل الوجه كما هي، وحافظ على نفس اتجاه اليد كما في الصور المرجعية.`;
 
-2. مشكلة → حل
+      const PROMPT_IMAGE_EN = `Generate an image showing the woman from the provided photo naturally moving to take a selfie with (actor or character name) on the filming set of (movie or TV series name).
+Preserve the exact facial details of the person in the reference image without any modification. Maintain natural features, real skin texture, and keep the woman’s original clothing unchanged.
+In the background, clearly show the film set, including lighting, props, and the production crew.
+Preserve the facial details of the reference image and maintain the same hand orientation as shown in the reference photos.`;
 
-3. رأي مخالف محترم (Hot take)
+      // =========================
+      // PROMPTS (VIDEO) - NEW
+      // =========================
+      const PROMPT_VIDEO_EN = `Base the character strictly on the provided reference images. The woman's facial appearance must remain completely unchanged throughout the video, including facial structure, proportions, skin tone, and natural skin texture. No enhancement, alteration, or visual correction is allowed. Create a highly realistic selfie-like video set in the same room. In one seamless shot, the woman naturally shifts her position by taking one or two relaxed steps, subtly adjusting the framing so she appears alongside another person. The overall feeling is light, warm, and positive. Her expression remains calm and friendly, with a gentle smile maintained consistently from start to finish. All movement must be minimal and realistic, reflecting natural human behavior only. No visible phone should appear, yet the recording must clearly feel like a genuine selfie. Camera angle stays steady, transitions are smooth, lighting remains balanced, and the woman's identity stays perfectly stable with no facial distortion at any moment.`;
 
-4. دليل-نتيجة-رقم (Proof)
+      const PROMPT_VIDEO_AR = `اعتمد في بناء الشخصية بشكل صارم على الصور المرجعية المرفقة. يجب أن تبقى ملامح وجه المرأة ثابتة تمامًا طوال الفيديو بدون أي تغيير، بما يشمل بنية الوجه، النِّسَب، لون البشرة، وملمس البشرة الطبيعي. يُمنع أي تحسين أو تعديل أو تصحيح بصري.
 
-5. استهداف مباشر “إذا أنت…” (Targeting)
+أنشئ فيديو واقعي جدًا بأسلوب “سيلفي” داخل نفس الغرفة. ضمن لقطة واحدة سلسة، تتحرك المرأة بشكل طبيعي عبر خطوة أو خطوتين هادئتين لتعديل الكادر بشكل بسيط، بحيث تظهر بجانب شخص آخر.
 
-6. تحدّي-Checklist
+الإحساس العام خفيف ودافئ وإيجابي. تبقى تعابيرها هادئة وودودة، مع ابتسامة لطيفة ثابتة من البداية للنهاية.
 
-7. أسطورة-حقيقة (Myth vs Fact)
+يجب أن تكون الحركة قليلة جدًا وواقعية وتعكس سلوكًا بشريًا طبيعيًا فقط. لا يجب أن يظهر أي هاتف في الفيديو، ومع ذلك يجب أن يبدو التسجيل بوضوح كأنه سيلفي حقيقي. زاوية الكاميرا ثابتة، الانتقالات ناعمة، الإضاءة متوازنة، وهوية المرأة ثابتة تمامًا دون أي تشوه أو تغير في الوجه في أي لحظة.`;
 
-8. أخطاء شائعة
+      // =========================
+      // STATE
+      // =========================
+      let currentLang = 'ar';
 
-9. قبل-بعد (Before-After)
+      function showCopiedToast(msg){
+        copiedMsg.textContent = msg;
+        copiedMsg.classList.add('show');
+        setTimeout(()=>copiedMsg.classList.remove('show'), 2000);
+      }
 
-10. خطوات سريعة (Quick Steps)
-
-11. أدوات-قوالب-موارد (Tools-Templates)
-
-12. أسئلة محسوبة (Smart Questions)
-
-تنسيق الإخراج إلزامي:
-
-ممنوع أي شرح أو مقدمات أو نص إضافي خارج القوائم.
-ممنوع تكرار نفس الفكرة بصياغة مختلفة؛ كل Hook لازم يحمل زاوية جديدة، تجنب ال clickbait الرخيص.
-من فضلك ابدأ مباشرة.`;
-
-      const PROMPT_EN = `You are a social media expert and copywriter. I will give you ONLY the post topic. Your task is to generate 60 strong “stop-the-scroll” hooks for Instagram (Reels + Carousel) in a clear, widely understood English style (easy for all youth). One line per hook. Short, clear, realistic—no exaggeration, no false promises, no fear-mongering, no offense.
-
-Topic: [Write the post topic here]
-
-Split the 60 hooks into 12 groups, 5 hooks per group, and write the group name on its own line before its hooks. The groups (use these names exactly):
-
-1. Curiosity
-
-2. Problem → Solution
-
-3. Respectful Hot Take
-
-4. Proof (Evidence–Result–Number)
-
-5. Direct Targeting “If you…”
-
-6. Challenge – Checklist
-
-7. Myth vs Fact
-
-8. Common Mistakes
-
-9. Before – After
-
-10. Quick Steps
-
-11. Tools – Templates – Resources
-
-12. Smart Questions
-
-Output formatting is mandatory:
-
-No explanations, introductions, or extra text outside the lists.
-No repeating the same idea in different wording; each hook must bring a new angle. Avoid cheap clickbait.
-Start immediately.`;
+      function copyText(text){
+        navigator.clipboard.writeText(text).then(()=>{
+          showCopiedToast(currentLang === 'ar' ? 'تم النسخ بنجاح!' : 'Copied!');
+        }).catch(()=>{
+          alert(currentLang === 'ar'
+            ? 'حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى'
+            : 'Copy failed. Please try again.');
+        });
+      }
 
       function setLang(lang){
+        currentLang = lang;
+
         if(lang === 'ar'){
-          textToCopy.setAttribute('dir','rtl');
-          textToCopy.textContent = PROMPT_AR;
+          document.documentElement.lang = 'ar';
+          document.documentElement.dir = 'rtl';
+
+          imgText.setAttribute('dir','rtl');
+          vidText.setAttribute('dir','rtl');
+
+          imgText.textContent = PROMPT_IMAGE_AR;
+          vidText.textContent = PROMPT_VIDEO_AR;
+
           btnAR.classList.add('active'); btnEN.classList.remove('active');
-          copyButton.textContent = 'نسخ النص';
-          copiedMsg.textContent = 'تم النسخ بنجاح!';
+
+          pageTitle.textContent = 'برومبتات جاهزة للنسخ';
+          imgTitle.textContent  = '🖼️ برومبت الصورة';
+          vidTitle.textContent  = '🎥 برومبت الفيديو';
+
+          copyImage.textContent = 'نسخ برومبت الصورة';
+          copyVideo.textContent = 'نسخ برومبت الفيديو';
+
+          imgHint.textContent = 'انسخ برومبت الصورة (عربي/إنكليزي) حسب اللغة المختارة.';
+          vidHint.textContent = 'انسخ برومبت الفيديو (عربي/إنكليزي) حسب اللغة المختارة.';
         }else{
-          textToCopy.setAttribute('dir','ltr');
-          textToCopy.textContent = PROMPT_EN;
+          document.documentElement.lang = 'en';
+          document.documentElement.dir = 'ltr';
+
+          imgText.setAttribute('dir','ltr');
+          vidText.setAttribute('dir','ltr');
+
+          imgText.textContent = PROMPT_IMAGE_EN;
+          vidText.textContent = PROMPT_VIDEO_EN;
+
           btnEN.classList.add('active'); btnAR.classList.remove('active');
-          copyButton.textContent = 'Copy text';
-          copiedMsg.textContent = 'Copied!';
+
+          pageTitle.textContent = 'Copy-ready Prompts';
+          imgTitle.textContent  = '🖼️ Image Prompt';
+          vidTitle.textContent  = '🎥 Video Prompt';
+
+          copyImage.textContent = 'Copy Image Prompt';
+          copyVideo.textContent = 'Copy Video Prompt';
+
+          imgHint.textContent = 'Copy the Image prompt (Arabic/English) based on the selected language.';
+          vidHint.textContent = 'Copy the Video prompt (Arabic/English) based on the selected language.';
         }
       }
 
+      // EVENTS
       btnAR.addEventListener('click', ()=>setLang('ar'));
       btnEN.addEventListener('click', ()=>setLang('en'));
 
-      copyButton.addEventListener('click', function(){
-        navigator.clipboard.writeText(textToCopy.textContent).then(()=>{
-          copiedMsg.classList.add('show');
-          setTimeout(()=>copiedMsg.classList.remove('show'),2000);
-        }).catch(()=>alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى'));
+      copyImage.addEventListener('click', ()=>{
+        copyText(imgText.textContent);
       });
 
+      copyVideo.addEventListener('click', ()=>{
+        copyText(vidText.textContent);
+      });
+
+      // INIT
       setLang('ar');
     });
   </script>
