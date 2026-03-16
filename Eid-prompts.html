@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Professional Eid AI Prompts Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #f4f7f5;
+      --surface: #ffffff;
+      --surface-2: #f8fbf9;
+      --text: #1f2937;
+      --muted: #5f6b7a;
+      --border: #dbe7df;
+      --primary: #2f6f57;
+      --primary-2: #3f8a6c;
+      --shadow: 0 10px 28px rgba(34, 65, 52, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body{
+      margin:0;
+      background:
+        radial-gradient(circle at top right, #eef8f2 0%, transparent 25%),
+        radial-gradient(circle at top left, #f9fdfb 0%, transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.9;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      font-family: "Cairo", sans-serif;
+    }
+    .ar { font-family: "Cairo", sans-serif; }
+    .en, .en * {
+      font-family: "Roboto", sans-serif;
+      direction: ltr;
+      text-align: left;
+    }
+    .container{
+      width:min(1200px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 80px;
+    }
+    .hero{
+      background: linear-gradient(135deg, #ffffff 0%, #f4fbf7 100%);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 34px 26px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .hero h1{
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1.25;
+      color: #153b2d;
+    }
+    .hero p{
+      margin: 0;
+      font-size: 1.18rem;
+      color: var(--muted);
+    }
+    .toc{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+    }
+    .toc h2{
+      margin: 0 0 14px;
+      font-size: 1.6rem;
+      color: #184937;
+    }
+    .toc ul{
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .toc a{
+      display: block;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 1.05rem;
+      transition: 0.2s ease;
+    }
+    .toc a:hover{
+      transform: translateY(-2px);
+      border-color: #bfd7c8;
+      background: #f2fbf6;
+    }
+    .prompt-card{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      scroll-margin-top: 24px;
+    }
+    .prompt-card h3{
+      margin: 0 0 8px;
+      font-size: 1.7rem;
+      color: #153b2d;
+      line-height: 1.4;
+    }
+    .prompt-sub{
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 18px;
+    }
+    .tabs{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .tab-btn{
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: #264739;
+      padding: 12px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+    .tab-btn.active{
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .tab-panel{ display: none; }
+    .tab-panel.active{ display: block; }
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom: 12px;
+    }
+    .copy-btn{
+      border: none;
+      background: var(--primary);
+      color: white;
+      padding: 12px 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+    .copy-btn:hover{ background: var(--primary-2); }
+    pre{
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #f8fbf9;
+      border: 1px solid #dce8e0;
+      border-radius: 18px;
+      padding: 22px;
+      font-size: 1.08rem;
+      line-height: 2;
+      color: #1b2630;
+      overflow-x: auto;
+    }
+    .footer-note{
+      margin-top: 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    @media (max-width: 768px){
+      .container{
+        width:min(100%, calc(100% - 20px));
+        padding-top: 20px;
+      }
+      .hero, .toc, .prompt-card{
+        padding: 18px;
+        border-radius: 20px;
+      }
+      pre{
+        padding: 16px;
+        font-size: 1rem;
+      }
+      .prompt-card h3{
+        font-size: 1.35rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>Professional Eid AI Prompts Library</h1>
+      <p>مجموعة البرومبتات الاحترافية  — الخاصة بعيد الفطر  </section>
+
+    <section class="toc">
+      <h2>الفهرس</h2>
+      <ul>
+        <li><a href="#p1">1. برومبت إنشاء حملة عيد الفطر</a></li>
+        <li><a href="#p2">2. برومبت أفكار محتوى عيد الفطر</a></li>
+        <li><a href="#p3">3. برومبت كتابة إعلان عيد الفطر</a></li>
+        <li><a href="#p4">4. برومبت تصميم صورة عيد الفطر بالذكاء الاصطناعي</a></li>
+        <li><a href="#p5">5. برومبت تحليل فرصة التسويق في العيد</a></li>
+        <li><a href="#p6">6. النسخة الاحترافية من Eid Ads Generator</a></li>
+        <li><a href="#p7">7. النسخة الاحترافية من AI Greeting Generator</a></li>
+        <li><a href="#p8">8. برومبت تفسير سبب زيادة الشراء في عيد الفطر واقتراح استراتيجيات تسويقية</a></li>
+      </ul>
+    </section>
+
+    <section class="prompt-card" id="p1">
+      <h3>1. برومبت إنشاء حملة عيد الفطر</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p1-ar">العربية</button>
+        <button class="tab-btn" data-target="p1-en">English</button>
+      </div>
+      <div id="p1-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p1-ar-text">نسخ البرومبت</button></div>
+        <pre id="p1-ar-text">تصرّف كخبير استراتيجيات تسويق رقمي عالمي ومتخصص في الحملات الموسمية في الشرق الأوسط.
+
+المهمة:
+قم بتصميم حملة تسويق متكاملة لعيد الفطر لعلامة تجارية تعمل في المجال التالي:
+[نوع النشاط التجاري]
+
+السياق:
+عيد الفطر يعد من أقوى المواسم الشرائية في العالم العربي حيث ترتفع معدلات:
+- شراء الهدايا
+- التسوق للعائلة
+- التفاعل مع المحتوى الاحتفالي
+- المشاركة عبر وسائل التواصل الاجتماعي
+
+المطلوب:
+
+1️⃣ إنشاء 3 مفاهيم رئيسية للحملة التسويقية (Campaign Concepts)
+
+لكل مفهوم وضّح:
+- الفكرة الرئيسية للحملة
+- الرسالة العاطفية المرتبطة بالعيد
+- الشعار التسويقي (Tagline)
+- زاوية التميز عن المنافسين
+
+2️⃣ سرد قصصي تسويقي (Emotional Storytelling)
+
+اشرح كيف يمكن ربط المنتج بقيم العيد مثل:
+الكرم – العائلة – الفرح – الامتنان – المشاركة
+
+3️⃣ خطة محتوى إنستغرام
+
+اقترح:
+5 أفكار Reels
+5 أفكار Carousel
+3 أفكار Stories تفاعلية
+
+4️⃣ عروض تسويقية مناسبة لعيد الفطر
+
+اقترح 5 أنواع عروض مثل:
+- خصومات موسمية
+- باقات عيد
+- هدية مع كل شراء
+- عروض العائلة
+- عروض محدودة الوقت
+
+5️⃣ هاشتاغات للحملة
+
+قدم:
+10 هاشتاغات عربية
+10 هاشتاغات إنجليزية
+
+6️⃣ نصوص إعلانية قصيرة
+
+اكتب 3 نسخ إعلان قصيرة مناسبة للإعلانات الممولة.
+
+المعطيات:
+
+الجمهور المستهدف:
+[وصف الجمهور]
+
+نبرة العلامة التجارية:
+[فخمة / عصرية / مرحة / عائلية]
+
+الدولة أو السوق:
+[الدولة]
+
+صيغة الإخراج:
+نظم الإجابة بعناوين واضحة وقوائم مرتبة.</pre>
+      </div>
+      <div id="p1-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p1-en-text">Copy Prompt</button></div>
+        <pre id="p1-en-text">Act as a senior digital marketing strategist specialized in seasonal campaigns in the Middle East.
+
+Task:
+Create a complete Eid Al-Fitr marketing campaign for a business operating in this industry:
+[business type]
+
+Context:
+Eid Al-Fitr is one of the strongest consumer seasons in Arab markets where people tend to:
+- Buy gifts
+- Shop for family
+- Engage with festive content
+- Share celebrations on social media
+
+Deliver the following:
+
+1️⃣ Three Campaign Concepts
+
+For each concept include:
+- Core campaign idea
+- Emotional message connected to Eid
+- Campaign tagline
+- Differentiation from competitors
+
+2️⃣ Emotional Storytelling Angle
+
+Explain how the brand can connect with Eid values such as:
+generosity, gratitude, family, celebration.
+
+3️⃣ Instagram Content Strategy
+
+Suggest:
+5 Reels ideas
+5 Carousel post ideas
+3 interactive Stories ideas
+
+4️⃣ Eid Promotional Offers
+
+Suggest 5 types of offers such as:
+seasonal discounts, bundles, gifts with purchase, family offers, limited-time offers.
+
+5️⃣ Hashtags
+
+Provide:
+10 Arabic hashtags
+10 English hashtags.
+
+6️⃣ Short Ad Copy
+
+Write 3 short ad captions suitable for paid ads.
+
+Inputs:
+
+Target audience:
+[describe audience]
+
+Brand tone:
+[luxury / modern / friendly / fun]
+
+Country / market:
+[country]
+
+Output format:
+Structured sections with clear headings.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p2">
+      <h3>2. برومبت أفكار محتوى عيد الفطر</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p2-ar">العربية</button>
+        <button class="tab-btn" data-target="p2-en">English</button>
+      </div>
+      <div id="p2-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p2-ar-text">نسخ البرومبت</button></div>
+        <pre id="p2-ar-text">تصرّف كخبير استراتيجيات محتوى وتسويق عبر وسائل التواصل الاجتماعي.
+
+المهمة:
+قم بتوليد 20 فكرة محتوى إبداعية لإنستغرام بمناسبة عيد الفطر لعلامة تجارية تعمل في المجال التالي:
+[المجال]
+
+السياق:
+المحتوى يجب أن يعكس أجواء العيد مثل:
+الفرح – العائلة – الهدايا – الاحتفال – المشاركة.
+
+قسّم الأفكار إلى الفئات التالية:
+
+1️⃣ أفكار Reels
+مقاطع قصيرة جذابة وقابلة للانتشار.
+
+2️⃣ أفكار Carousel
+محتوى متعدد الشرائح تعليمي أو تفاعلي.
+
+3️⃣ أفكار Instagram Stories
+محتوى سريع يتضمن:
+استطلاع – سؤال – Quiz.
+
+4️⃣ محتوى تفاعلي
+مثل:
+مسابقات
+تحديات
+مشاركة الجمهور.
+
+5️⃣ محتوى بناء مجتمع
+يشجع المتابعين على مشاركة تجاربهم مع العيد.
+
+لكل فكرة اذكر:
+
+- عنوان الفكرة
+- وصف مختصر للفكرة
+- الهدف التسويقي منها
+
+المعطيات:
+
+المجال:
+[industry]
+
+الجمهور المستهدف:
+[audience]
+
+صيغة الإخراج:
+جدول منظم.</pre>
+      </div>
+      <div id="p2-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p2-en-text">Copy Prompt</button></div>
+        <pre id="p2-en-text">Act as a social media strategist and content marketing expert.
+
+Task:
+Generate 20 creative Instagram content ideas related to Eid Al-Fitr for a brand in the following industry:
+[industry]
+
+Context:
+The ideas should reflect Eid themes such as:
+family, celebration, generosity, gifts, joy.
+
+Divide the ideas into the following categories:
+
+1️⃣ Reels Ideas
+Short engaging video concepts with viral potential.
+
+2️⃣ Carousel Ideas
+Educational or storytelling multi-slide posts.
+
+3️⃣ Instagram Stories Ideas
+Interactive content such as polls, quizzes, questions.
+
+4️⃣ Interactive Content
+Giveaways, challenges, or audience participation posts.
+
+5️⃣ Community Engagement Posts
+Encourage followers to share their Eid experiences.
+
+For each idea include:
+
+- Title
+- Short description
+- Marketing objective
+
+Inputs:
+
+Industry:
+[industry]
+
+Target audience:
+[audience]
+
+Output format:
+Structured table.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p3">
+      <h3>3. برومبت كتابة إعلان عيد الفطر</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p3-ar">العربية</button>
+        <button class="tab-btn" data-target="p3-en">English</button>
+      </div>
+      <div id="p3-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p3-ar-text">نسخ البرومبت</button></div>
+        <pre id="p3-ar-text">تصرّف كخبير كتابة إعلانات وتسويق رقمي متخصص في الحملات العربية.
+
+المهمة:
+اكتب 5 نصوص إعلانية عالية التحويل لإنستغرام بمناسبة عيد الفطر.
+
+المتطلبات:
+
+كل إعلان يجب أن يتضمن:
+
+- Hook قوي في أول سطر يجذب الانتباه
+- نبرة احتفالية مرتبطة بالعيد
+- رسالة بيع غير مباشرة
+- دعوة واضحة لاتخاذ إجراء
+
+النبرة:
+دافئة – احتفالية – مقنعة.
+
+المعطيات:
+
+المنتج أو الخدمة:
+[product]
+
+الجمهور المستهدف:
+[audience]
+
+العرض الترويجي:
+[promotion]
+
+صيغة الإخراج:
+قائمة من 5 إعلانات قصيرة.</pre>
+      </div>
+      <div id="p3-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p3-en-text">Copy Prompt</button></div>
+        <pre id="p3-en-text">Act as a professional Arabic advertising copywriter specialized in social media campaigns.
+
+Task:
+Write 5 high-converting Instagram promotional captions for an Eid Al-Fitr campaign.
+
+Requirements:
+
+Each caption should include:
+
+- A strong hook in the first line
+- A festive Eid tone
+- A subtle sales message
+- A clear call-to-action
+
+Style:
+Short, emotional, and engaging.
+
+Inputs:
+
+Product or service:
+[product]
+
+Target audience:
+[audience]
+
+Promotion:
+[promotion]
+
+Output format:
+Numbered list of captions.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p4">
+      <h3>4. برومبت تصميم صورة عيد الفطر بالذكاء الاصطناعي</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p4-ar">العربية</button>
+        <button class="tab-btn" data-target="p4-en">English</button>
+      </div>
+      <div id="p4-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p4-ar-text">نسخ البرومبت</button></div>
+        <pre id="p4-ar-text">تصرّف كخبير كتابة برومبتات لتوليد الصور بالذكاء الاصطناعي.
+
+المهمة:
+أنشئ برومبت احترافي لتوليد صورة تسويقية لعيد الفطر مناسبة لمنشور إنستغرام.
+
+يجب أن تتضمن الصورة العناصر التالية:
+
+- هلال مضيء في السماء
+- فوانيس عربية تقليدية
+- زخارف إسلامية أنيقة
+- إضاءة احتفالية
+- لوحة ألوان فاخرة
+
+الأسلوب الفني:
+تصميم تسويقي حديث.
+
+المزاج العام:
+مبهج – دافئ – احتفالي.
+
+صف بالتفصيل:
+
+- المشهد
+- الإضاءة
+- الألوان
+- زاوية الكاميرا
+- جودة الصورة
+
+صيغة الإخراج:
+برومبت مفصل جاهز للاستخدام في Midjourney أو DALL-E.</pre>
+      </div>
+      <div id="p4-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p4-en-text">Copy Prompt</button></div>
+        <pre id="p4-en-text">You are an expert AI image prompt engineer.
+
+Task:
+Create a detailed prompt for generating a professional Eid Al-Fitr marketing image for an Instagram post.
+
+The image should include:
+
+- A glowing crescent moon
+- Traditional Arabic lanterns
+- Elegant Islamic geometric patterns
+- Festive lights
+- A luxurious color palette
+
+Art style:
+Modern marketing design.
+
+Mood:
+Warm, joyful, festive.
+
+The prompt should describe:
+
+- Scene composition
+- Lighting
+- Colors
+- Camera angle
+- Rendering quality
+
+Output format:
+One detailed prompt ready for Midjourney or DALL-E.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p5">
+      <h3>5. برومبت تحليل فرصة التسويق في العيد</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p5-ar">العربية</button>
+        <button class="tab-btn" data-target="p5-en">English</button>
+      </div>
+      <div id="p5-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p5-ar-text">نسخ البرومبت</button></div>
+        <pre id="p5-ar-text">تصرّف كمحلل بيانات تسويقية وخبير في سلوك المستهلك.
+
+المهمة:
+قم بتحليل كيف يمكن للشركات الاستفادة من موسم عيد الفطر لزيادة المبيعات والتفاعل مع العملاء.
+
+يشمل التحليل:
+
+1️⃣ سلوك المستهلك خلال موسم العيد
+أنماط الشراء وأهم الدوافع.
+
+2️⃣ أنواع العروض التي تحقق أعلى مبيعات
+مثل:
+الخصومات
+الباقات
+الهدايا.
+
+3️⃣ أنواع المحتوى التي تحقق أفضل أداء
+في وسائل التواصل الاجتماعي خلال العيد.
+
+4️⃣ العوامل النفسية المؤثرة في قرارات الشراء
+خلال المواسم الاحتفالية.
+
+5️⃣ توصيات تسويقية عملية
+يمكن للشركات تطبيقها مباشرة.
+
+صيغة الإخراج:
+تحليل منظم بعناوين واضحة ونقاط مختصرة.</pre>
+      </div>
+      <div id="p5-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p5-en-text">Copy Prompt</button></div>
+        <pre id="p5-en-text">Act as a marketing data analyst and consumer behavior expert.
+
+Task:
+Explain how businesses can leverage the Eid Al-Fitr season to increase sales and engagement.
+
+Your analysis should include:
+
+1️⃣ Consumer behavior during Eid
+Shopping patterns and motivations.
+
+2️⃣ Types of offers that generate the highest sales
+Examples: bundles, discounts, gifts.
+
+3️⃣ Content formats that perform best
+On social media during Eid.
+
+4️⃣ Psychological triggers during festive seasons
+Such as generosity, celebration, and family bonding.
+
+5️⃣ Actionable marketing recommendations
+Businesses can implement immediately.
+
+Output format:
+Structured analysis with clear sections.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p6">
+      <h3>6. النسخة الاحترافية من Eid Ads Generator</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p6-ar">العربية</button>
+        <button class="tab-btn" data-target="p6-en">English</button>
+      </div>
+      <div id="p6-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p6-ar-text">نسخ البرومبت</button></div>
+        <pre id="p6-ar-text">تصرّف كخبير كتابة إعلانات تسويقية متخصص في الحملات الموسمية في الشرق الأوسط.
+
+المهمة:
+أنشئ 10 Hooks إعلانية قصيرة وجذابة لمنشورات وسائل التواصل الاجتماعي بمناسبة عيد الفطر.
+
+السياق:
+عيد الفطر يعتبر موسماً عاطفياً واجتماعياً مهماً حيث يركز الناس على:
+- العائلة
+- الهدايا
+- الاحتفال
+- الكرم
+- المشاركة
+
+المتطلبات:
+
+يجب أن تكون الـ Hooks:
+
+- قصيرة (أقل من 10 كلمات)
+- جذابة وتوقف التمرير
+- مناسبة للجمهور العربي
+- مرتبطة بمشاعر العيد
+- قابلة للاستخدام في الإعلانات أو Reels
+
+تجنب:
+- المبالغة
+- الوعود غير الواقعية
+- اللغة التسويقية المزعجة
+
+صيغة الإخراج:
+قائمة من 10 Hooks.</pre>
+      </div>
+      <div id="p6-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p6-en-text">Copy Prompt</button></div>
+        <pre id="p6-en-text">Act as a senior advertising copywriter specialized in seasonal marketing campaigns in the Middle East.
+
+Task:
+Generate 10 scroll-stopping ad hooks for social media campaigns related to Eid Al-Fitr.
+
+Context:
+Eid Al-Fitr is an emotional and festive season where people focus on:
+- family
+- gifts
+- celebration
+- generosity
+- connection
+
+Requirements:
+
+The hooks must:
+
+- be short (under 10 words)
+- be attention-grabbing
+- emotionally engaging
+- culturally suitable for Arabic audiences
+- suitable for Instagram ads or Reels
+
+Avoid:
+- exaggerated promises
+- aggressive sales language
+
+Output format:
+A numbered list of 10 hooks.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p7">
+      <h3>7. النسخة الاحترافية من AI Greeting Generator</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p7-ar">العربية</button>
+        <button class="tab-btn" data-target="p7-en">English</button>
+      </div>
+      <div id="p7-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p7-ar-text">نسخ البرومبت</button></div>
+        <pre id="p7-ar-text">تصرّف كخبير كتابة محتوى تسويقي باللغة العربية.
+
+المهمة:
+اكتب رسالة تهنئة بعيد الفطر يمكن للعلامات التجارية إرسالها لعملائها.
+
+المتطلبات:
+
+يجب أن تكون الرسالة:
+
+- دافئة وإنسانية
+- قصيرة ومناسبة لوسائل التواصل
+- مرتبطة بروح العيد
+- تتضمن امتنان للعملاء
+
+أضف أيضاً:
+إشارة تسويقية خفيفة لخدماتنا دون أن تبدو الرسالة إعلاناً مباشراً.
+
+المعطيات:
+
+نوع النشاط التجاري:
+[business type]
+
+نبرة العلامة التجارية:
+[ودية / فخمة / عائلية]
+
+صيغة الإخراج:
+3 نسخ مختلفة من الرسالة.</pre>
+      </div>
+      <div id="p7-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p7-en-text">Copy Prompt</button></div>
+        <pre id="p7-en-text">Act as a professional brand copywriter.
+
+Task:
+Write an Eid Al-Fitr greeting message that a brand can send to its customers.
+
+Requirements:
+
+The message should:
+
+- feel warm and genuine
+- be short and suitable for social media
+- reflect the spirit of Eid
+- express appreciation to customers
+
+Also include:
+A subtle mention of the brand's services without sounding like a direct advertisement.
+
+Inputs:
+
+Business type:
+[business type]
+
+Brand tone:
+[friendly / luxury / family-oriented]
+
+Output format:
+Provide 3 different message variations.</pre>
+      </div>
+    </section>
+
+    <section class="prompt-card" id="p8">
+      <h3>8. برومبت تفسير سبب زيادة الشراء في عيد الفطر واقتراح استراتيجيات تسويقية</h3>
+      <div class="prompt-sub">Arabic + English</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-target="p8-ar">العربية</button>
+        <button class="tab-btn" data-target="p8-en">English</button>
+      </div>
+      <div id="p8-ar" class="tab-panel active ar">
+        <div class="toolbar"><button class="copy-btn" data-copy="p8-ar-text">نسخ البرومبت</button></div>
+        <pre id="p8-ar-text">تصرّف كخبير علم نفس تسويقي متخصص في سلوك المستهلك في المواسم الاحتفالية.
+
+المهمة:
+اشرح لماذا يميل الناس إلى الشراء أكثر خلال عيد الفطر، ثم اقترح 5 تكتيكات تسويقية عملية يمكن للعلامات التجارية استخدامها للاستفادة من هذا السلوك.
+
+السياق:
+عيد الفطر ليس مجرد موسم شراء، بل فترة عاطفية واجتماعية ترتبط بالعائلة، الهدايا، الكرم، والمشاركة. لذلك يجب أن يعتمد التحليل على فهم الدوافع النفسية وليس فقط العوامل البيعية التقليدية.
+
+المطلوب:
+1. تحليل الأسباب النفسية التي تزيد من الشراء خلال عيد الفطر.
+2. شرح كيف تؤثر مشاعر العيد على قرارات المستهلك.
+3. اقتراح 5 استراتيجيات تسويقية قابلة للتطبيق.
+4. ربط كل استراتيجية بسبب نفسي أو سلوكي واضح.
+5. تقديم أمثلة مختصرة على كيفية تنفيذ كل استراتيجية في التسويق الرقمي.
+
+ركز على:
+- السلوك الشرائي في الأسواق العربية
+- الجوانب العاطفية والاجتماعية
+- أفكار عملية قابلة للتنفيذ
+
+صيغة الإخراج:
+رتب الإجابة في عناوين واضحة مع نقاط مختصرة وعملية.</pre>
+      </div>
+      <div id="p8-en" class="tab-panel en">
+        <div class="toolbar"><button class="copy-btn" data-copy="p8-en-text">Copy Prompt</button></div>
+        <pre id="p8-en-text">Act as a marketing psychologist specialized in festive-season consumer behavior.
+
+Task:
+Explain why people tend to buy more during Eid Al-Fitr, then suggest 5 practical marketing tactics that brands can use to benefit from this behavior.
+
+Context:
+Eid Al-Fitr is not just a shopping season. It is an emotional and social period associated with family, gifts, generosity, and connection. Your analysis should therefore focus on psychological buying drivers, not only conventional sales logic.
+
+Requirements:
+1. Analyze the psychological reasons behind increased spending during Eid Al-Fitr.
+2. Explain how Eid emotions influence consumer decision-making.
+3. Suggest 5 actionable marketing strategies.
+4. Link each strategy to a clear psychological or behavioral trigger.
+5. Provide short examples of how each strategy can be implemented in digital marketing.
+
+Focus on:
+- Arab market consumer behavior
+- Emotional and social triggers
+- Practical ideas that can be executed easily
+
+Output format:
+Use clear headings with concise, practical bullet points.</pre>
+      </div>
+    </section>
+
+
+  </div>
+
+  <script>
+    document.querySelectorAll('.prompt-card').forEach(card => {
+      const buttons = card.querySelectorAll('.tab-btn');
+      const panels = card.querySelectorAll('.tab-panel');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          panels.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const target = card.querySelector('#' + btn.dataset.target);
+          if (target) target.classList.add('active');
+        });
+      });
+    });
+
+    document.querySelectorAll('.copy-btn').forEach(button => {
+      button.addEventListener('click', async () => {
+        const target = document.getElementById(button.dataset.copy);
+        const original = button.textContent;
+        try {
+          await navigator.clipboard.writeText(target.innerText);
+          button.textContent = original.includes('Copy') ? 'Copied!' : 'تم النسخ';
+          setTimeout(() => button.textContent = original, 1400);
+        } catch (e) {
+          button.textContent = original.includes('Copy') ? 'Copy failed' : 'فشل النسخ';
+          setTimeout(() => button.textContent = original, 1400);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
