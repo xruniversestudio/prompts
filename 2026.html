@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>برومبتات كأس العالم بالعربي والإنكليزي</title>
+  <style>
+    :root {
+      --bg: #07140f;
+      --card: rgba(255,255,255,0.08);
+      --text: #f7fff9;
+      --muted: #b8c9c0;
+      --gold: #ffd166;
+      --green: #2ee59d;
+      --line: rgba(255,255,255,0.16);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Tahoma", "Arial", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(46,229,157,0.25), transparent 34%),
+        radial-gradient(circle at top right, rgba(255,209,102,0.20), transparent 30%),
+        linear-gradient(135deg, #06120d 0%, #07140f 45%, #0d2218 100%);
+      color: var(--text);
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 80px;
+    }
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      padding: 46px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
+        url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='2'%3E%3Cpath d='M0 90h180M90 0v180'/%3E%3Ccircle cx='90' cy='90' r='38'/%3E%3C/g%3E%3C/svg%3E");
+      box-shadow: 0 30px 80px rgba(0,0,0,0.32);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border: 1px solid rgba(255,209,102,0.45);
+      border-radius: 999px;
+      color: var(--gold);
+      background: rgba(255,209,102,0.08);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 1.08;
+      margin: 0 0 18px;
+      letter-spacing: -1px;
+    }
+    .hero p {
+      max-width: 930px;
+      color: var(--muted);
+      font-size: 19px;
+      margin: 0;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 30px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(255,255,255,0.06);
+    }
+    .stat strong {
+      display: block;
+      font-size: 28px;
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+    .stat span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .section { margin-top: 38px; }
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    h2 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 40px);
+      line-height: 1.2;
+    }
+    .section-head p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+      backdrop-filter: blur(14px);
+    }
+    .card-header { padding: 20px 22px 0; }
+    .pill {
+      display: inline-flex;
+      color: #06120d;
+      background: var(--green);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .pill.gold { background: var(--gold); }
+    .pill.soft {
+      color: var(--text);
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.35;
+    }
+    .use {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .language-block {
+      margin: 18px 22px 22px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.20);
+      overflow: hidden;
+    }
+    .language-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--gold);
+      font-weight: 800;
+    }
+    .prompt {
+      padding: 16px;
+      color: #eefbf4;
+      font-size: 15.5px;
+      white-space: pre-wrap;
+    }
+    .prompt.ar { text-align: right; }
+    .prompt.en {
+      text-align: left;
+      direction: ltr;
+      font-family: Arial, sans-serif;
+      line-height: 1.7;
+    }
+    button {
+      border: 0;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 9px 13px;
+      color: #06120d;
+      background: var(--gold);
+      font-weight: 800;
+      transition: transform 0.2s ease;
+      white-space: nowrap;
+    }
+    button:hover { transform: translateY(-2px); }
+    .wide { grid-column: 1 / -1; }
+    .warning {
+      margin-top: 34px;
+      border: 1px solid rgba(255,209,102,0.36);
+      background: rgba(255,209,102,0.08);
+      border-radius: 24px;
+      padding: 22px;
+      color: #fff4d0;
+    }
+    .footer {
+      margin-top: 34px;
+      padding: 24px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      text-align: center;
+      border: 1px solid var(--line);
+    }
+    @media (max-width: 820px) {
+      .page { width: min(100% - 22px, 1180px); padding-top: 22px; }
+      .hero { padding: 28px; border-radius: 28px; }
+      .stats, .cards { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .prompt { font-size: 14.5px; }
+      .language-title { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="badge">⚽ بنك برومبتات ثنائي اللغة</div>
+      <h1>برومبتات كأس العالم بالعربي والإنكليزي</h1>
+  
+      <div class="stats">
+        <div class="stat">
+          <strong>5</strong>
+          <span>برومبتات لتعديل صور الأشخاص</span>
+        </div>
+        <div class="stat">
+          <strong>5</strong>
+          <span>برومبتات لبوستات السوشال ميديا</span>
+        </div>
+        <div class="stat">
+          <strong>5</strong>
+          <span>برومبتات لريلز تسويقية</span>
+        </div>
+      </div>
+    </section>
+
+    
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>أولاً: برومبتات تعديل صور الأشخاص</h2>
+          <p>برومبتات طبيعية ومباشرة لتعديل صور الأشخاص، وفي داخل كل برومبت مكان واضح يكتب فيه المستخدم اسم الفريق الذي يريده.</p>
+        </div>
+      </div>
+      <div class="cards">
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill ">Photo Edit</span>
+            <h3>1. بوستر مشجع سينمائي</h3>
+            <p class="use">لتحويل صورة شخص إلى بوستر مشجع احترافي بطابع الفريق الذي يختاره.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s1_1_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s1_1_ar">عدّل الصورة المرفقة وحوّل الشخص إلى بوستر سينمائي احترافي لمشجع كرة قدم بمناسبة كأس العالم، مع اعتماد ألوان وهوية وأجواء فريق [اسم الفريق] بشكل واضح وأنيق. حافظ على هوية الوجه نفسها تماماً بدون تغيير ملامح الوجه أو العمر أو لون البشرة أو شكل الشعر. أضف إضاءة استاد درامية، انعكاسات خضراء من أرض الملعب، دخاناً خفيفاً، وجمهوراً متحمساً في الخلفية، مع تكوين بصري قوي يشبه بوسترات الرياضة الاحترافية. اجعل الملابس والإكسسوارات والتفاصيل البصرية منسجمة مع هوية فريق [اسم الفريق]، والنتيجة النهائية يجب أن تكون واقعية، فاخرة، وقابلة للمشاركة على السوشال ميديا.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s1_1_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s1_1_en" dir="ltr">Edit the uploaded portrait into a premium cinematic football fan poster for the World Cup, using the colors, identity, and atmosphere of [TEAM NAME] in a clear and elegant way. Keep the person’s face exactly the same, with no changes to facial features, age, skin tone, or hairstyle. Add dramatic stadium lighting, green pitch reflections, subtle smoke, and an excited crowd in the background, with a bold composition similar to high-end sports posters. Make the clothing, accessories, and visual details match the spirit of [TEAM NAME]. The final result should feel realistic, premium, and highly shareable on social media.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill ">Photo Edit</span>
+            <h3>2. لاعب محترف</h3>
+            <p class="use">لتحويل الشخص إلى لاعب كرة قدم محترف بستايل الفريق الذي يحدده المستخدم.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s1_2_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s1_2_ar">حوّل الشخص في الصورة المرفقة إلى لاعب كرة قدم محترف واقف داخل نفق الاستاد قبل مباراة كبيرة في كأس العالم، مع تصميم الزي والتفاصيل البصرية بأسلوب مستوحى من فريق [اسم الفريق]. حافظ على الوجه والملامح والتعبير وشكل الشعر كما هي تماماً بدون أي تغيير. أضف زياً رياضياً احترافياً، جوارب طويلة، حذاء كرة قدم، وتفاصيل جسم رياضية طبيعية تعكس الثقة والجاهزية. استخدم إضاءة سينمائية داخل النفق، عمق ميدان خفيف، وأجواء حماسية ما قبل المباراة. يجب أن تبدو الصورة كلقطة إعلان رياضي حديث وفاخر، مع حضور واضح لهوية فريق [اسم الفريق] في الألوان والتفاصيل.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s1_2_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s1_2_en" dir="ltr">Transform the uploaded person into a professional football player standing inside a stadium tunnel before a major World Cup match, with the kit and visual details inspired by [TEAM NAME]. Preserve the exact face, facial structure, expression, and hairstyle from the original photo. Add a professional football outfit, long socks, football boots, and natural athletic body detail that reflects confidence and readiness. Use cinematic tunnel lighting, slight depth of field, and an intense pre-match mood. The image should feel like a modern premium sports advertisement, with the identity of [TEAM NAME] clearly reflected through the colors and styling.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill ">Photo Edit</span>
+            <h3>3. بطاقة لاعب شخصية</h3>
+            <p class="use">مناسبة لإنشاء بطاقة لاعب مرتبطة بفريق المستخدم المفضل.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s1_3_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s1_3_ar">أنشئ بطاقة لاعب شخصية من الصورة المرفقة بأسلوب احترافي، مع اعتماد هوية وألوان فريق [اسم الفريق] في التصميم. حافظ على هوية الشخص بدقة عالية بحيث يبقى الوجه معروفاً وطبيعياً. صمم بطاقة عمودية فاخرة مع إضاءة استاد، عناصر كروية تجريدية، خلفية ديناميكية، رقم تقييم، خانة مركز اللاعب، ومساحة واضحة لكتابة الاسم. اجعل ألوان البطاقة والخلفية والتفاصيل الجرافيكية مستوحاة من فريق [اسم الفريق]، مع مظهر قوي وحديث يشبه البطاقات الرياضية المميزة. يجب أن تكون النتيجة نظيفة، جذابة، ومناسبة للمشاركة أو الطباعة الرقمية.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s1_3_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s1_3_en" dir="ltr">Create a professional personalized football player card from the uploaded portrait, using the identity and colors of [TEAM NAME] in the design. Keep the person’s identity highly accurate so the face remains natural and recognizable. Design a premium vertical player card with stadium lights, abstract football graphics, a dynamic background, a rating number, a player position label, and clear space for the name. Let the card colors, background, and graphic details be inspired by [TEAM NAME], with a strong and modern collectible sports-card look. The final result should be clean, attractive, and suitable for sharing or digital printing.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill ">Photo Edit</span>
+            <h3>4. احتفال بعد الهدف</h3>
+            <p class="use">لتحويل صورة الشخص إلى لقطة احتفال حماسية مرتبطة بفريقه.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s1_4_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s1_4_ar">عدّل صورة الشخص المرفقة ليظهر داخل مشهد احتفال واقعي بعد تسجيل هدف، مع أجواء مستوحاة من فريق [اسم الفريق]. حافظ على نفس الوجه ونفس شكل الجسم والملامح بدون تغيير الهوية. اجعل الشخص يحتفل بحماس داخل استاد كرة قدم، مع حركة ديناميكية، قصاصات احتفالية، أضواء قوية من الكشافات، وجمهور يهتف في الخلفية. أضف كرة قدم على العشب، وتأثيرات بصرية خفيفة تعزز الطاقة والحماس. اجعل الملابس، الألوان، والأجواء العامة منسجمة مع هوية فريق [اسم الفريق]، بحيث تبدو الصورة كلقطة رياضية إعلانية قوية ومؤثرة.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s1_4_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s1_4_en" dir="ltr">Edit the uploaded person into a realistic goal celebration scene inspired by [TEAM NAME]. Preserve the same face, identity, and body appearance. Show the person celebrating energetically inside a football stadium, with dynamic motion, confetti, strong floodlights, and a cheering crowd in the background. Add a football on the grass and subtle visual effects that enhance the excitement and energy of the moment. Make the outfit, colors, and overall atmosphere match the identity of [TEAM NAME], so the final image feels like a powerful and emotional sports advertising shot.</div>
+          </div>
+        </article>
+        
+        <article class="card wide">
+          <div class="card-header">
+            <span class="pill ">Photo Edit</span>
+            <h3>5. صورة بروفايل مشجع</h3>
+            <p class="use">لإنشاء صورة بروفايل عصرية تعبّر عن الشخص والفريق الذي يشجعه.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s1_5_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s1_5_ar">حوّل الصورة الشخصية المرفقة إلى صورة بروفايل عصرية لمشجع كرة قدم، مع اعتماد ألوان وهوية فريق [اسم الفريق] داخل التصميم بشكل أنيق وواضح. حافظ على وجه الشخص كما هو تماماً، طبيعي وواضح وقابل للتعرف. أضف انعكاسات نيون خفيفة، توهج لوحة نتائج رقمية، خطوط تجريدية مستوحاة من أرض الملعب، وخلفية ناعمة بعمق بصري جميل. يمكن إضافة لمسات تشجيعية بسيطة أو رسم وجه خفيف إذا بدت أنيقة ومتناسقة مع هوية فريق [اسم الفريق]. يجب أن تكون النتيجة نظيفة، حديثة، ومثالية كصورة بروفايل للسوشال ميديا.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s1_5_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s1_5_en" dir="ltr">Turn the uploaded portrait into a modern football fan profile picture, using the colors and identity of [TEAM NAME] in an elegant and clear way. Keep the person’s face exactly recognizable, natural, and clear. Add subtle neon reflections, digital scoreboard glow, abstract football pitch lines, and a soft background with pleasing depth. You may add simple fan-inspired touches or subtle face paint if it looks stylish and consistent with the identity of [TEAM NAME]. The final result should be clean, modern, and ideal as a social media profile picture.</div>
+          </div>
+        </article>
+        
+      </div>
+    </section>
+    
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>ثانياً: برومبتات تسويقية لبوستات السوشال ميديا</h2>
+          <p>برومبتات جاهزة لتوليد أفكار بوستات، كابشن، وتصاميم مرتبطة بموسم كأس العالم.</p>
+        </div>
+      </div>
+      <div class="cards">
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill gold">Social Post</span>
+            <h3>1. بوست عرض يوم المباراة</h3>
+            <p class="use">مناسب للمطاعم، الكافيهات، التوصيل، المتاجر، والفعاليات.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s2_1_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s2_1_ar">أنشئ بوست تسويقي للسوشال ميديا باللغة العربية لبراند [اسم البراند] بمناسبة موسم كأس العالم، للترويج لعرض خاص بيوم المباراة. يجب أن يكون البوست واضحاً، حماسياً، جذاباً، وسهل الفهم من أول نظرة بدون مبالغة. اكتب Hook قوي، نصاً قصيراً يشرح العرض، تفاصيل العرض بشكل مرتب، وCTA مباشراً. الاتجاه البصري: خامة ملعب كرة قدم، إضاءة استاد، ظهور المنتج أو الخدمة بشكل واضح، أجواء جمهور وتشجيع، Layout نظيف، خط عربي Bold، وألوان البراند.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s2_1_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s2_1_en" dir="ltr">Create a marketing social media post in Arabic for [BRAND] during the World Cup to promote a special Match Day Offer. The post should be clear, energetic, attractive, and instantly understandable without exaggeration. Include a strong hook, short body copy explaining the offer, organized offer details, and a direct CTA. Visual direction: football pitch texture, stadium lighting, clear product or service placement, cheering atmosphere, clean layout, bold Arabic typography, and brand colors.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill gold">Social Post</span>
+            <h3>2. بوست جهّز قعدتك</h3>
+            <p class="use">ممتاز لمنتجات الأكل، المشروبات، الإلكترونيات، أو خدمات الحجز.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s2_2_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s2_2_ar">أنشئ بوست إنستغرام باللغة العربية لبراند [اسم البراند] بعنوان “جهّز قعدتك قبل المباراة”. يجب أن يساعد البوست الجمهور على التحضير لليلة المباراة بطريقة بسيطة وممتعة. اكتب Hook قوي، 3 نقاط تحضيرية سريعة، وربطاً طبيعياً مع [المنتج / الخدمة]، ثم CTA واضح. الاتجاه البصري: غرفة معيشة دافئة تتحول إلى Fan Zone صغيرة، شاشة مضيئة، طاولة فيها سناكس أو منتجات البراند، لمسات كرة قدم، إضاءة مريحة، وتصميم عصري مناسب للسوشال ميديا.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s2_2_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s2_2_en" dir="ltr">Create an Instagram post concept in Arabic for [BRAND] under the idea “جهّز قعدتك قبل المباراة”. The post should help fans prepare for match night in a simple and enjoyable way. Include a strong hook, 3 quick preparation points, a natural connection to [PRODUCT / SERVICE], and a clear CTA. Visual style: a cozy living room turning into a small fan zone, glowing screen light, a table with snacks or brand products, football-inspired touches, warm lighting, and a modern social media layout.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill gold">Social Post</span>
+            <h3>3. بوست أنواع المشجعين</h3>
+            <p class="use">مناسب للمحتوى الكوميدي القابل للمشاركة.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s2_3_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s2_3_ar">أنشئ بوست كاروسيل ممتع باللغة العربية لبراند [اسم البراند] بعنوان “أي نوع مشجع أنت؟” بمناسبة موسم كأس العالم. اقترح 5 أنواع مشجعين: المشجع المتوتر، المحلل التكتيكي، المشجع الذي صوته عالٍ، مشجع الأكل، ومشجع الحظ. لكل نوع اكتب جملة قصيرة مضحكة وذكية، واربطها بشكل خفيف وطبيعي مع البراند بدون بيع مباشر مزعج. الاتجاه البصري: شخصيات مرسومة أو كرتونية حديثة، تعابير واضحة، أجواء كرة قدم، بطاقات نظيفة، Tone شبابي، وتصميم قابل للمشاركة.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s2_3_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s2_3_en" dir="ltr">Create a fun Arabic social media carousel post for [BRAND] titled “أي نوع مشجع أنت؟” for the World Cup. Include 5 fan types: the nervous fan, the tactical analyst, the loud fan, the food-focused fan, and the lucky-charm fan. For each type, write a short funny and clever line, and connect it subtly to the brand without making it feel too sales-driven. Visual direction: modern illustrated or cartoon characters, clear expressions, football atmosphere, clean card-based layout, a youthful tone, and a shareable design.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill gold">Social Post</span>
+            <h3>4. بوست توقع النتيجة</h3>
+            <p class="use">يرفع التعليقات والتفاعل قبل المباراة.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s2_4_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s2_4_ar">أنشئ بوست تفاعلي لإنستغرام باللغة العربية لبراند [اسم البراند] يطلب من الجمهور توقع نتيجة المباراة قبل صافرة البداية. يجب أن يكون النص حماسياً وسهلاً ويشجع الناس على التعليق. اكتب Hook واضح، تعليمات التعليق، مكاناً لإضافة الجائزة أو المكافأة، وCTA بسيطاً. الاتجاه البصري: تصميم Scoreboard لفريقين، مربعات فارغة للنتيجة، خلفية ملعب، إضاءة استاد، مساحة واضحة لشعار البراند، وتكوين مفهوم خلال ثانية واحدة.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s2_4_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s2_4_en" dir="ltr">Create an engagement-focused Instagram post in Arabic for [BRAND] asking fans to predict the match score before kickoff. The tone should be exciting, simple, and comment-driven. Include a clear hook, comment instructions, a placeholder for a prize or reward, and a simple CTA. Visual direction: a split scoreboard design for two teams, empty score boxes, a football field background, stadium lights, clear brand logo placement, and a layout users can understand within one second.</div>
+          </div>
+        </article>
+        
+        <article class="card wide">
+          <div class="card-header">
+            <span class="pill gold">Social Post</span>
+            <h3>5. بوست 90 دقيقة معك</h3>
+            <p class="use">بوست عاطفي يصلح لمعظم البراندات، خصوصاً الاتصالات، المشروبات، والتطبيقات.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s2_5_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s2_5_ar">أنشئ بوست سوشال ميديا عاطفي باللغة العربية لبراند [اسم البراند] بمناسبة موسم كأس العالم تحت فكرة “90 دقيقة معك”. يجب أن يوضح النص كيف يكون البراند حاضراً في لحظات المباراة كلها: قبل البداية، وقت التوتر، وقت الهدف، وبعد صافرة النهاية. اكتب Hook دافئاً، نصاً قصيراً إنسانياً، وCTA بسيطاً. الاتجاه البصري: مشجعون من خلفيات مختلفة يتابعون المباراة معاً، ضوء الشاشة على الوجوه، لحظات ترقب واحتفال، ظهور طبيعي للمنتج أو الخدمة، وإضاءة سينمائية قريبة من الجمهور.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s2_5_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s2_5_en" dir="ltr">Create an emotional Arabic social media post for [BRAND] during the World Cup under the concept “90 دقيقة معك”. The copy should show how the brand is present in every match moment: before kickoff, during tension, during the goal moment, and after the final whistle. Include a warm hook, short human-centered copy, and a simple CTA. Visual direction: diverse fans watching together, screen glow on their faces, moments of anticipation and celebration, natural product or service integration, and cinematic lighting that feels emotionally close to the audience.</div>
+          </div>
+        </article>
+        
+      </div>
+    </section>
+    
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>ثالثاً: برومبتات لريلز تسويقية بمناسبة كأس العالم</h2>
+          <p>أفكار فيديو قصيرة، سريعة، وقابلة للتنفيذ بالإنتاج الحقيقي أو بأدوات AI Video.</p>
+        </div>
+      </div>
+      <div class="cards">
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill soft">Reels</span>
+            <h3>1. البيت يتحول إلى استاد</h3>
+            <p class="use">مناسب لمطعم، تطبيق توصيل، مشروب، شاشة، إنترنت، أو منتج منزلي.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s3_1_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s3_1_ar">أنشئ ريل إنستغرام عمودي 9:16 لبراند [اسم البراند] بمناسبة موسم كأس العالم. يبدأ المشهد بغرفة معيشة عادية قبل المباراة، ثم يستخدم الشخص [المنتج / الخدمة]، وفجأة تتحول الغرفة إلى استاد مصغّر: أرضية خضراء، إضاءة كشافات، صوت جمهور، أصدقاء، طاولة مجهزة، وأجواء مباراة حماسية. استخدم انتقالات سريعة لكن ناعمة، إضاءة واقعية، لقطات Close-up للمنتج، ونهاية فيها Hero Shot واضح. اختم بعبارة: “جهّز قعدتك قبل صافرة البداية”.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s3_1_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s3_1_en" dir="ltr">Create a 9:16 cinematic Instagram Reel for [BRAND] during the World Cup. The scene starts with a normal living room before the match. The person uses [PRODUCT / SERVICE], and the room transforms into a mini stadium with a green grass floor, stadium lights, cheering crowd sound, friends, a prepared table, and exciting match-day energy. Use fast but smooth transitions, realistic lighting, product close-ups, and a final clear hero shot. End with the CTA: “جهّز قعدتك قبل صافرة البداية”.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill soft">Reels</span>
+            <h3>2. قبل الهدف / بعد الهدف</h3>
+            <p class="use">ريل كوميدي وسهل التصوير، مناسب لكل البراندات تقريباً.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s3_2_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s3_2_ar">أنشئ ريل تسويقي كوميدي عمودي 9:16 لبراند [اسم البراند] مبني على الفرق بين “قبل الهدف” و “بعد الهدف”. قبل الهدف: المشجع هادئ وجدي ويحاول أن يظهر غير متوتر. بعد الهدف: يقفز، يصرخ، يحتفل، يحضن أصدقاءه، ويمسك [المنتج] كجزء من اللحظة. استخدم Cuts سريعة، ردات فعل مبالغاً بها لكن واقعية، نصوصاً عربية على الشاشة، ونهاية مرحة برسالة البراند: “كل هدف إله لحظته”.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s3_2_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s3_2_en" dir="ltr">Create a funny 9:16 marketing Reel for [BRAND] based on the contrast between “before the goal” and “after the goal”. Before the goal: the fan is calm, serious, and trying to look relaxed. After the goal: the fan jumps, screams, celebrates, hugs friends, and grabs [PRODUCT] as part of the moment. Use quick cuts, exaggerated but believable reactions, Arabic on-screen text, and a playful ending with the brand message: “كل هدف إله لحظته”.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill soft">Reels</span>
+            <h3>3. آخر دقيقة قبل الصافرة</h3>
+            <p class="use">مناسب للتوصيل، العروض، الحجز، والمنتجات السريعة.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s3_3_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s3_3_ar">أنشئ ريل إعلاني سريع عمودي 9:16 لبراند [اسم البراند] مبني على توتر آخر دقيقة قبل بداية المباراة. أظهر عداداً تنازلياً، مشجعاً يكتشف أنه ما زال يحتاج إلى [المنتج / الخدمة]، ثم حركة سريعة عبر التطبيق أو المتجر أو المكان، وبعدها يصل الحل قبل صافرة البداية بثوانٍ. استخدم صوت نبضات، Cuts سريعة، لقطات Close-up، إضاءة درامية، ونهاية مرضية فيها الأصدقاء جاهزون للمباراة. اختم بعبارة: “لا تخلي المباراة تسبقك”.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s3_3_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s3_3_en" dir="ltr">Create a fast-paced 9:16 commercial Reel for [BRAND] built around the tension of the final minute before kickoff. Show a countdown timer, a fan realizing they still need [PRODUCT / SERVICE], quick action through the app, store, or venue, and the solution arriving just seconds before the match starts. Use heartbeat sound design, fast cuts, close-ups, dramatic lighting, and a satisfying final scene with friends ready for the match. End with: “لا تخلي المباراة تسبقك”.</div>
+          </div>
+        </article>
+        
+        <article class="card">
+          <div class="card-header">
+            <span class="pill soft">Reels</span>
+            <h3>4. المنتج يدخل الملعب</h3>
+            <p class="use">مناسب للمنتجات التي تريد ظهور Hero Shot قوي.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s3_4_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s3_4_ar">أنشئ فيديو AI عمودي 9:16 بأسلوب إعلان رياضي فاخر، حيث يكون [المنتج] هو بطل يوم المباراة. يبدأ الفيديو بلقطة Close-up للمنتج على خلفية داكنة، ثم تشتعل أضواء الاستاد، ينمو العشب تحت المنتج، يرتفع صوت الجمهور، ويتحرك المنتج أو يظهر بصرياً وكأنه يدخل من نفق استاد سينمائي باتجاه أرض الملعب. استخدم Slow Motion، ظلالاً قوية، انعكاسات فاخرة، وتفاصيل إضاءة Premium. اختم بلقطة Packshot نظيفة مع عبارة: “[شعار الحملة]”.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s3_4_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s3_4_en" dir="ltr">Create a premium 9:16 AI video Reel where [PRODUCT] becomes the hero of match day. Start with a close-up product shot on a dark background. Stadium lights turn on, grass grows under the product, crowd sound rises, and the product visually moves through a cinematic stadium tunnel toward the pitch. Use slow motion, strong shadows, premium reflections, and high-end lighting details. End with a clean packshot and the line: “[CAMPAIGN SLOGAN]”.</div>
+          </div>
+        </article>
+        
+        <article class="card wide">
+          <div class="card-header">
+            <span class="pill soft">Reels</span>
+            <h3>5. يوم المباراة من الصبح للمساء</h3>
+            <p class="use">مناسب لحملة Brand Story، الفنادق، المطاعم، الاتصالات، والمولات.</p>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>النسخة العربية</span>
+              <button onclick="copyPrompt('s3_5_ar', this)">نسخ العربي</button>
+            </div>
+            <div class="prompt ar" id="s3_5_ar">أنشئ ريل تسويقي سينمائي عمودي 9:16 لبراند [اسم البراند] يوثق رحلة يوم المباراة من الصباح حتى المساء. أظهر الحماس في الصباح، رسائل الأصدقاء، تجهيز الملابس، طلب أو شراء [المنتج / الخدمة]، الوصول إلى مكان مشاهدة المباراة، بداية المباراة، لحظات التوتر، الاحتفال بالهدف، والنهاية مع لحظة سعيدة مرتبطة بالبراند. استخدم مشاهد إنسانية دافئة، مشجعين من ثقافات مختلفة، انتقالات سلسة، موسيقى عاطفية حماسية، ودمجاً طبيعياً للبراند. اختم بعبارة: “عيش أجواء المباراة معنا”.</div>
+          </div>
+
+          <div class="language-block">
+            <div class="language-title">
+              <span>English Version</span>
+              <button onclick="copyPrompt('s3_5_en', this)">Copy English</button>
+            </div>
+            <div class="prompt en" id="s3_5_en" dir="ltr">Create a 9:16 cinematic day-in-the-life marketing Reel for [BRAND] during the World Cup. Show the full match-day journey: morning excitement, friends texting each other, preparing outfits, ordering or buying [PRODUCT / SERVICE], arriving at the viewing place, the match starts, tension builds, goal celebration, and a final happy brand moment. Use warm human scenes, multicultural football fans, smooth transitions, emotional energetic music, and natural brand integration. End with: “عيش أجواء المباراة معنا”.</div>
+          </div>
+        </article>
+        
+      </div>
+    </section>
+    
+
+    <div class="warning">
+      <strong>ملاحظة:</strong>
+      في برومبتات تعديل الصور يكفي استبدال [اسم الفريق] أو [TEAM NAME] باسم الفريق الذي يريده المستخدم.
+    </div>
+
+    <div class="footer">
+      الصفحة جاهزة للاستخدام مع أدوات توليد الصور، تعديل الصور، و AI Video.
+    </div>
+  </main>
+
+  <script>
+    function copyPrompt(id, button) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const original = button.innerText;
+        button.innerText = original.includes('Copy') ? 'Copied' : 'تم النسخ';
+        setTimeout(() => button.innerText = original, 1200);
+      });
+    }
+  </script>
+</body>
+</html>
