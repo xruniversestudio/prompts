@@ -348,6 +348,9 @@
                 } catch (error) {
                     console.error("Prediction error:", error);
                     glasses.visible = false;
+                    if (isDebugMode) {
+                        statusEl.textContent = "خطأ في التنبؤ: " + error.message;
+                    }
                 }
             }
             

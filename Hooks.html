@@ -382,7 +382,10 @@ Start immediately.`;
         navigator.clipboard.writeText(textToCopy.textContent).then(()=>{
           copiedMsg.classList.add('show');
           setTimeout(()=>copiedMsg.classList.remove('show'),2000);
-        }).catch(()=>alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى'));
+        }).catch((err)=>{
+          console.error('فشل في نسخ النص:', err);
+          alert('حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى');
+        });
       });
 
       setLang('ar');

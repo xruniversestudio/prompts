@@ -480,6 +480,9 @@
                 } catch (error) {
                     console.error("Rendering error:", error);
                     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                    if (isDebugMode) {
+                        statusEl.textContent = "خطأ في العرض: " + error.message;
+                    }
                 }
             }
             
