@@ -441,7 +441,12 @@
       detectionInterval = setInterval(async () => {
         if (!isRunning || !video || video.paused) return;
         
-        await detectAndDraw();
+        try {
+          await detectAndDraw();
+        } catch (err) {
+          console.error('خطأ غير متوقع في حلقة التحليل:', err);
+          status.textContent = '❌ خطأ غير متوقع: ' + err.message;
+        }
       }, 100); // كل 100ms
     }
 

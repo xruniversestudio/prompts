@@ -324,6 +324,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // معالجة الأخطاء
 window.addEventListener('error', function(event) {
   console.error('Global error:', event.error);
+  const error = document.getElementById('error');
+  if (error) {
+    error.textContent = 'حدث خطأ غير متوقع. يرجى إعادة تحميل الصفحة.';
+    error.style.display = 'block';
+  }
+});
+
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('Unhandled promise rejection:', event.reason);
+  const error = document.getElementById('error');
+  if (error) {
+    error.textContent = 'حدث خطأ غير متوقع. يرجى إعادة تحميل الصفحة.';
+    error.style.display = 'block';
+  }
 });
 </script>
 

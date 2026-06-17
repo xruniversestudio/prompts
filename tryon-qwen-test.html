@@ -449,6 +449,7 @@
                         
                     } catch (e) {
                         console.error('Error in tracking:', e);
+                        status.textContent = 'خطأ في التتبع: ' + e.message;
                     }
                 }
             }, 1000 / 30); // 30 FPS
@@ -478,7 +479,7 @@
                         success = true;
                         break;
                     } catch (err) {
-                        console.log('فشل مع القيود:', constraints);
+                        console.error('فشل مع القيود:', constraints, err);
                     }
                 }
                 
@@ -487,6 +488,13 @@
                 }
                 
                 video.srcObject = stream;
+                
+                video.onerror = (e) => {
+                    console.error('خطأ في تحميل الفيديو:', e);
+                    status.textContent = 'خطأ في تحميل الفيديو';
+                    loading.style.display = 'none';
+                    startBtn.disabled = false;
+                };
                 
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;

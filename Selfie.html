@@ -395,7 +395,8 @@ Preserve the facial details of the reference image and maintain the same hand or
       function copyText(text){
         navigator.clipboard.writeText(text).then(()=>{
           showCopiedToast(currentLang === 'ar' ? 'تم النسخ بنجاح!' : 'Copied!');
-        }).catch(()=>{
+        }).catch((err)=>{
+          console.error('فشل في نسخ النص:', err);
           alert(currentLang === 'ar'
             ? 'حدث خطأ أثناء محاولة النسخ، يرجى المحاولة مرة أخرى'
             : 'Copy failed. Please try again.');

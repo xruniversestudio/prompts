@@ -212,6 +212,10 @@
                 
             } catch (error) {
                 console.error('Error initializing AR:', error);
+                const fallbackInfo = document.getElementById('fallback-info');
+                if (fallbackInfo) {
+                    fallbackInfo.textContent = 'تعذر بدء تجربة AR: ' + error.message + '. يتم عرض المعاينة ثلاثية الأبعاد بدلاً من ذلك.';
+                }
                 showFallback();
             }
         }
