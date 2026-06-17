@@ -1,0 +1,78 @@
+/* shared/tabs.css — Additional styles for tabbed prompt pages */
+
+.container {
+  max-width: 900px;
+}
+
+.header {
+  gap: 10px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.header h2 {
+  font-size: 22px;
+  white-space: nowrap;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.25s;
+  user-select: none;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.tab-btn.active {
+  background: #ffffff;
+  color: #2c1d7c;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.select-btn {
+  background-color: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+}
+
+.select-btn:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+.text {
+  line-height: 1.8;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
