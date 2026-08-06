@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<!--
+  THE KEY — single-file interactive invitation.
+
+  No camera, no MediaPipe, no WASM, no getUserMedia. The only runtime
+  dependency is Three.js, pinned exact via the import map below.
+
+  Testing note: gyroscope (DeviceOrientationEvent) and Web Share both require a
+  secure context. A LAN IP over plain http will silently drop both — drag will
+  still work and sharing will fall back to long-press-to-save, so the failure
+  looks like "the gyro is broken" rather than an error. Test over https or
+  localhost (ngrok / `npx serve --ssl` / Caddy).
+-->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0A0B0D">
+<meta name="color-scheme" content="dark">
+<title>المفتاح — The Key</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  /* Art direction tokens — mirrored in the JS CFG block. Change both. */
+  --base:#0A0B0D;
+  --bone:#F2EFE9;
+  --brass:#D4A24C;      /* Track A accent */
+  --chrome:#5B6E7A;     /* Track B accent */
+  --live:#FF3B30;       /* tail-light red, active states only */
+  --ar:"IBM Plex Sans Arabic","Noto Sans Arabic","Geeza Pro",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ease:cubic-bezier(0.22,1,0.36,1);
+  --dur:600ms;
+  --accent:var(--brass);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  width:100%;height:100%;overflow:hidden;background:var(--base);color:var(--bone);
+  font-family:var(--ar);font-weight:300;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+body{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%}
+
+#stage{position:fixed;inset:0;transition:opacity 500ms var(--ease)}
+#veil{position:fixed;inset:0;background:#000;opacity:1;pointer-events:none;z-index:40;
+      transition:opacity 800ms var(--ease)}
+#veil.clear{opacity:0}
+
+/* ── overlay chrome ─────────────────────────────────────────────── */
+#ui{position:fixed;inset:0;z-index:10;pointer-events:none;
+    padding:calc(1.15rem + env(safe-area-inset-top)) 1.25rem calc(1.15rem + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;justify-content:space-between;align-items:center}
+
+.rowtop{width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+
+/* progress ticks — three marks, filled as answered */
+#ticks{display:flex;gap:6px;align-items:center;opacity:0;transition:opacity 400ms var(--ease)}
+#ticks.on{opacity:1}
+#ticks i{display:block;width:20px;height:2px;background:rgba(242,239,233,.18);
+         transition:background 400ms var(--ease),width 400ms var(--ease)}
+#ticks i.done{background:var(--accent)}
+#ticks i.now{background:var(--bone);width:30px}
+#ticks .n{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+          color:rgba(242,239,233,.4);margin-inline-start:8px}
+
+#mute{pointer-events:auto;background:none;border:0;cursor:pointer;padding:6px;
+      color:rgba(242,239,233,.45);font-family:var(--mono);font-size:.6rem;
+      letter-spacing:.16em;transition:color 300ms var(--ease)}
+#mute:hover,#mute:focus-visible{color:var(--bone)}
+#mute:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+
+/* centred prompt lines */
+#lines{text-align:center;display:flex;flex-direction:column;align-items:center;gap:.35rem;
+       max-width:24rem}
+.line{opacity:0;transform:translateY(6px);transition:opacity 500ms var(--ease),transform 500ms var(--ease)}
+.line.on{opacity:1;transform:none}
+.line .a{display:block;font-size:1.05rem;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.line .e{display:block;font-family:var(--mono);font-size:.62rem;font-weight:400;
+         letter-spacing:.24em;color:rgba(242,239,233,.42);margin-top:.45rem;direction:ltr}
+.line.quiet .a{font-weight:300;font-size:.92rem;color:rgba(242,239,233,.6)}
+
+#chev{margin-top:.9rem;width:18px;height:26px;opacity:0;transition:opacity 500ms var(--ease)}
+#chev.on{opacity:.55;animation:nudge 2.4s var(--ease) infinite}
+@keyframes nudge{0%,70%,100%{transform:translateY(0)}82%{transform:translateY(6px)}}
+
+/* keyboard/AT route to the engraved options — visible only on focus */
+#a11y{position:fixed;inset-inline:0;bottom:0;z-index:30;display:flex;flex-wrap:wrap;
+      gap:.4rem;justify-content:center;padding:.75rem;pointer-events:none}
+#a11y button{pointer-events:auto;position:absolute;width:1px;height:1px;overflow:hidden;
+             clip-path:inset(50%);white-space:nowrap;border:0;background:none;color:inherit}
+#a11y button:focus-visible{position:static;width:auto;height:auto;clip-path:none;
+             padding:.55rem .9rem;border:1px solid var(--accent);background:rgba(10,11,13,.92);
+             font-family:var(--ar);font-size:.85rem;outline:none}
+
+/* ── full screens ───────────────────────────────────────────────── */
+.screen{position:fixed;inset:0;z-index:50;background:var(--base);display:flex;
+        flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;
+        padding:2rem;text-align:center}
+.screen[hidden]{display:none}
+.screen h1{font-size:1.25rem;font-weight:700;letter-spacing:-.01em}
+.screen p{font-size:.9rem;line-height:1.65;color:rgba(242,239,233,.55);max-width:30ch}
+.screen .en{font-family:var(--mono);font-size:.62rem;letter-spacing:.2em;
+            color:rgba(242,239,233,.35);direction:ltr}
+.cta{pointer-events:auto;padding:.8rem 1.6rem;border:1px solid var(--accent);background:none;
+     color:var(--bone);font-family:var(--ar);font-weight:300;font-size:.88rem;letter-spacing:0;
+     cursor:pointer;transition:background 300ms var(--ease),color 300ms var(--ease)}
+.cta.mono{font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;direction:ltr}
+.cta:hover,.cta:focus-visible{background:var(--accent);color:#0A0B0D;outline:none}
+.cta.ghost{border-color:rgba(242,239,233,.2)}
+.cta.ghost:hover,.cta.ghost:focus-visible{background:rgba(242,239,233,.08);color:var(--bone)}
+
+/* ── reveal card (Track A) ──────────────────────────────────────── */
+#cardWrap,#formWrap{position:fixed;inset-inline:0;bottom:0;z-index:20;
+  padding:0 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;pointer-events:none}
+#cardWrap[hidden],#formWrap[hidden]{display:none}
+
+.panel{width:100%;max-width:26rem;position:relative;pointer-events:auto;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px),
+    linear-gradient(158deg,#17191C 0%,#0E1013 46%,#131519 100%);
+  border:1px solid rgba(242,239,233,.07);
+  box-shadow:0 -30px 60px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(242,239,233,.05);
+  padding:1.4rem 1.3rem 1.2rem;
+  clip-path:inset(0 0 100% 0);
+  transition:clip-path 700ms var(--ease);
+}
+.panel.open{clip-path:inset(0 0 0 0)}
+/* embossed amber hairline */
+.panel::before{content:"";position:absolute;inset:7px;border:1px solid var(--accent);
+  opacity:.32;pointer-events:none;
+  box-shadow:inset 0 1px 0 rgba(0,0,0,.6), 0 1px 0 rgba(242,239,233,.05)}
+.panel > *{opacity:0;transform:translateY(8px);
+  transition:opacity 520ms var(--ease),transform 520ms var(--ease)}
+.panel.filled > *{opacity:1;transform:none}
+.panel.filled > *:nth-child(2){transition-delay:70ms}
+.panel.filled > *:nth-child(3){transition-delay:140ms}
+.panel.filled > *:nth-child(4){transition-delay:210ms}
+.panel.filled > *:nth-child(5){transition-delay:280ms}
+
+.emblem{display:block;width:30px;height:30px;margin:0 auto .85rem;color:var(--accent)}
+.arch{text-align:center}
+.arch .a{display:block;font-size:1.5rem;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.arch .e{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.3em;direction:ltr;
+         color:rgba(242,239,233,.45);margin-top:.5rem}
+.serial{font-family:var(--mono);font-size:.68rem;letter-spacing:.22em;direction:ltr;
+        text-align:center;color:var(--accent);margin:.9rem 0 1rem;
+        padding:.5rem 0;border-block:1px solid rgba(242,239,233,.08)}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:.75rem .6rem;margin-bottom:1.1rem}
+.meta div{min-width:0}
+.meta dt{font-family:var(--mono);font-size:.53rem;letter-spacing:.2em;direction:ltr;
+         color:rgba(242,239,233,.32);margin-bottom:.3rem}
+.meta dd{font-size:.85rem;line-height:1.45}
+.meta dd.mono{font-family:var(--mono);font-size:.9rem;letter-spacing:.06em;direction:ltr}
+.acts{display:flex;gap:.5rem;flex-wrap:wrap}
+.acts .cta{flex:1 1 0;min-width:5.4rem;text-align:center;padding:.7rem .35rem;font-size:.78rem}
+
+/* ── registration (Track B) ─────────────────────────────────────── */
+#formWrap{--accent:var(--chrome)}
+.field{margin-bottom:.7rem}
+.field label{display:block;font-family:var(--mono);font-size:.53rem;letter-spacing:.2em;
+             direction:ltr;color:rgba(242,239,233,.32);margin-bottom:.3rem}
+.field label .ar,#formMsg .ar{font-family:var(--ar);font-size:.72rem;letter-spacing:0}
+.field input[dir=ltr]{text-align:left;direction:ltr}
+.field input{width:100%;background:rgba(242,239,233,.03);border:1px solid rgba(242,239,233,.1);
+  color:var(--bone);font-family:var(--ar);font-size:.95rem;padding:.62rem .7rem;
+  transition:border-color 300ms var(--ease)}
+.field input:focus{outline:none;border-color:var(--chrome)}
+.field input:invalid:not(:placeholder-shown){border-color:var(--live)}
+#formMsg{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;direction:ltr;
+         text-align:center;color:rgba(242,239,233,.4);min-height:1.1em;margin-top:.6rem}
+.meta dt .ar,.line .e .ar{font-family:var(--ar);letter-spacing:0}
+
+/* ── share fallback ─────────────────────────────────────────────── */
+#shareOv{position:fixed;inset:0;z-index:60;background:rgba(5,6,7,.96);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:1.25rem}
+#shareOv[hidden]{display:none}
+#shareOv img{max-width:min(74vw,320px);max-height:64vh;border:1px solid rgba(242,239,233,.12)}
+
+/* ── dev tuner ──────────────────────────────────────────────────── */
+#tuner{position:fixed;top:.5rem;inset-inline-start:.5rem;width:250px;max-height:94vh;overflow:auto;
+  background:rgba(6,7,9,.93);border:1px solid rgba(242,239,233,.12);padding:.7rem;
+  z-index:70;font-family:var(--mono);font-size:.58rem;direction:ltr;text-align:left}
+#tuner.collapsed{width:auto;max-height:none;overflow:visible}
+#tuner.collapsed > :not(#tunerHead){display:none}
+#tunerHead{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+#tuner h4{font-size:.55rem;letter-spacing:.2em;color:var(--brass);margin:.6rem 0 .35rem}
+#tuner label{display:block;margin-bottom:.4rem;color:rgba(242,239,233,.62)}
+#tuner input[type=range]{width:100%;margin-top:2px}
+#tuner .btns{display:flex;flex-wrap:wrap;gap:3px}
+#tuner button{background:rgba(242,239,233,.06);border:1px solid rgba(242,239,233,.14);
+  color:var(--bone);font-family:var(--mono);font-size:.55rem;padding:3px 6px;cursor:pointer}
+#tuner button:hover{background:var(--brass);color:#0A0B0D}
+
+@media (prefers-reduced-motion: reduce){
+  :root{--dur:200ms}
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+                       transition-duration:200ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="veil"></div>
+
+<div id="ui">
+  <div class="rowtop">
+    <div id="ticks"><i></i><i></i><i></i><span class="n">00/03</span></div>
+    <button id="mute" type="button" aria-pressed="false">SOUND ON</button>
+  </div>
+
+  <div id="lines">
+    <div class="line quiet" id="lHint"><span class="a">المس المفتاح</span><span class="e">TOUCH THE KEY</span></div>
+    <div class="line" id="lTurn"><span class="a">دير المفتاح</span><span class="e">TURN THE KEY</span></div>
+    <div class="line" id="lLimit"><span class="a">عدد المفاتيح محدود</span><span class="e">KEYS ARE LIMITED</span></div>
+    <svg id="chev" viewBox="0 0 18 26" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+      <path d="M9 1v22M3 17l6 6 6-6"/>
+    </svg>
+  </div>
+
+  <div style="height:1px"></div>
+</div>
+
+<div id="a11y" role="group" aria-label="خيارات السؤال"></div>
+
+<!-- ── reveal card (Track A) ── -->
+<div id="cardWrap" hidden>
+  <div class="panel" id="card">
+    <svg class="emblem" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+      <path d="M16 2.6 28 9.3v13.4L16 29.4 4 22.7V9.3z"/><path d="M4 16h24"/><path d="M16 11.6v8.8"/>
+    </svg>
+    <div class="arch"><span class="a" id="cArchA">—</span><span class="e" id="cArchE">—</span></div>
+    <div class="serial" id="cSerial">—</div>
+    <dl class="meta">
+      <div><dt>DATE</dt><dd id="cDateA">—</dd></div>
+      <div><dt>TIME</dt><dd class="mono" id="cTime">—</dd></div>
+      <div style="grid-column:1/-1"><dt>VENUE</dt><dd id="cVenue">—</dd></div>
+    </dl>
+    <div class="acts">
+      <button class="cta" id="bIcs" type="button">أضف للتقويم</button>
+      <button class="cta ghost" id="bMap" type="button">الموقع</button>
+      <button class="cta ghost" id="bSave" type="button">احفظ البطاقة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── registration (Track B) ── -->
+<div id="formWrap" hidden>
+  <form class="panel" id="regForm" novalidate>
+    <div class="arch" style="margin-bottom:1rem">
+      <span class="a" style="font-size:1.15rem">سجّل اهتمامك</span>
+      <span class="e">REGISTER YOUR INTEREST</span>
+    </div>
+    <div>
+      <div class="field"><label for="fName">NAME <span class="ar">/ الاسم</span></label>
+        <input id="fName" name="name" required autocomplete="name" placeholder=" "></div>
+      <div class="field"><label for="fPhone">PHONE <span class="ar">/ الهاتف</span></label>
+        <input id="fPhone" name="phone" type="tel" dir="ltr" required autocomplete="tel" inputmode="tel" placeholder=" "></div>
+      <div class="field"><label for="fMail">EMAIL <span class="ar">/ البريد</span></label>
+        <input id="fMail" name="email" type="email" dir="ltr" required autocomplete="email" inputmode="email" placeholder=" "></div>
+      <div class="field"><label for="fIg">INSTAGRAM <span class="ar">/ اختياري</span></label>
+        <input id="fIg" name="instagram" dir="ltr" autocomplete="off" placeholder="@"></div>
+    </div>
+    <div class="acts"><button class="cta" id="bSubmit" type="submit">أرسل</button></div>
+    <div id="formMsg" role="status" aria-live="polite"></div>
+  </form>
+</div>
+
+<!-- ── share fallback ── -->
+<div id="shareOv" hidden>
+  <p class="en">اضغط مطوّلاً على الصورة للحفظ · LONG-PRESS TO SAVE</p>
+  <img id="shareImg" alt="بطاقة الدعوة">
+  <button class="cta ghost" id="bShareClose" type="button">إغلاق</button>
+</div>
+
+<!-- ── in-app browser ── -->
+<div class="screen" id="scrInApp" hidden>
+  <h1>افتح الرابط في المتصفّح</h1>
+  <p>المتصفّح المدمج داخل التطبيق لا يشغّل هذه الدعوة بشكل كامل.</p>
+  <p class="en">OPEN IN SAFARI OR CHROME</p>
+  <button class="cta" id="bCopy" type="button">انسخ الرابط</button>
+  <button class="cta ghost" id="bAnyway" type="button">تابع هنا</button>
+</div>
+
+<!-- ── no WebGL: the invitation still has to be readable ── -->
+<div class="screen" id="scrNoGL" hidden>
+  <div class="panel open filled" style="max-width:24rem;pointer-events:auto">
+    <svg class="emblem" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+      <path d="M16 2.6 28 9.3v13.4L16 29.4 4 22.7V9.3z"/><path d="M4 16h24"/><path d="M16 11.6v8.8"/>
+    </svg>
+    <div class="arch"><span class="a" id="nArchA">دعوة</span><span class="e">INVITATION</span></div>
+    <div class="serial" id="nSerial">—</div>
+    <dl class="meta">
+      <div><dt>DATE</dt><dd id="nDate">—</dd></div>
+      <div><dt>TIME</dt><dd class="mono" id="nTime">—</dd></div>
+      <div style="grid-column:1/-1"><dt>VENUE</dt><dd id="nVenue">—</dd></div>
+    </dl>
+    <div class="acts">
+      <button class="cta" id="nIcs" type="button">أضف للتقويم</button>
+      <button class="cta ghost" id="nMap" type="button">الموقع</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry }  from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer }      from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }          from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }     from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }          from 'three/addons/postprocessing/OutputPass.js';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1 · CONFIG — every tunable lives here. Nothing below invents a number.
+   ══════════════════════════════════════════════════════════════════════════ */
+const CFG = {
+
+  /* ── palette (hex ints for GL, strings mirrored in :root) ── */
+  COL: {
+    BACKDROP_EDGE : 0x07080A,   // vignette outer
+    BACKDROP_CORE : 0x14171C,   // vignette centre — never pure black, it kills depth
+    BONE          : 0xF2EFE9,
+    BRASS         : 0xD4A24C,   // Track A
+    CHROME_COLD   : 0x5B6E7A,   // Track B
+    GLOW_A        : 0xFFE2AE,   // burst behind the key on release
+  },
+
+  /* ── environment (procedural — the whole look lives here) ── */
+  ENV: {
+    BLUR          : 0.012,      // fromScene sigma. Higher = softer, less streak.
+    DOME_TOP      : 0x171B21,
+    DOME_BOTTOM   : 0x030407,
+    KEY_COL       : 0xFFE9C8,   // warm key light, upper-left
+    KEY_INT       : 1.6,
+    KEY_SIZE      : 9,
+    RIM_COL       : 0xBBD4E8,   // cool rim, lower-right
+    RIM_INT       : 1.1,
+    RIM_SIZE      : 8,
+    BOX_COL       : 0xFFFFFF,   // the softbox strip — the travelling highlight
+    BOX_INT       : 4.5,        // the one hot source. Everything else stays dim.
+    BOX_W         : 14,         // narrow angular width → a streak, not a wall
+    BOX_H         : 1.9,
+    // Emitters sit on the CAMERA side (+z). A flat face reflects what is behind
+    // the viewer, so lights placed behind the object leave the engraved plate
+    // black no matter how good the material is. Keep them small and far: a big
+    // near emitter fills the reflection hemisphere and blows the face out.
+    BOX_POS       : [0, 4.5, 19],
+    KEY_POS       : [-11, 7.5, 11],
+    RIM_POS       : [10.5, -6.5, 9],
+    BACK_INT      : 1.2,        // one dim strip behind, so the silhouette edges read
+  },
+
+  /* ── key geometry ── */
+  KEY: {
+    BODY_W        : 1.90,
+    BODY_H        : 3.00,
+    BODY_D        : 0.44,
+    SEGMENTS      : 4,          // → 972 tris. Bevel smoothness dial.
+    BEVEL_SHARP   : 0.075,      // morph influence 0
+    BEVEL_SOFT    : 0.200,      // morph influence 1  (clamped to BODY_D/2)
+    PANEL_W       : 1.44,       // engraved plate; must stay inside the flat face
+    PANEL_Z       : 0.004,
+    BLADE_LEN     : 1.55,
+    BLADE_W       : 0.40,
+    BLADE_D       : 0.085,
+    RING_R        : 0.20,
+    RING_TUBE     : 0.048,
+  },
+
+  /* ── material states, blended by the answer vector ── */
+  MAT: {
+    BASE : { rough:0.25, env:1.40, tint:0xCBD1D6, sx:1.00, sy:1.00, sz:1.00, bevel:0.45, bump:1.00, ccr:0.10 },
+    SHARP: { rough:0.14, env:1.55, tint:0xC6D0D8, sx:1.00, sy:0.96, sz:0.92, bevel:0.10, bump:1.00, ccr:0.06 },
+    CALM : { rough:0.36, env:1.20, tint:0xD8CCB8, sx:0.95, sy:1.07, sz:1.00, bevel:0.92, bump:0.80, ccr:0.22 },
+    BOLD : { rough:0.24, env:2.00, tint:0xD2BE96, sx:1.12, sy:1.00, sz:1.06, bevel:0.50, bump:1.50, ccr:0.12 },
+    METALNESS     : 1.00,
+    CLEARCOAT     : 0.55,       // body face only
+    ENGRAVE_BUMP  : 0.055,      // bumpScale at bump=1.0. Over-embossing reads as plastic.
+    ENGRAVE_ROUGH_MUL : 2.0,    // roughnessMap multiplies; grooves are darker → shinier
+    MORPH_MS      : 600,
+  },
+
+  /* ── motion / input ── */
+  MOVE: {
+    IDLE_SPIN     : 0.15,       // rad/s of sway phase — the travelling highlight is the hook
+    IDLE_SWAY     : 0.75,       // sway amplitude (rad). Never large enough to show the back.
+    HERO_SWAY     : 0.26,       // narrower sway once the card is up — the key stays lit
+    MAX_SUBSTEPS  : 12,         // physics steps per frame ceiling; stops a spiral after a stall
+    DAMP_OMEGA    : 9.0,        // critically-damped spring stiffness
+    DRAG_SENS     : 0.0062,     // rad per px
+    PITCH_CLAMP   : 0.61,       // ±35°
+    YAW_CLAMP     : 0.95,
+    Q_PITCH_CLAMP : 0.24,       // tighter while a question is engraved (stay readable)
+    Q_YAW_CLAMP   : 0.31,
+    Q_RECENTER    : 2.4,        // pull-to-face-on strength during questions
+    GYRO_GAIN     : 0.85,
+    TAP_SLOP      : 11,         // px of movement still counted as a tap
+    /* Camera distance is solved per phase from a world extent that must fit,
+       so framing survives any aspect ratio instead of being a magic z. */
+    FIT: {
+      idle : { h: 5.7, w: 2.6 },   // whole object — discovery
+      q    : { h: 3.7, w: 2.2 },   // dolly in so the engraving is readable/tappable
+      turn : { h: 4.9, w: 2.4 },
+      hero : { h: 5.4, w: 2.6 },
+      card : { h: 4.6, w: 3.0 },   // square export frame
+    },
+    DOLLY_MS      : 700,
+    HERO_Y        : 1.15,       // key rises to clear the reveal card
+    HERO_SCALE    : 0.62,
+  },
+
+  /* ── the turn ── */
+  TURN: {
+    MAX_DEG       : 90,
+    DRAG_PX       : 260,        // vertical px for a full turn
+    RESIST_EXP    : 2.6,        // >1 makes the last third progressively heavier
+    B_STALL_DEG   : 70,         // Track B never gets past this
+    B_HOLD_MS     : 500,        // visible tension before it lets go
+    B_TREMOR      : 0.0045,     // rad amplitude of the stall vibration
+    RETURN_OMEGA  : 11.0,       // damped, overshoot-free
+  },
+
+  /* ── the beat after the clunk. Do not shorten. ── */
+  BEAT: {
+    FLASH_IN_MS   : 120,
+    FLASH_HOLD_MS : 200,
+    TO_BLACK_MS   : 180,
+    BLACK_MS      : 400,
+    REVEAL_MS     : 700,
+  },
+
+  /* ── post ── */
+  BLOOM: {
+    ENABLED       : true,
+    STRENGTH      : 0.34,
+    RADIUS        : 0.62,
+    THRESHOLD     : 0.86,       // high — only speculars bloom, not the backdrop
+    FLASH_STRENGTH: 2.6,        // peak during the burst
+    FLASH_BURST   : 1.35,       // peak intensity of the light behind the key
+    SCALE         : 1.0,        // internal bloom RT scale. 0.6 on low-end.
+  },
+
+  /* ── audio (procedural — 0 KB payload) ── */
+  AUD: {
+    MASTER        : 0.85,
+    DRONE         : 0.075,
+    DRONE_HZ      : 55,
+    AIR           : 0.016,
+    FRICTION      : 0.10,
+    TICK          : 0.30,
+    CLUNK         : 0.65,
+    CHORD         : 0.22,
+  },
+
+  /* card export pose — see renderKeySquare() */
+  CARD: { POSE_X: -0.12, POSE_Y: -0.14, PX: 1024 },
+
+  MAX_DPR         : 2,          // phones report 3–4; this is the single biggest perf win
+  IDLE_MS         : 3200,       // discovery window before the first question
+  HINT_MS         : 2400,       // nothing on screen before this
+
+  /* ── event content (no real brand names anywhere) ── */
+  EVENT: {
+    titleAr : 'افتتاح الصالة',
+    titleEn : 'THE SHOWROOM OPENING',
+    dateAr  : 'الخميس ١٧ أيلول ٢٠٢٦',
+    dateEn  : 'THU 17 SEP 2026',
+    time    : '19:30',
+    venueAr : 'الصالة — الطريق الدائري الشمالي',
+    venueEn : 'THE SHOWROOM — NORTH RING ROAD',
+    startUTC: '20260917T163000Z',   // 19:30 +03:00
+    endUTC  : '20260917T200000Z',
+    maps    : 'https://maps.google.com/?q=24.7136,46.6753',
+    qrBase  : 'https://the-key.invite/v/',
+  },
+};
+
+/* mirror the two accents into CSS so the 2D layer follows the same tokens */
+const HEX = n => '#' + n.toString(16).padStart(6, '0');
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2 · ROUTING, ENVIRONMENT CHECKS, SMALL UTILITIES
+   ══════════════════════════════════════════════════════════════════════════ */
+const Q     = new URLSearchParams(location.search);
+const DEBUG = Q.has('debug');
+const RM    = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ── token → track. The check is silent: neither track is told the other exists. ── */
+// TODO: replace with server validation. Ship the real check behind an endpoint —
+// anything client-side is readable by anyone who opens view-source.
+// Stub contract: 6 chars from [A-Z0-9], last char is a base-36 checksum of the
+// first five (sum of values mod 36). e.g. INVITE→"K7M2QD" style. makeToken()
+// below mints valid ones; it is exposed on window only under ?debug.
+const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+function validateToken(t) {
+  if (!t) return false;
+  const s = String(t).toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(s)) return false;
+  let sum = 0;
+  for (let i = 0; i < 5; i++) sum += ALPHA.indexOf(s[i]);
+  return ALPHA[sum % 36] === s[5];
+}
+function makeToken(seed = Math.random()) {
+  let s = '';
+  for (let i = 0; i < 5; i++) s += ALPHA[Math.floor((Math.sin(seed * 9301 + i * 233) * 0.5 + 0.5) * 36) % 36];
+  let sum = 0;
+  for (let i = 0; i < 5; i++) sum += ALPHA.indexOf(s[i]);
+  return s + ALPHA[sum % 36];
+}
+
+const TOKEN = Q.get('k') || Q.get('key') || '';
+let TRACK = validateToken(TOKEN) ? 'A' : 'B';
+if (Q.get('track') === 'a') TRACK = 'A';       // dev override
+if (Q.get('track') === 'b') TRACK = 'B';
+document.documentElement.style.setProperty('--accent', TRACK === 'A' ? HEX(CFG.COL.BRASS) : HEX(CFG.COL.CHROME_COLD));
+
+/* ── DOM handles ── */
+const $ = id => document.getElementById(id);
+const stageEl = $('stage'), veil = $('veil');
+
+/* ── easing: one curve everywhere. Mechanical, no bounce. ── */
+function cubicBezier(x1, y1, x2, y2) {
+  return t => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let lo = 0, hi = 1, u = 0.5;
+    for (let i = 0; i < 18; i++) {
+      u = (lo + hi) * 0.5;
+      const w = 1 - u;
+      const x = 3 * w * w * u * x1 + 3 * w * u * u * x2 + u * u * u;
+      if (x < t) lo = u; else hi = u;
+    }
+    u = (lo + hi) * 0.5;
+    const w = 1 - u;
+    return 3 * w * w * u * y1 + 3 * w * u * u * y2 + u * u * u;
+  };
+}
+const EASE = cubicBezier(0.22, 1, 0.36, 1);
+const D = ms => RM ? Math.min(ms, 200) : ms;          // reduced-motion duration gate
+
+/* ── tiny tween list, ticked by the render loop ──
+   Tweens advance on UNCLAMPED frame time. The spring integrator needs a clamped
+   dt to stay stable, but tweens are sequenced against setTimeout (wall clock);
+   feeding them the clamped dt makes them run in slow motion below 30fps and
+   outlive the timeouts that are supposed to clean up after them. */
+const tweens = [];
+function tween(dur, onUpdate, onDone) {
+  const tw = { t: 0, dur: Math.max(1, dur), onUpdate, onDone };
+  tweens.push(tw);
+  return tw;
+}
+function cancel(tw) {
+  const i = tweens.indexOf(tw);
+  if (i >= 0) tweens.splice(i, 1);
+}
+function tickTweens(dt) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    tw.t += dt * 1000;
+    const p = Math.min(1, tw.t / tw.dur);
+    tw.onUpdate(EASE(p), p);
+    if (p >= 1) { tweens.splice(i, 1); tw.onDone && tw.onDone(); }
+  }
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp  = (a, b, t) => a + (b - a) * t;
+
+/* ── environment gates: in-app browser, then WebGL ── */
+const isInApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|LinkedInApp|TikTok|musical_ly|Snapchat/i
+  .test(navigator.userAgent);
+
+function hasWebGL() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch { return false; }
+}
+
+/* rough low-end signal — used to drop MSAA and shrink the bloom RT, nothing else */
+const LOW_END = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 4) <= 3;
+if (LOW_END) { CFG.BLOOM.SCALE = 0.6; }
+if (RM) { CFG.MOVE.IDLE_SPIN = 0; }
+
+$('bCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(location.href); $('bCopy').textContent = 'تم النسخ ✓'; }
+  catch { prompt('انسخ الرابط', location.href); }
+});
+$('bAnyway').addEventListener('click', () => { $('scrInApp').hidden = true; boot(); });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3 · RENDERER, SCENE, PROCEDURAL ENVIRONMENT
+   ══════════════════════════════════════════════════════════════════════════ */
+let renderer, composer, bloomPass, scene, camera, envRT;
+let camFit = 'idle';
+
+/* distance at which a world box of (w × h) exactly fits the current viewport */
+function fitZ(name) {
+  const f = CFG.MOVE.FIT[name] || CFG.MOVE.FIT.idle;
+  const half = Math.tan(THREE.MathUtils.degToRad(camera ? camera.fov : 34) / 2);
+  const aspect = camera ? camera.aspect : window.innerWidth / window.innerHeight;
+  return Math.max(f.h / 2 / half, f.w / 2 / (half * aspect));
+}
+function dollyTo(name, ms) {
+  camFit = name;
+  const from = camera.position.z, to = fitZ(name);
+  if (ms === 0) { camera.position.z = to; return; }
+  tween(D(ms ?? CFG.MOVE.DOLLY_MS), p => { camera.position.z = lerp(from, to, p); });
+}
+
+function initRenderer() {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, CFG.MAX_DPR));
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000, 1);
+  stageEl.appendChild(renderer.domElement);
+
+  renderer.domElement.addEventListener('webglcontextlost', e => {
+    e.preventDefault();
+    renderer.setAnimationLoop(null);
+  });
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    renderer.setAnimationLoop(loop);
+  });
+
+  scene  = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 60);
+  camera.position.set(0, 0, fitZ('idle'));
+
+  /* one bloom pass, tuned — not a stack */
+  const dpr = renderer.getPixelRatio();
+  const rt = new THREE.WebGLRenderTarget(
+    Math.max(2, Math.floor(window.innerWidth * dpr)),
+    Math.max(2, Math.floor(window.innerHeight * dpr)),
+    { type: THREE.HalfFloatType, samples: LOW_END ? 0 : 4 }
+  );
+  composer = new EffectComposer(renderer, rt);
+  composer.addPass(new RenderPass(scene, camera));
+  if (CFG.BLOOM.ENABLED) {
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      CFG.BLOOM.STRENGTH, CFG.BLOOM.RADIUS, CFG.BLOOM.THRESHOLD);
+    // UnrealBloomPass already halves internally; SCALE is the extra mobile dial.
+    const baseSetSize = bloomPass.setSize.bind(bloomPass);
+    bloomPass.setSize = (w, h) => baseSetSize(
+      Math.max(2, Math.round(w * CFG.BLOOM.SCALE)),
+      Math.max(2, Math.round(h * CFG.BLOOM.SCALE)));
+    composer.addPass(bloomPass);
+  }
+  composer.addPass(new OutputPass());
+}
+
+/* ── the environment IS the material. Procedural: no HDRI in the payload. ──
+   A gradient dome plus three emitters — a warm key upper-left, a cool rim
+   lower-right, and one long thin softbox strip whose reflection streaks across
+   the metal as the key turns. That streak is the whole read. */
+function buildEnvironment() {
+  const E = CFG.ENV;
+  const envScene = new THREE.Scene();
+
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(40, 24, 16),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false,
+      uniforms: {
+        uTop: { value: new THREE.Color(E.DOME_TOP) },
+        uBot: { value: new THREE.Color(E.DOME_BOTTOM) },
+      },
+      vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: `
+        uniform vec3 uTop, uBot; varying vec3 vP;
+        void main(){
+          float h = clamp(vP.y / 40.0 * 0.5 + 0.5, 0.0, 1.0);
+          gl_FragColor = vec4(mix(uBot, uTop, pow(h, 1.35)), 1.0);
+        }`,
+    })
+  );
+  envScene.add(dome);
+
+  const emitter = (w, h, col, intensity, pos, rot) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(intensity), side: THREE.DoubleSide })
+    );
+    m.position.copy(pos);
+    if (rot) m.rotation.copy(rot);
+    envScene.add(m);
+    return m;
+  };
+
+  emitter(E.BOX_W, E.BOX_H, E.BOX_COL, E.BOX_INT,
+    new THREE.Vector3(...E.BOX_POS), new THREE.Euler(0.26, 0, 0.05));         // softbox
+  emitter(E.KEY_SIZE, E.KEY_SIZE, E.KEY_COL, E.KEY_INT,
+    new THREE.Vector3(...E.KEY_POS), new THREE.Euler(-0.2, -0.85, 0.2));      // warm key
+  emitter(E.RIM_SIZE, E.RIM_SIZE * 0.75, E.RIM_COL, E.RIM_INT,
+    new THREE.Vector3(...E.RIM_POS), new THREE.Euler(0.35, 0.9, -0.15));      // cool rim
+  emitter(E.BOX_W, 2.2, E.BOX_COL, E.BACK_INT,
+    new THREE.Vector3(0, 5, -11), new THREE.Euler(-0.3, 0, 0));               // back edge light
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  envRT = pmrem.fromScene(envScene, E.BLUR, 0.1, 100);
+  scene.environment = envRT.texture;
+
+  dome.geometry.dispose(); dome.material.dispose();
+  envScene.traverse(o => { if (o.isMesh && o !== dome) { o.geometry.dispose(); o.material.dispose(); } });
+  pmrem.dispose();
+}
+
+/* ── screen-space quads (backdrop + burst) live in the same scene so the
+      composer only ever renders one scene. ── */
+function screenQuad(fragmentShader, uniforms, blending) {
+  const m = new THREE.ShaderMaterial({
+    uniforms, fragmentShader, depthTest: false, depthWrite: false,
+    transparent: blending === THREE.AdditiveBlending,
+    blending: blending || THREE.NormalBlending,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.9999, 1.0); }`,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+let backdrop, burst;
+function buildBackdrop() {
+  backdrop = screenQuad(`
+    uniform vec3 uCore, uEdge; uniform float uAspect; varying vec2 vUv;
+    // dark radial gradients band badly on 8-bit; a half-LSB dither costs nothing
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+    void main(){
+      vec2 d = (vUv - 0.5) * vec2(uAspect, 1.0);
+      float r = clamp(length(d) * 1.45, 0.0, 1.0);
+      vec3 c = mix(uCore, uEdge, smoothstep(0.0, 1.0, r));
+      c += (hash(gl_FragCoord.xy) - 0.5) * 0.0035;
+      gl_FragColor = vec4(c, 1.0);
+    }`, {
+    uCore:   { value: new THREE.Color(CFG.COL.BACKDROP_CORE) },
+    uEdge:   { value: new THREE.Color(CFG.COL.BACKDROP_EDGE) },
+    uAspect: { value: 1 },
+  });
+  backdrop.renderOrder = -20;
+  scene.add(backdrop);
+
+  burst = screenQuad(`
+    uniform vec3 uCol; uniform float uI, uAspect; varying vec2 vUv;
+    void main(){
+      vec2 d = (vUv - 0.5) * vec2(uAspect, 1.0);
+      float r = length(d);
+      float core = exp(-r * r * 9.0);
+      float halo = exp(-r * 2.2) * 0.55;
+      gl_FragColor = vec4(uCol * (core + halo) * uI, 1.0);
+    }`, {
+    uCol:    { value: new THREE.Color(CFG.COL.GLOW_A) },
+    uI:      { value: 0 },
+    uAspect: { value: 1 },
+  }, THREE.AdditiveBlending);
+  burst.renderOrder = -10;
+  scene.add(burst);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4 · THE KEY — procedural, ≤3k tris, one material family
+   ══════════════════════════════════════════════════════════════════════════ */
+const keyRoot  = new THREE.Group();   // turn axis (local Z) + hero placement
+const keyTilt  = new THREE.Group();   // gyro / drag rotation
+const keyProp  = new THREE.Group();   // answer-driven proportions
+let bodyMesh, panelMesh, bladeMesh, ringMesh, bodyMat, panelMat, engTex;
+
+function buildKey() {
+  const K = CFG.KEY;
+
+  /* Body. Two RoundedBoxGeometries at different bevel radii share topology
+     exactly (RoundedBoxGeometry only displaces a fixed BoxGeometry), so the
+     soft one becomes a morph target — bevels tighten and soften smoothly, with
+     correct normals, instead of popping on a geometry rebuild. */
+  const sharp = new RoundedBoxGeometry(K.BODY_W, K.BODY_H, K.BODY_D, K.SEGMENTS, K.BEVEL_SHARP);
+  const soft  = new RoundedBoxGeometry(K.BODY_W, K.BODY_H, K.BODY_D, K.SEGMENTS, K.BEVEL_SOFT);
+
+  const sp = sharp.attributes.position.array, sn = sharp.attributes.normal.array;
+  const fp = soft.attributes.position.array,  fn = soft.attributes.normal.array;
+  const dp = new Float32Array(sp.length), dn = new Float32Array(sn.length);
+  for (let i = 0; i < sp.length; i++) { dp[i] = fp[i] - sp[i]; dn[i] = fn[i] - sn[i]; }
+
+  sharp.morphAttributes.position = [new THREE.BufferAttribute(dp, 3)];
+  sharp.morphAttributes.normal   = [new THREE.BufferAttribute(dn, 3)];
+  sharp.morphTargetsRelative = true;
+  soft.dispose();
+
+  bodyMat = new THREE.MeshPhysicalMaterial({
+    color: CFG.MAT.BASE.tint,
+    metalness: CFG.MAT.METALNESS,
+    roughness: CFG.MAT.BASE.rough,
+    envMapIntensity: CFG.MAT.BASE.env,
+  });
+  bodyMesh = new THREE.Mesh(sharp, bodyMat);
+  bodyMesh.morphTargetInfluences = [CFG.MAT.BASE.bevel];
+
+  /* Engraved plate. A plain rectangle sitting 4 thou proud of the flat face:
+     UVs are guaranteed 0..1 (needed for tap→option hit-testing) and the tiny
+     step reads as a machined inset plate rather than a decal. */
+  engTex = new THREE.CanvasTexture(engCanvas);
+  engTex.colorSpace = THREE.NoColorSpace;              // non-colour data
+  engTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  engTex.needsUpdate = true;
+
+  panelMat = new THREE.MeshPhysicalMaterial({
+    color: CFG.MAT.BASE.tint,
+    metalness: CFG.MAT.METALNESS,
+    roughness: CFG.MAT.BASE.rough * CFG.MAT.ENGRAVE_ROUGH_MUL,
+    envMapIntensity: CFG.MAT.BASE.env,
+    clearcoat: CFG.MAT.CLEARCOAT,
+    clearcoatRoughness: CFG.MAT.BASE.ccr,
+    bumpMap: engTex,
+    bumpScale: CFG.MAT.ENGRAVE_BUMP,
+    roughnessMap: engTex,
+  });
+  const panelH = K.PANEL_W / (ENG.w / ENG.h);
+  panelMesh = new THREE.Mesh(new THREE.PlaneGeometry(K.PANEL_W, panelH), panelMat);
+  panelMesh.position.z = K.BODY_D / 2 + K.PANEL_Z;
+
+  /* Blade — extruded profile with two notches, bevelled so it catches the strip */
+  const s = new THREE.Shape();
+  const hw = K.BLADE_W / 2, L = K.BLADE_LEN;
+  s.moveTo(-hw, 0);
+  s.lineTo(-hw, -L * 0.42);
+  s.lineTo(-hw * 0.55, -L * 0.52);
+  s.lineTo(-hw, -L * 0.62);
+  s.lineTo(-hw, -L * 0.84);
+  s.lineTo(-hw * 0.5, -L);
+  s.lineTo(hw * 0.5, -L);
+  s.lineTo(hw, -L * 0.84);
+  s.lineTo(hw, -L * 0.70);
+  s.lineTo(hw * 0.45, -L * 0.60);
+  s.lineTo(hw, -L * 0.50);
+  s.lineTo(hw, 0);
+  s.closePath();
+  const bladeGeo = new THREE.ExtrudeGeometry(s, {
+    depth: K.BLADE_D, bevelEnabled: true, bevelThickness: 0.018,
+    bevelSize: 0.018, bevelSegments: 2, curveSegments: 1,
+  });
+  bladeGeo.center();
+  bladeMesh = new THREE.Mesh(bladeGeo, bodyMat);
+  bladeMesh.position.y = -(K.BODY_H / 2 + L / 2 - 0.12);
+
+  /* Ring */
+  ringMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(K.RING_R, K.RING_TUBE, 6, 16),
+    bodyMat
+  );
+  ringMesh.position.y = K.BODY_H / 2 + K.RING_R * 0.62;
+
+  keyProp.add(bodyMesh, panelMesh, bladeMesh, ringMesh);
+  keyTilt.add(keyProp);
+  keyRoot.add(keyTilt);
+  scene.add(keyRoot);
+
+  if (DEBUG) {
+    let tris = 0;
+    keyProp.traverse(o => { if (o.isMesh) tris += o.geometry.index
+      ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3; });
+    console.log('[key] triangles', tris, '| draw calls', 6);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5 · ENGRAVING — questions live on the key, not over it
+   ══════════════════════════════════════════════════════════════════════════
+   One offscreen canvas feeding bumpMap + roughnessMap. Neutral grey is flat;
+   darker is recessed AND shinier (roughnessMap multiplies), which is what
+   diamond-cut engraving actually does on brushed metal. Regenerated only on
+   state change — never per frame. */
+const ENG = { w: 640, h: 1024, pad: 46 };
+const engCanvas = document.createElement('canvas');
+engCanvas.width = ENG.w; engCanvas.height = ENG.h;
+const g = engCanvas.getContext('2d');
+
+const NEUTRAL = '#808080', CUT = '#3b3b3b', CUT_DEEP = '#2a2a2a', LIP = '#adadad';
+const F_AR   = '"IBM Plex Sans Arabic","Noto Sans Arabic","Geeza Pro",sans-serif';
+const F_MONO = '"IBM Plex Mono",ui-monospace,Menlo,monospace';
+
+let optionRects = [];   // {y, h, i} in canvas px — used by the tap raycast
+
+/* chiselled text: a light lip under a dark cut gives the bump map a real edge */
+function engraveText(text, x, y, font, dir, align, deep) {
+  g.font = font;
+  g.direction = dir;
+  g.textAlign = align;
+  g.fillStyle = LIP;  g.fillText(text, x, y + 2);
+  g.fillStyle = deep ? CUT_DEEP : CUT;  g.fillText(text, x, y);
+}
+function hairline(y, x0, x1, alpha) {
+  g.fillStyle = `rgba(48,48,48,${alpha})`;
+  g.fillRect(x0, y, x1 - x0, 2);
+  g.fillStyle = `rgba(174,174,174,${alpha * 0.7})`;
+  g.fillRect(x0, y + 2, x1 - x0, 1);
+}
+function engraveEmblem(cx, cy, r) {
+  g.save();
+  g.translate(cx, cy);
+  g.lineWidth = 3;
+  const hexPath = () => {
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 6 + i * Math.PI / 3;
+      const px = Math.cos(a) * r, py = Math.sin(a) * r;
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.closePath();
+    g.moveTo(-r, 0); g.lineTo(r, 0);
+    g.moveTo(0, -r * 0.55); g.lineTo(0, r * 0.55);
+  };
+  g.strokeStyle = LIP; g.translate(0, 2); hexPath(); g.stroke();
+  g.strokeStyle = CUT; g.translate(0, -2); hexPath(); g.stroke();
+  g.restore();
+}
+
+function drawEngraving(mode, data) {
+  g.fillStyle = NEUTRAL;
+  g.fillRect(0, 0, ENG.w, ENG.h);
+  optionRects = [];
+
+  const L = ENG.pad, R = ENG.w - ENG.pad, W = R - L;
+
+  if (mode === 'idle' || mode === 'final') {
+    engraveEmblem(ENG.w / 2, ENG.h * 0.40, 74);
+    hairline(ENG.h * 0.58, L + 60, R - 60, 0.5);
+    engraveText(data?.serial || '— — — —', ENG.w / 2, ENG.h * 0.66,
+      `500 26px ${F_MONO}`, 'ltr', 'center');
+    return;
+  }
+
+  if (mode === 'turn') {
+    // No words here — the DOM carries the single line. Engraving the same
+    // sentence a second time just collides with it. The key gets the
+    // instrument marking instead: a quarter-turn scale, 0 to 90.
+    engraveEmblem(ENG.w / 2, ENG.h * 0.26, 62);
+    hairline(ENG.h * 0.40, ENG.pad + 70, ENG.w - ENG.pad - 70, 0.45);
+    g.save();
+    g.translate(ENG.w / 2, ENG.h * 0.78);
+    for (let k = 0; k <= 12; k++) {
+      const a = -Math.PI * 0.5 + k * (Math.PI * 0.5) / 12;
+      const major = k % 4 === 0;
+      const inR = major ? 96 : 118, outR = 134;
+      g.strokeStyle = major ? CUT_DEEP : CUT;
+      g.lineWidth = major ? 5 : 2;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * inR, Math.sin(a) * inR);
+      g.lineTo(Math.cos(a) * outR, Math.sin(a) * outR);
+      g.stroke();
+    }
+    g.restore();
+    engraveText('0', ENG.w / 2 - 8, ENG.h * 0.78 - 148, `400 18px ${F_MONO}`, 'ltr', 'right');
+    engraveText('90', ENG.w / 2 + 152, ENG.h * 0.78 + 8, `400 18px ${F_MONO}`, 'ltr', 'left');
+    return;
+  }
+
+  /* ── question ── */
+  const { index, q } = data;
+  engraveText(`0${index + 1} / 03`, L, 78, `500 20px ${F_MONO}`, 'ltr', 'left');
+  engraveText('المفتاح', R, 78, `300 22px ${F_AR}`, 'rtl', 'right');
+  hairline(96, L, R, 0.55);
+
+  engraveText(q.ar, R, 172, `700 38px ${F_AR}`, 'rtl', 'right');
+  engraveText(q.en, L, 210, `300 21px ${F_MONO}`, 'ltr', 'left');
+  hairline(240, L, R, 0.35);
+
+  const top = 268, rowH = 166;
+  q.opts.forEach((o, i) => {
+    const y = top + i * rowH;
+    optionRects.push({ y, h: rowH, i });
+    const chosen = data.selected === i;
+    if (chosen) {                       // a recessed plate behind the picked row
+      g.fillStyle = 'rgba(58,58,58,0.55)';
+      g.fillRect(L - 10, y + 6, W + 20, rowH - 20);
+      g.fillStyle = 'rgba(180,180,180,0.5)';
+      g.fillRect(L - 10, y + rowH - 15, W + 20, 2);
+    }
+    engraveText(o.ar, R, y + 68, `${chosen ? 700 : 300} 34px ${F_AR}`, 'rtl', 'right', chosen);
+    engraveText(o.en.toUpperCase(), L, y + 106, `400 17px ${F_MONO}`, 'ltr', 'left', chosen);
+    engraveText(`0${i + 1}`, R, y + 106, `400 15px ${F_MONO}`, 'ltr', 'right');
+    if (i < q.opts.length - 1) hairline(y + rowH - 8, L, R, 0.28);
+  });
+
+  hairline(ENG.h - 96, L, R, 0.4);
+  engraveText(TRACK === 'A' ? 'KX SERIES' : 'KX SERIES', ENG.w / 2, ENG.h - 56,
+    `400 16px ${F_MONO}`, 'ltr', 'center');
+}
+
+let engState = { mode: 'idle', data: null };
+function setEngraving(mode, data) {
+  engState = { mode, data };
+  drawEngraving(mode, data);
+  if (engTex) engTex.needsUpdate = true;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6 · CONTENT — questions, registers, archetypes
+   ══════════════════════════════════════════════════════════════════════════
+   Each option carries a weight vector over three registers rather than a
+   single label, so three answers land somewhere continuous instead of on one
+   of three presets. The key's material and proportions read that vector. */
+const QUESTIONS = [
+  {
+    ar: 'أول شي بتعمله لما تقعد بالسيارة؟',
+    en: 'First thing you do when you get in?',
+    opts: [
+      { ar: 'تضبط المقعد',    en: 'Adjust the seat', w: [0.85, 0.40, 0.00] },
+      { ar: 'تشغّل الموسيقى', en: 'Play music',      w: [0.10, 0.90, 0.30] },
+      { ar: 'تفتح الشباك',    en: 'Open the window', w: [0.20, 0.50, 0.75] },
+      { ar: 'تنطلق',          en: 'Just go',         w: [1.00, 0.00, 0.60] },
+    ],
+  },
+  {
+    ar: 'الطريق المفضّل؟',
+    en: 'Your road?',
+    opts: [
+      { ar: 'ساحلي',      en: 'Coastal',        w: [0.10, 1.00, 0.40] },
+      { ar: 'جبلي',       en: 'Mountain',       w: [0.80, 0.30, 0.50] },
+      { ar: 'أوتوستراد',  en: 'Highway',        w: [1.00, 0.20, 0.30] },
+      { ar: 'مدينة ليلاً', en: 'City at night',  w: [0.30, 0.40, 1.00] },
+    ],
+  },
+  {
+    ar: 'السيارة إلك بتعني؟',
+    en: 'A car means…',
+    opts: [
+      { ar: 'حرية', en: 'Freedom',     w: [0.30, 0.80, 0.60] },
+      { ar: 'أداء', en: 'Performance', w: [1.00, 0.00, 0.40] },
+      { ar: 'حضور', en: 'Presence',    w: [0.20, 0.20, 1.00] },
+      { ar: 'هدوء', en: 'Quiet',       w: [0.00, 1.00, 0.10] },
+    ],
+  },
+];
+
+const ARCHETYPES = {
+  'sharp|calm' : { ar: 'الدقّة',    en: 'PRECISION' },
+  'sharp|bold' : { ar: 'الذروة',    en: 'APEX' },
+  'calm|sharp' : { ar: 'المسار',    en: 'THE LINE' },
+  'calm|bold'  : { ar: 'السكون',    en: 'STILLNESS' },
+  'bold|sharp' : { ar: 'الانطلاق',  en: 'LAUNCH' },
+  'bold|calm'  : { ar: 'الحضور',    en: 'PRESENCE' },
+};
+
+const S = {
+  phase: 'boot',              // boot|idle|q|turn|stall|open|reveal|form
+  qIndex: 0,
+  answers: [],
+  vec: [0, 0, 0],             // accumulated sharp / calm / bold
+  archetype: null,
+  serial: '—',
+  muted: false,
+};
+
+function registerVector() {
+  const t = S.vec[0] + S.vec[1] + S.vec[2];
+  return t > 0 ? S.vec.map(v => v / t) : [1 / 3, 1 / 3, 1 / 3];
+}
+function computeArchetype() {
+  const v = registerVector();
+  const names = ['sharp', 'calm', 'bold'];
+  const order = names.map((n, i) => [n, v[i]]).sort((a, b) => b[1] - a[1]);
+  const a = ARCHETYPES[`${order[0][0]}|${order[1][0]}`] || ARCHETYPES['calm|sharp'];
+  S.archetype = a;
+
+  // deterministic serial from token + answers, so the same guest gets the same card
+  let h = 0x811c9dc5;
+  for (const ch of (TOKEN + '|' + S.answers.join('') + '|' + a.en)) {
+    h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  const n = String(10 + (h % 90));
+  S.serial = `KX-${n}-${(h >>> 8).toString(16).toUpperCase().padStart(4, '0').slice(0, 4)}`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7 · MATERIAL STATE — answers change the metal, always interpolated
+   ══════════════════════════════════════════════════════════════════════════ */
+const matNow = { ...CFG.MAT.BASE, tint: new THREE.Color(CFG.MAT.BASE.tint) };
+
+function targetMaterial() {
+  const [s, c, b] = registerVector();
+  const M = CFG.MAT, mix = k => M.SHARP[k] * s + M.CALM[k] * c + M.BOLD[k] * b;
+  const tint = new THREE.Color(M.SHARP.tint).multiplyScalar(s)
+    .add(new THREE.Color(M.CALM.tint).multiplyScalar(c))
+    .add(new THREE.Color(M.BOLD.tint).multiplyScalar(b));
+  return {
+    rough: mix('rough'), env: mix('env'), bevel: mix('bevel'), bump: mix('bump'),
+    ccr: mix('ccr'), sx: mix('sx'), sy: mix('sy'), sz: mix('sz'), tint,
+  };
+}
+
+function applyMaterial(m) {
+  bodyMat.color.copy(m.tint);
+  bodyMat.roughness = m.rough;
+  bodyMat.envMapIntensity = m.env;
+  panelMat.color.copy(m.tint);
+  panelMat.roughness = m.rough * CFG.MAT.ENGRAVE_ROUGH_MUL;
+  panelMat.envMapIntensity = m.env;
+  panelMat.clearcoatRoughness = m.ccr;
+  panelMat.bumpScale = CFG.MAT.ENGRAVE_BUMP * m.bump;
+  bodyMesh.morphTargetInfluences[0] = m.bevel;
+  keyProp.scale.set(m.sx, m.sy, m.sz);
+}
+
+function transitionMaterial() {
+  const from = { ...matNow, tint: matNow.tint.clone() };
+  const to = targetMaterial();
+  tween(D(CFG.MAT.MORPH_MS), p => {
+    for (const k of ['rough', 'env', 'bevel', 'bump', 'ccr', 'sx', 'sy', 'sz'])
+      matNow[k] = lerp(from[k], to[k], p);
+    matNow.tint.copy(from.tint).lerp(to.tint, p);
+    applyMaterial(matNow);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8 · AUDIO — Web Audio, fully procedural. Half the room is on silent, so the
+   experience has to be complete without it.
+   ══════════════════════════════════════════════════════════════════════════ */
+const A = { ctx: null, master: null, drone: null, fric: null, fricGain: null, on: false };
+
+function noiseBuffer(ctx, sec = 2) {
+  const buf = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function initAudio() {
+  if (A.ctx) { A.ctx.resume?.(); return; }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  A.ctx = new Ctx();
+  A.master = A.ctx.createGain();
+  A.master.gain.value = S.muted ? 0 : CFG.AUD.MASTER;
+  A.master.connect(A.ctx.destination);
+
+  /* ambient: two barely-detuned lows plus a filtered air layer */
+  const dg = A.ctx.createGain(); dg.gain.value = 0;
+  const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 200;
+  dg.connect(lp); lp.connect(A.master);
+  [[CFG.AUD.DRONE_HZ, 'sine', 1], [CFG.AUD.DRONE_HZ * 1.006, 'triangle', 0.5]].forEach(([f, t, gain]) => {
+    const o = A.ctx.createOscillator(); o.type = t; o.frequency.value = f;
+    const og = A.ctx.createGain(); og.gain.value = gain;
+    o.connect(og); og.connect(dg); o.start();
+  });
+  const air = A.ctx.createBufferSource();
+  air.buffer = noiseBuffer(A.ctx); air.loop = true;
+  const airBp = A.ctx.createBiquadFilter(); airBp.type = 'bandpass';
+  airBp.frequency.value = 900; airBp.Q.value = 0.6;
+  const airG = A.ctx.createGain(); airG.gain.value = CFG.AUD.AIR;
+  air.connect(airBp); airBp.connect(airG); airG.connect(dg);
+  air.start();
+  A.drone = dg;
+  dg.gain.setTargetAtTime(CFG.AUD.DRONE, A.ctx.currentTime, 2.0);
+
+  /* friction: gain is driven per-frame from angular velocity */
+  const fr = A.ctx.createBufferSource();
+  fr.buffer = noiseBuffer(A.ctx); fr.loop = true;
+  const bp = A.ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1800; bp.Q.value = 7;
+  const fg = A.ctx.createGain(); fg.gain.value = 0;
+  fr.connect(bp); bp.connect(fg); fg.connect(A.master);
+  fr.start();
+  A.fric = bp; A.fricGain = fg;
+  A.on = true;
+}
+
+function env(node, t0, peak, attack, decay) {
+  node.gain.cancelScheduledValues(t0);
+  node.gain.setValueAtTime(0.0001, t0);
+  node.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t0 + attack);
+  node.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+}
+
+function sfxTick() {
+  if (!A.on) return;
+  const t = A.ctx.currentTime, gN = A.ctx.createGain();
+  const n = A.ctx.createBufferSource(); n.buffer = noiseBuffer(A.ctx, 0.1);
+  const bp = A.ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 3200; bp.Q.value = 4;
+  n.connect(bp); bp.connect(gN); gN.connect(A.master);
+  env(gN, t, CFG.AUD.TICK, 0.002, 0.05); n.start(t); n.stop(t + 0.1);
+
+  const o = A.ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 2400;
+  const gO = A.ctx.createGain(); o.connect(gO); gO.connect(A.master);
+  env(gO, t, CFG.AUD.TICK * 0.35, 0.001, 0.07); o.start(t); o.stop(t + 0.12);
+}
+
+/* the signature sound: central locking. Track B gets it truncated and
+   dampened — same mechanism, no resolution. */
+function sfxClunk(resolved) {
+  if (!A.on) return;
+  const t = A.ctx.currentTime;
+
+  const n = A.ctx.createBufferSource(); n.buffer = noiseBuffer(A.ctx, 0.2);
+  const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(1400, t);
+  lp.frequency.exponentialRampToValueAtTime(resolved ? 420 : 200, t + 0.06);
+  const gN = A.ctx.createGain();
+  n.connect(lp); lp.connect(gN); gN.connect(A.master);
+  env(gN, t, CFG.AUD.CLUNK, 0.003, resolved ? 0.10 : 0.05);
+  n.start(t); n.stop(t + 0.3);
+
+  const o = A.ctx.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(185, t);
+  o.frequency.exponentialRampToValueAtTime(resolved ? 58 : 78, t + (resolved ? 0.09 : 0.045));
+  const gO = A.ctx.createGain(); o.connect(gO); gO.connect(A.master);
+  env(gO, t, CFG.AUD.CLUNK * 0.9, 0.004, resolved ? 0.16 : 0.05);
+  o.start(t); o.stop(t + 0.4);
+
+  if (resolved) {                       // the metallic ring that closes it
+    [618, 931].forEach((f, i) => {
+      const r = A.ctx.createOscillator(); r.type = 'triangle'; r.frequency.value = f;
+      const gR = A.ctx.createGain(); r.connect(gR); gR.connect(A.master);
+      env(gR, t + 0.012, CFG.AUD.CLUNK * (i ? 0.07 : 0.12), 0.004, 0.5);
+      r.start(t); r.stop(t + 0.7);
+    });
+  }
+}
+
+function sfxChord() {
+  if (!A.on) return;
+  const t = A.ctx.currentTime + 0.05;
+  const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(320, t);
+  lp.frequency.linearRampToValueAtTime(2600, t + 1.6);
+  const gm = A.ctx.createGain(); gm.gain.value = 0;
+  lp.connect(gm); gm.connect(A.master);
+  gm.gain.setValueAtTime(0.0001, t);
+  gm.gain.exponentialRampToValueAtTime(CFG.AUD.CHORD, t + 0.9);
+  gm.gain.exponentialRampToValueAtTime(0.0001, t + 3.6);
+  [110, 164.81, 220, 277.18].forEach((f, i) => {
+    const o = A.ctx.createOscillator();
+    o.type = i > 1 ? 'triangle' : 'sine';
+    o.frequency.value = f;
+    const og = A.ctx.createGain(); og.gain.value = 1 / (i + 1.6);
+    o.connect(og); og.connect(lp);
+    o.start(t); o.stop(t + 3.8);
+  });
+}
+
+function setMuted(m) {
+  S.muted = m;
+  try { localStorage.setItem('key.muted', m ? '1' : '0'); } catch {}
+  $('mute').textContent = m ? 'SOUND OFF' : 'SOUND ON';
+  $('mute').setAttribute('aria-pressed', String(m));
+  if (A.master) A.master.gain.setTargetAtTime(m ? 0 : CFG.AUD.MASTER, A.ctx.currentTime, 0.08);
+}
+try { if (localStorage.getItem('key.muted') === '1') S.muted = true; } catch {}
+$('mute').addEventListener('click', () => setMuted(!S.muted));
+setMuted(S.muted);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9 · INPUT — drag first, gyro layered on top. Drag must always work.
+   ══════════════════════════════════════════════════════════════════════════ */
+const rot   = { x: 0, y: 0, vx: 0, vy: 0 };   // current, spring-smoothed
+const drag  = { x: 0, y: 0 };                 // accumulated from pointer
+const gyro  = { x: 0, y: 0, base: null, active: false };
+let idleYaw = 0, idlePhase = 0;
+
+const turn = { angle: 0, vel: 0, dragPx: 0, active: false, locked: false, stalledAt: 0 };
+
+const ptr = { down: false, id: null, sx: 0, sy: 0, lx: 0, ly: 0, moved: 0 };
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function onDown(e) {
+  if (ptr.down) return;
+  ptr.down = true; ptr.id = e.pointerId;
+  ptr.sx = ptr.lx = e.clientX; ptr.sy = ptr.ly = e.clientY; ptr.moved = 0;
+  firstGesture();
+  if (S.phase === 'turn') turn.active = true;
+  renderer.domElement.setPointerCapture?.(e.pointerId);
+}
+
+function onMove(e) {
+  if (!ptr.down || e.pointerId !== ptr.id) return;
+  const dx = e.clientX - ptr.lx, dy = e.clientY - ptr.ly;
+  ptr.lx = e.clientX; ptr.ly = e.clientY;
+  ptr.moved += Math.hypot(dx, dy);
+
+  if (S.phase === 'turn' && turn.active) {
+    turn.dragPx = Math.max(0, turn.dragPx + dy);      // downward drag only
+    return;
+  }
+  drag.y += dx * CFG.MOVE.DRAG_SENS;                  // horizontal → yaw
+  drag.x += dy * CFG.MOVE.DRAG_SENS;                  // vertical   → pitch
+}
+
+function onUp(e) {
+  if (!ptr.down) return;
+  ptr.down = false;
+  renderer.domElement.releasePointerCapture?.(ptr.id);
+  ptr.id = null;
+  if (S.phase === 'turn') {
+    turn.active = false;
+    if (!turn.locked) turn.dragPx = 0;                // release before the threshold: spring back
+    return;
+  }
+  if (ptr.moved < CFG.MOVE.TAP_SLOP) tapKey(e.clientX, e.clientY);
+}
+
+function tapKey(cx, cy) {
+  if (S.phase !== 'q' || !panelMesh) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(panelMesh, false)[0];
+  if (!hit || !hit.uv) return;
+  const py = (1 - hit.uv.y) * ENG.h;
+  const row = optionRects.find(o => py >= o.y && py < o.y + o.h);
+  if (row) answer(row.i);
+}
+
+function bindInput() {
+  const el = renderer.domElement;
+  el.style.touchAction = 'none';
+  el.addEventListener('pointerdown', onDown);
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerup', onUp);
+  el.addEventListener('pointercancel', onUp);
+  window.addEventListener('blur', onUp);
+}
+
+/* ── gyro: bound to the first gesture, silent on refusal or absence ── */
+let gestureDone = false;
+async function firstGesture() {
+  if (gestureDone) return;
+  gestureDone = true;
+  initAudio();
+  try {
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === 'function') {
+      const res = await DOE.requestPermission();
+      if (res !== 'granted') return;                  // no error surfaced; drag already works
+    }
+    if (!window.DeviceOrientationEvent) return;
+    window.addEventListener('deviceorientation', onOrient);
+  } catch { /* silent: drag is the primary path, gyro was only ever the layer */ }
+}
+
+function onOrient(e) {
+  if (e.beta == null && e.gamma == null) return;
+  const b = THREE.MathUtils.degToRad(e.beta || 0);
+  const gm = THREE.MathUtils.degToRad(e.gamma || 0);
+  if (!gyro.base) gyro.base = { b, g: gm };           // neutral wherever the phone is held
+  gyro.active = true;
+  gyro.x = (b - gyro.base.b) * CFG.MOVE.GYRO_GAIN;
+  gyro.y = (gm - gyro.base.g) * CFG.MOVE.GYRO_GAIN;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10 · PHASES
+   ══════════════════════════════════════════════════════════════════════════ */
+function line(id, on) { $(id).classList.toggle('on', on); }
+function setTicks() {
+  const t = $('ticks');
+  t.classList.add('on');
+  [...t.querySelectorAll('i')].forEach((el, i) => {
+    el.classList.toggle('done', i < S.answers.length);
+    el.classList.toggle('now', i === S.qIndex && S.phase === 'q');
+  });
+  t.querySelector('.n').textContent = `0${S.answers.length}/03`;
+}
+
+function buildA11yOptions(q) {
+  const box = $('a11y');
+  box.innerHTML = '';
+  if (!q) return;
+  q.opts.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = `${o.ar} — ${o.en}`;
+    b.addEventListener('click', () => answer(i));
+    box.appendChild(b);
+  });
+}
+
+function goIdle() {
+  S.phase = 'idle';
+  setEngraving('idle', { serial: '' });
+  veil.classList.add('clear');
+  setTimeout(() => { if (S.phase === 'idle') line('lHint', true); }, D(CFG.HINT_MS));
+  idleTimer = setTimeout(() => { if (S.phase === 'idle') askQuestion(0); }, D(CFG.IDLE_MS));
+}
+let idleTimer = null;
+
+function askQuestion(i) {
+  clearTimeout(idleTimer);
+  line('lHint', false);
+  if (S.phase !== 'q') dollyTo('q');
+  S.phase = 'q'; S.qIndex = i;
+  setEngraving('question', { index: i, q: QUESTIONS[i], selected: -1 });
+  buildA11yOptions(QUESTIONS[i]);
+  setTicks();
+}
+
+function answer(optIndex) {
+  if (S.phase !== 'q') return;
+  const q = QUESTIONS[S.qIndex];
+  const o = q.opts[optIndex];
+  if (!o) return;
+  S.answers.push(optIndex);
+  S.vec = S.vec.map((v, k) => v + o.w[k]);
+  sfxTick();
+  navigator.vibrate?.(8);
+
+  setEngraving('question', { index: S.qIndex, q, selected: optIndex });
+  transitionMaterial();                       // the metal must visibly change
+  setTicks();
+
+  const next = S.qIndex + 1;
+  setTimeout(() => {
+    if (next < QUESTIONS.length) askQuestion(next);
+    else goTurn();
+  }, D(560));
+}
+
+function goTurn() {
+  S.phase = 'turn';
+  dollyTo('turn');
+  computeArchetype();
+  buildA11yOptions(null);
+  $('ticks').classList.remove('on');
+  setEngraving('turn');
+  line('lTurn', true);
+  $('chev').classList.add('on');
+
+  // keyboard route to the turn, for anyone who cannot drag
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = 'دير المفتاح — TURN THE KEY';
+  b.addEventListener('click', () => { turn.dragPx = CFG.TURN.DRAG_PX * 1.05; turn.active = false; });
+  $('a11y').appendChild(b);
+}
+
+function turnMax() { return THREE.MathUtils.degToRad(CFG.TURN.MAX_DEG); }
+function turnStall() { return THREE.MathUtils.degToRad(CFG.TURN.B_STALL_DEG); }
+
+/* drag → angle, with the last third made progressively heavier so release feels earned */
+function turnTarget() {
+  const d = clamp(turn.dragPx / CFG.TURN.DRAG_PX, 0, 1);
+  const a = turnMax() * (1 - Math.pow(1 - d, CFG.TURN.RESIST_EXP));
+  return TRACK === 'A' ? a : Math.min(a, turnStall());
+}
+
+let openingStarted = false, stallStarted = false;
+function updateTurn(dt) {
+  if (S.phase !== 'turn') return;
+
+  const tgt = turn.locked ? turnMax() : turnTarget();
+  const k = CFG.TURN.RETURN_OMEGA * CFG.TURN.RETURN_OMEGA, c = 2 * CFG.TURN.RETURN_OMEGA;
+  turn.vel += (k * (tgt - turn.angle) - c * turn.vel) * dt;
+  turn.angle += turn.vel * dt;
+
+  let vis = turn.angle;
+  if (stallStarted) {                         // visible tension while it refuses
+    vis += Math.sin(performance.now() * 0.055) * CFG.TURN.B_TREMOR;
+  }
+  keyRoot.rotation.z = -vis;
+
+  if (TRACK === 'A' && !openingStarted && turn.dragPx >= CFG.TURN.DRAG_PX) {
+    openingStarted = true; turn.locked = true; openSequence();
+  }
+  if (TRACK === 'B' && !stallStarted && turn.angle >= turnStall() * 0.985) {
+    stallStarted = true; springBack();
+  }
+}
+
+/* ── Track A: it opens ── */
+async function openSequence() {
+  line('lTurn', false); $('chev').classList.remove('on');
+  sfxClunk(true);
+  navigator.vibrate?.([14, 40, 22]);
+
+  let flash = null;
+  if (!RM) {
+    const b0 = bloomPass ? bloomPass.strength : 0;
+    flash = tween(CFG.BEAT.FLASH_IN_MS, p => {
+      burst.material.uniforms.uI.value = p * CFG.BLOOM.FLASH_BURST;
+      if (bloomPass) bloomPass.strength = lerp(b0, CFG.BLOOM.FLASH_STRENGTH, p);
+    });
+    await wait(CFG.BEAT.FLASH_IN_MS + CFG.BEAT.FLASH_HOLD_MS);
+  }
+
+  veil.classList.remove('clear');             // full black
+  if (A.drone && A.ctx) A.drone.gain.setTargetAtTime(0, A.ctx.currentTime, 0.08);
+  await wait(D(CFG.BEAT.TO_BLACK_MS));
+
+  if (flash) cancel(flash);                   // never let it write after the reset
+  burst.material.uniforms.uI.value = 0;
+  if (bloomPass) bloomPass.strength = CFG.BLOOM.STRENGTH;
+  await wait(D(CFG.BEAT.BLACK_MS));           // silence. this is where the reveal lands.
+
+  reveal();
+}
+
+/* ── Track B: it does not open ── */
+async function springBack() {
+  sfxClunk(false);
+  navigator.vibrate?.(90);
+  await wait(D(CFG.TURN.B_HOLD_MS));
+  stallStarted = false;
+  turn.dragPx = 0; turn.active = false;
+  ptr.down = false;
+
+  // cool the metal down as it gives up
+  const from = matNow.tint.clone(), to = new THREE.Color(CFG.COL.CHROME_COLD).lerp(new THREE.Color(0xE6ECF0), 0.72);
+  tween(D(700), p => { matNow.tint.copy(from).lerp(to, p); applyMaterial(matNow); });
+
+  await wait(D(700));
+  S.phase = 'form';
+  line('lTurn', false); $('chev').classList.remove('on');
+  line('lLimit', true);
+  $('a11y').innerHTML = '';
+  await wait(D(900));
+  showForm();
+}
+
+/* ── hero pose shared by both endings: key rises, camera settles ── */
+function heroPose() {
+  // settle onto the same lit angle the card export uses, so the key on screen
+  // and the key on the saved card read as the same object
+  drag.x = CFG.CARD.POSE_X; drag.y = CFG.CARD.POSE_Y;
+  idlePhase = 0;
+  const fromY = keyRoot.position.y, fromS = keyRoot.scale.x;
+  camFit = 'hero';
+  const fromZ = camera.position.z, toZ = fitZ('hero');
+  tween(D(CFG.BEAT.REVEAL_MS), p => {
+    keyRoot.position.y = lerp(fromY, CFG.MOVE.HERO_Y, p);
+    keyRoot.scale.setScalar(lerp(fromS, CFG.MOVE.HERO_SCALE, p));
+    camera.position.z = lerp(fromZ, toZ, p);
+  });
+}
+
+function reveal() {
+  S.phase = 'reveal';
+  setEngraving('final', { serial: S.serial });
+  sfxChord();
+  if (A.drone) A.drone.gain.setTargetAtTime(CFG.AUD.DRONE * 0.7, A.ctx.currentTime, 1.2);
+  veil.classList.add('clear');
+  heroPose();
+
+  $('cArchA').textContent = S.archetype.ar;
+  $('cArchE').textContent = S.archetype.en;
+  $('cSerial').textContent = S.serial;
+  $('cDateA').textContent = CFG.EVENT.dateAr;
+  $('cTime').textContent  = CFG.EVENT.time;
+  $('cVenue').textContent = CFG.EVENT.venueAr;
+
+  $('cardWrap').hidden = false;
+  requestAnimationFrame(() => {
+    $('card').classList.add('open');
+    setTimeout(() => $('card').classList.add('filled'), D(260));
+  });
+}
+
+function showForm() {
+  setEngraving('final', { serial: S.serial });
+  heroPose();
+  $('formWrap').hidden = false;
+  requestAnimationFrame(() => {
+    $('regForm').classList.add('open');
+    setTimeout(() => $('regForm').classList.add('filled'), D(260));
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11 · FRAME
+   ══════════════════════════════════════════════════════════════════════════ */
+const clock = new THREE.Clock();
+let lastZ = 0;
+
+/* Springs integrate at a FIXED step, substepped to cover real elapsed time.
+   A clamped-but-variable dt was the bug: at 10fps the springs ran at a third of
+   wall speed, so the Track B spring-back had not finished by the time the
+   500ms timeout moved on and the key stayed stuck mid-turn. Fixed step keeps
+   the integrator stable; substepping keeps it honest about the clock. */
+const PHYS_STEP = 1 / 60;
+let physAcc = 0;
+
+function stepPhysics(h) {
+  const q = S.phase === 'q';
+
+  // idle motion is a slow SWAY, not a full spin: it walks the specular streak
+  // back and forth across the metal without ever presenting the back of the key
+  if (!ptr.down && S.phase !== 'turn' && CFG.MOVE.IDLE_SPIN) {
+    idlePhase += CFG.MOVE.IDLE_SPIN * h;
+    const amp = (S.phase === 'reveal' || S.phase === 'form') ? CFG.MOVE.HERO_SWAY : CFG.MOVE.IDLE_SWAY;
+    idleYaw = Math.sin(idlePhase) * amp;
+  }
+  if (q) idleYaw = lerp(idleYaw, 0, 1 - Math.exp(-CFG.MOVE.Q_RECENTER * h));
+
+  const pc = q ? CFG.MOVE.Q_PITCH_CLAMP : CFG.MOVE.PITCH_CLAMP;
+  const yc = q ? CFG.MOVE.Q_YAW_CLAMP  : CFG.MOVE.YAW_CLAMP;
+  drag.x = clamp(drag.x, -pc, pc);
+  drag.y = clamp(drag.y, -yc, yc);
+
+  // both inputs feed one target; clamped so the key never shows a bad back angle
+  const tx = clamp(drag.x + gyro.x, -pc, pc);
+  const ty = clamp(drag.y + gyro.y + (q ? 0 : idleYaw),
+                   -(yc + CFG.MOVE.IDLE_SWAY), yc + CFG.MOVE.IDLE_SWAY);
+
+  const k = CFG.MOVE.DAMP_OMEGA * CFG.MOVE.DAMP_OMEGA, c = 2 * CFG.MOVE.DAMP_OMEGA;
+  rot.vx += (k * (tx - rot.x) - c * rot.vx) * h; rot.x += rot.vx * h;
+  rot.vy += (k * (ty - rot.y) - c * rot.vy) * h; rot.y += rot.vy * h;
+  keyTilt.rotation.x = rot.x;
+  keyTilt.rotation.y = q ? clamp(rot.y, -yc, yc) : rot.y;
+
+  updateTurn(h);
+}
+
+function loop() {
+  const raw = Math.min(clock.getDelta(), 0.5);       // wall time
+  physAcc = Math.min(physAcc + raw, PHYS_STEP * CFG.MOVE.MAX_SUBSTEPS);
+  while (physAcc >= PHYS_STEP) { stepPhysics(PHYS_STEP); physAcc -= PHYS_STEP; }
+  tickTweens(raw);
+
+  if (A.fricGain) {                                   // friction follows angular speed
+    const speed = Math.abs(rot.vy) + Math.abs(rot.vx) + Math.abs(keyRoot.rotation.z - lastZ) / Math.max(raw, 1e-4);
+    A.fric.frequency.value = 1400 + clamp(speed, 0, 6) * 320;
+    A.fricGain.gain.setTargetAtTime(clamp(speed * 0.055, 0, 1) * CFG.AUD.FRICTION, A.ctx.currentTime, 0.06);
+  }
+  lastZ = keyRoot.rotation.z;
+
+  composer.render();
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, CFG.MAX_DPR));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(w, h);                             // bloom RTs move with it
+  backdrop.material.uniforms.uAspect.value = w / h;
+  burst.material.uniforms.uAspect.value = w / h;
+  // re-solve framing: orientation change swaps which axis is limiting
+  camera.position.z = fitZ(camFit);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { renderer.setAnimationLoop(null); A.ctx?.suspend?.(); }
+  else { clock.getDelta(); renderer.setAnimationLoop(loop); if (!S.muted) A.ctx?.resume?.(); }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12 · QR — byte mode, ECC L, single block, mask 0. Versions 1–5 (≤106 chars),
+   which is all an invite URL needs and removes block interleaving entirely.
+   ══════════════════════════════════════════════════════════════════════════ */
+function qrMatrix(text) {
+  const bytes = new TextEncoder().encode(text);
+  const DCW = [19, 34, 55, 80, 108], ECW = [7, 10, 15, 20, 26];
+  let ver = 0;
+  for (let v = 0; v < 5; v++) if (bytes.length + 2 <= DCW[v]) { ver = v + 1; break; }
+  if (!ver) throw new Error('QR payload too long');
+  const dcw = DCW[ver - 1], ecw = ECW[ver - 1];
+
+  const bits = [];
+  const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+  push(0b0100, 4); push(bytes.length, 8);
+  for (const b of bytes) push(b, 8);
+  push(0, Math.min(4, dcw * 8 - bits.length));
+  while (bits.length % 8) bits.push(0);
+  const data = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+    data.push(b);
+  }
+  for (let p = 0; data.length < dcw; p++) data.push(p % 2 ? 0x11 : 0xEC);
+
+  // GF(256) tables, Reed–Solomon remainder (Nayuki formulation)
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  for (let i = 0, x = 1; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11D; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  const mul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+  const div = new Uint8Array(ecw); div[ecw - 1] = 1;
+  for (let i = 0, root = 1; i < ecw; i++) {
+    for (let j = 0; j < ecw; j++) {
+      div[j] = mul(div[j], root);
+      if (j + 1 < ecw) div[j] ^= div[j + 1];
+    }
+    root = mul(root, 2);
+  }
+  const rem = new Uint8Array(ecw);
+  for (const b of data) {
+    const f = b ^ rem[0];
+    rem.copyWithin(0, 1); rem[ecw - 1] = 0;
+    for (let j = 0; j < ecw; j++) rem[j] ^= mul(div[j], f);
+  }
+  const words = data.concat([...rem]);
+
+  const n = ver * 4 + 17;
+  const m = Array.from({ length: n }, () => new Int8Array(n).fill(-1));
+  const put = (r, c, v) => { if (r >= 0 && r < n && c >= 0 && c < n) m[r][c] = v; };
+
+  for (const [fr, fc] of [[0, 0], [0, n - 7], [n - 7, 0]])
+    for (let dr = -1; dr <= 7; dr++) for (let dc = -1; dc <= 7; dc++) {
+      const d = Math.max(Math.abs(dr - 3), Math.abs(dc - 3));
+      put(fr + dr, fc + dc, (d <= 1 || d === 3) ? 1 : 0);
+    }
+  for (let i = 0; i < n; i++) {
+    if (m[6][i] === -1) m[6][i] = i % 2 === 0 ? 1 : 0;
+    if (m[i][6] === -1) m[i][6] = i % 2 === 0 ? 1 : 0;
+  }
+  if (ver >= 2) {
+    const al = [6, ver * 4 + 10], last = al[al.length - 1];
+    for (const r of al) for (const c of al) {
+      if ((r === 6 && c === 6) || (r === 6 && c === last) || (r === last && c === 6)) continue;
+      for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++)
+        put(r + dr, c + dc, Math.max(Math.abs(dr), Math.abs(dc)) === 1 ? 0 : 1);
+    }
+  }
+  // format info: ECC L (0b01), mask 0
+  let f = (0b01 << 3) | 0, r0 = f;
+  for (let i = 0; i < 10; i++) r0 = (r0 << 1) ^ ((r0 >>> 9) * 0x537);
+  const fmt = ((f << 10) | (r0 & 0x3FF)) ^ 0x5412;
+  const fb = i => (fmt >>> i) & 1;
+  for (let i = 0; i <= 5; i++) put(i, 8, fb(i));
+  put(7, 8, fb(6)); put(8, 8, fb(7)); put(8, 7, fb(8));
+  for (let i = 9; i < 15; i++) put(8, 14 - i, fb(i));
+  for (let i = 0; i < 8; i++) put(8, n - 1 - i, fb(i));
+  for (let i = 8; i < 15; i++) put(n - 15 + i, 8, fb(i));
+  put(n - 8, 8, 1);
+
+  let bi = 0;
+  const total = words.length * 8;
+  for (let right = n - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < n; vert++) {
+      for (let j = 0; j < 2; j++) {
+        const c = right - j;
+        const up = ((right + 1) & 2) === 0;
+        const r = up ? n - 1 - vert : vert;
+        if (m[r][c] !== -1) continue;
+        let bit = 0;
+        if (bi < total) { bit = (words[bi >> 3] >>> (7 - (bi & 7))) & 1; bi++; }
+        m[r][c] = bit ^ ((r + c) % 2 === 0 ? 1 : 0);
+      }
+    }
+  }
+  return m;
+}
+
+function drawQR(ctx, text, x, y, size, dark, light) {
+  const m = qrMatrix(text), n = m.length, quiet = 4;
+  const cell = size / (n + quiet * 2);
+  ctx.fillStyle = light;
+  ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = dark;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (m[r][c] === 1) ctx.fillRect(
+      Math.floor(x + (c + quiet) * cell), Math.floor(y + (r + quiet) * cell),
+      Math.ceil(cell), Math.ceil(cell));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13 · CARD EXPORT — 1080×1920, composed client-side. Nothing is uploaded.
+   ══════════════════════════════════════════════════════════════════════════ */
+function brushed(ctx, x, y, w, h) {
+  const gr = ctx.createLinearGradient(x, y, x + w * 0.6, y + h);
+  gr.addColorStop(0, '#17191C'); gr.addColorStop(0.46, '#0E1013'); gr.addColorStop(1, '#131519');
+  ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  for (let i = 0; i < 900; i++) {            // brushed grain: horizontal, not noise
+    const yy = y + Math.random() * h;
+    ctx.fillStyle = `rgba(242,239,233,${Math.random() * 0.026})`;
+    ctx.fillRect(x, yy, w, 1);
+  }
+  const sheen = ctx.createLinearGradient(x, y, x + w, y + h * 0.55);
+  sheen.addColorStop(0, 'rgba(242,239,233,0)');
+  sheen.addColorStop(0.5, 'rgba(242,239,233,0.045)');
+  sheen.addColorStop(1, 'rgba(242,239,233,0)');
+  ctx.fillStyle = sheen; ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+function emblemPath(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 6 + i * Math.PI / 3;
+    const px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+  ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy);
+  ctx.moveTo(cx, cy - r * 0.55); ctx.lineTo(cx, cy + r * 0.55);
+}
+
+/* render the key alone into a square buffer, then draw it into the card */
+function renderKeySquare(px) {
+  const w = window.innerWidth, h = window.innerHeight, dpr = renderer.getPixelRatio();
+  const saveRotY = keyTilt.rotation.y, saveRotX = keyTilt.rotation.x;
+  const saveKY = keyRoot.position.y, saveKS = keyRoot.scale.x, saveTurn = keyRoot.rotation.z;
+
+  /* Fixed export pose. A flat metal face reflects the environment at twice its
+     tilt angle, so these two numbers are what put the softbox streak on the
+     plate — they are not arbitrary framing. If ENV.BOX_POS moves, re-derive
+     them: tilt ≈ half the softbox's angle off the view axis. */
+  keyTilt.rotation.set(CFG.CARD.POSE_X, CFG.CARD.POSE_Y, 0);
+  keyRoot.rotation.z = 0;                     // Track A leaves the key turned 90°
+  keyRoot.position.y = 0;
+  keyRoot.scale.setScalar(1);
+  camera.aspect = 1;
+  camera.position.z = fitZ('card');
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(1);
+  renderer.setSize(px, px, false);
+  composer.setPixelRatio(1);
+  composer.setSize(px, px);
+  backdrop.material.uniforms.uAspect.value = 1;
+  burst.material.uniforms.uAspect.value = 1;
+  composer.render();                          // must read in the same tick
+
+  const out = document.createElement('canvas');
+  out.width = out.height = px;
+  out.getContext('2d').drawImage(renderer.domElement, 0, 0);
+
+  keyTilt.rotation.set(saveRotX, saveRotY, 0);
+  keyRoot.rotation.z = saveTurn;
+  keyRoot.position.y = saveKY; keyRoot.scale.setScalar(saveKS);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(w, h, false);
+  composer.setPixelRatio(dpr);
+  composer.setSize(w, h);
+  resize();
+  return out;
+}
+
+async function buildCardImage() {
+  const W = 1080, H = 1920;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+
+  c.fillStyle = '#0A0B0D'; c.fillRect(0, 0, W, H);
+  const M = 54;
+  brushed(c, M, M, W - M * 2, H - M * 2);
+
+  const key = renderKeySquare(CFG.CARD.PX);
+  c.drawImage(key, (W - 880) / 2, 118, 880, 880);
+
+  // embossed amber hairline
+  c.strokeStyle = 'rgba(0,0,0,.65)'; c.lineWidth = 2;
+  c.strokeRect(M + 15, M + 15, W - (M + 15) * 2, H - (M + 15) * 2);
+  c.strokeStyle = 'rgba(212,162,76,.42)'; c.lineWidth = 2;
+  c.strokeRect(M + 14, M + 14, W - (M + 14) * 2, H - (M + 14) * 2);
+
+  c.strokeStyle = '#D4A24C'; c.lineWidth = 3;
+  emblemPath(c, W / 2, 1078, 34); c.stroke();
+
+  c.textAlign = 'center';
+  c.direction = 'rtl';
+  c.fillStyle = '#F2EFE9';
+  c.font = `700 96px ${F_AR}`;
+  c.fillText(S.archetype ? S.archetype.ar : 'دعوة', W / 2, 1230);
+
+  c.direction = 'ltr';
+  c.fillStyle = 'rgba(242,239,233,.5)';
+  c.font = `400 27px ${F_MONO}`;
+  c.fillText(spaced(S.archetype ? S.archetype.en : 'INVITATION', 8), W / 2, 1284);
+
+  c.strokeStyle = 'rgba(242,239,233,.12)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(M + 70, 1336); c.lineTo(W - M - 70, 1336); c.stroke();
+
+  c.fillStyle = '#D4A24C';
+  c.font = `500 34px ${F_MONO}`;
+  c.fillText(spaced(S.serial, 6), W / 2, 1396);
+
+  c.beginPath(); c.moveTo(M + 70, 1436); c.lineTo(W - M - 70, 1436); c.stroke();
+
+  c.direction = 'rtl';
+  c.fillStyle = '#F2EFE9';
+  c.font = `300 40px ${F_AR}`;
+  c.fillText(CFG.EVENT.dateAr, W / 2, 1512);
+  c.font = `300 34px ${F_AR}`;
+  c.fillStyle = 'rgba(242,239,233,.66)';
+  c.fillText(CFG.EVENT.venueAr, W / 2, 1566);
+
+  c.direction = 'ltr';
+  c.font = `400 24px ${F_MONO}`;
+  c.fillStyle = 'rgba(242,239,233,.4)';
+  c.fillText(spaced(`${CFG.EVENT.dateEn} · ${CFG.EVENT.time}`, 4), W / 2, 1614);
+
+  drawQR(c, CFG.EVENT.qrBase + (S.serial === '—' ? 'INVITE' : S.serial),
+    W / 2 - 84, 1660, 168, '#0A0B0D', '#F2EFE9');
+
+  c.font = `400 20px ${F_MONO}`;
+  c.fillStyle = 'rgba(242,239,233,.3)';
+  c.fillText(spaced(CFG.EVENT.titleEn, 5), W / 2, 1872);
+
+  return cv;
+}
+function spaced(s, px) { return s.split('').join(String.fromCharCode(8202).repeat(Math.max(1, Math.round(px / 3)))); }
+
+async function saveCard() {
+  const cv = await buildCardImage();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  if (!blob) return;
+  const file = new File([blob], 'the-key-invitation.png', { type: 'image/png' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: CFG.EVENT.titleEn }); return; } catch { /* cancelled */ }
+  }
+  // fallback: show it and let the OS long-press flow take over
+  const url = URL.createObjectURL(blob);
+  $('shareImg').src = url;
+  $('shareOv').hidden = false;
+  $('bShareClose').onclick = () => { $('shareOv').hidden = true; URL.revokeObjectURL(url); };
+}
+
+/* ── calendar + maps ── */
+function icsText() {
+  const esc = s => String(s).replace(/([,;\\])/g, '\\$1');
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//the-key//invitation//EN',
+    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+    `UID:${S.serial}@the-key.invite`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+    `DTSTART:${CFG.EVENT.startUTC}`, `DTEND:${CFG.EVENT.endUTC}`,
+    `SUMMARY:${esc(CFG.EVENT.titleEn)}`,
+    `LOCATION:${esc(CFG.EVENT.venueEn)}`,
+    `DESCRIPTION:${esc(`${CFG.EVENT.titleAr} — ${S.serial}`)}`,
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n') + '\r\n';
+}
+function downloadIcs() {
+  const blob = new Blob([icsText()], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'the-key.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+$('bIcs').addEventListener('click', downloadIcs);
+$('nIcs').addEventListener('click', downloadIcs);
+$('bMap').addEventListener('click', () => window.open(CFG.EVENT.maps, '_blank', 'noopener'));
+$('nMap').addEventListener('click', () => window.open(CFG.EVENT.maps, '_blank', 'noopener'));
+$('bSave').addEventListener('click', () => { $('bSave').disabled = true; saveCard().finally(() => $('bSave').disabled = false); });
+
+/* ── registration (Track B) ── */
+$('regForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (!f.checkValidity()) { $('formMsg').textContent = 'أكمل الحقول المطلوبة'; f.reportValidity(); return; }
+  const btn = $('bSubmit');
+  btn.disabled = true; btn.textContent = '…';
+  $('formMsg').textContent = 'STORING';
+  const payload = {
+    name: f.name.value.trim(), phone: f.phone.value.trim(),
+    email: f.email.value.trim(), instagram: f.instagram.value.trim(),
+    serial: S.serial, archetype: S.archetype?.en, answers: S.answers, ts: Date.now(),
+  };
+  // TODO: POST to your endpoint. Kept local so the file ships without a backend.
+  try { localStorage.setItem('key.reg', JSON.stringify(payload)); } catch {}
+  await wait(D(900));
+  btn.textContent = '✓';
+  $('formMsg').innerHTML = '<span class="ar">ملفك انحفظ</span> &nbsp;·&nbsp; PROFILE STORED';
+  sfxTick();
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   14 · DEV TUNER (?debug)
+   ══════════════════════════════════════════════════════════════════════════ */
+function buildTuner() {
+  const p = document.createElement('div');
+  p.id = 'tuner';
+  // collapsible: at 250px the panel covers the key on a phone-width viewport
+  const head = document.createElement('div');
+  head.id = 'tunerHead';
+  head.innerHTML = `<h4 style="margin:0">TRACK ${TRACK} · ${LOW_END ? 'LOW-END' : 'FULL'}</h4>`;
+  const tog = document.createElement('button');
+  tog.textContent = '—';
+  tog.onclick = () => {
+    const c = p.classList.toggle('collapsed');
+    tog.textContent = c ? '+' : '—';
+  };
+  head.appendChild(tog);
+  p.appendChild(head);
+
+  const group = (title, items) => {
+    p.insertAdjacentHTML('beforeend', `<h4>${title}</h4>`);
+    items.forEach(([label, get, set, min, max, step]) => {
+      const l = document.createElement('label');
+      const span = document.createElement('span');
+      span.textContent = (+get()).toFixed(3);
+      l.append(`${label} `, span);
+      const i = document.createElement('input');
+      Object.assign(i, { type: 'range', min, max, step, value: get() });
+      i.oninput = () => { set(+i.value); span.textContent = (+i.value).toFixed(3); };
+      l.appendChild(i); p.appendChild(l);
+    });
+  };
+
+  group('MATERIAL', [
+    ['roughness', () => bodyMat.roughness, v => { bodyMat.roughness = v; panelMat.roughness = v * CFG.MAT.ENGRAVE_ROUGH_MUL; }, 0, 1, .01],
+    ['envMapIntensity', () => bodyMat.envMapIntensity, v => { bodyMat.envMapIntensity = v; panelMat.envMapIntensity = v; }, 0, 4, .05],
+    ['bevel morph', () => bodyMesh.morphTargetInfluences[0], v => bodyMesh.morphTargetInfluences[0] = v, 0, 1, .01],
+    ['engrave bumpScale', () => panelMat.bumpScale, v => panelMat.bumpScale = v, 0, .12, .002],
+    ['clearcoatRough', () => panelMat.clearcoatRoughness, v => panelMat.clearcoatRoughness = v, 0, 1, .01],
+  ]);
+  group('BLOOM', [
+    ['strength', () => bloomPass ? bloomPass.strength : 0, v => bloomPass && (bloomPass.strength = v), 0, 3, .01],
+    ['radius', () => bloomPass ? bloomPass.radius : 0, v => bloomPass && (bloomPass.radius = v), 0, 1.5, .01],
+    ['threshold', () => bloomPass ? bloomPass.threshold : 0, v => bloomPass && (bloomPass.threshold = v), 0, 1.4, .01],
+  ]);
+  group('MOTION', [
+    ['idle spin', () => CFG.MOVE.IDLE_SPIN, v => CFG.MOVE.IDLE_SPIN = v, 0, .8, .01],
+    ['damp omega', () => CFG.MOVE.DAMP_OMEGA, v => CFG.MOVE.DAMP_OMEGA = v, 2, 24, .5],
+    ['drag sens', () => CFG.MOVE.DRAG_SENS, v => CFG.MOVE.DRAG_SENS = v, .001, .02, .0005],
+    ['pitch clamp', () => CFG.MOVE.PITCH_CLAMP, v => CFG.MOVE.PITCH_CLAMP = v, .05, 1.2, .01],
+    ['turn drag px', () => CFG.TURN.DRAG_PX, v => CFG.TURN.DRAG_PX = v, 80, 700, 10],
+    ['turn resist exp', () => CFG.TURN.RESIST_EXP, v => CFG.TURN.RESIST_EXP = v, 1, 5, .1],
+    ['B stall deg', () => CFG.TURN.B_STALL_DEG, v => CFG.TURN.B_STALL_DEG = v, 20, 89, 1],
+  ]);
+
+  p.insertAdjacentHTML('beforeend', '<h4>JUMP</h4>');
+  const btns = document.createElement('div');
+  btns.className = 'btns';
+  const mk = (label, fn) => {
+    const b = document.createElement('button'); b.textContent = label;
+    b.onclick = fn; btns.appendChild(b);
+  };
+  const fill = k => {
+    S.answers = []; S.vec = [0, 0, 0];
+    for (let i = 0; i < k; i++) {
+      const o = QUESTIONS[i].opts[i % 4];
+      S.answers.push(i % 4); S.vec = S.vec.map((v, j) => v + o.w[j]);
+    }
+    transitionMaterial();
+  };
+  mk('Q1', () => { clearTimeout(idleTimer); fill(0); askQuestion(0); });
+  mk('Q2', () => { clearTimeout(idleTimer); fill(1); askQuestion(1); });
+  mk('Q3', () => { clearTimeout(idleTimer); fill(2); askQuestion(2); });
+  mk('TURN', () => { clearTimeout(idleTimer); fill(3); goTurn(); });
+  mk('OPEN', () => { clearTimeout(idleTimer); fill(3); computeArchetype(); S.phase = 'turn'; openingStarted = true; turn.locked = true; openSequence(); });
+  mk('STALL', () => { clearTimeout(idleTimer); fill(3); computeArchetype(); S.phase = 'turn'; stallStarted = true; springBack(); });
+  mk('CARD', () => saveCard());
+  mk('→ TRACK A', () => { const u = new URL(location); u.searchParams.set('track', 'a'); location.href = u; });
+  mk('→ TRACK B', () => { const u = new URL(location); u.searchParams.set('track', 'b'); location.href = u; });
+  mk('TOKEN', () => { const t = makeToken(); prompt('valid token', `${location.origin}${location.pathname}?k=${t}`); });
+  p.appendChild(btns);
+  document.body.appendChild(p);
+  window.CFG = CFG; window.S = S; window.makeToken = makeToken;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   15 · BOOT
+   ══════════════════════════════════════════════════════════════════════════ */
+async function loadFonts() {
+  if (!document.fonts) return;
+  const specs = [
+    `700 38px "IBM Plex Sans Arabic"`, `300 34px "IBM Plex Sans Arabic"`,
+    `400 20px "IBM Plex Mono"`, `500 26px "IBM Plex Mono"`,
+  ];
+  // canvas silently falls back to a non-Arabic face if this is skipped —
+  // the single most likely thing to break without an error
+  try {
+    await Promise.race([
+      Promise.all(specs.map(s => document.fonts.load(s, 'المفتاح ABC0123'))),
+      wait(2500),
+    ]);
+  } catch { /* degraded to the system Arabic face; still legible */ }
+}
+
+function showNoGL() {
+  computeArchetype();
+  $('nSerial').textContent = S.serial;
+  $('nDate').textContent  = CFG.EVENT.dateAr;
+  $('nTime').textContent  = CFG.EVENT.time;
+  $('nVenue').textContent = CFG.EVENT.venueAr;
+  $('scrNoGL').hidden = false;
+  veil.classList.add('clear');
+}
+
+async function boot() {
+  if (!hasWebGL()) { showNoGL(); return; }
+  initRenderer();
+  buildEnvironment();
+  buildBackdrop();
+  await loadFonts();
+
+  setEngraving('idle', { serial: '' });
+  buildKey();
+  applyMaterial(matNow);
+  bindInput();
+  resize();
+  renderer.setAnimationLoop(loop);
+  if (DEBUG) buildTuner();
+  goIdle();
+
+  // if the webfont landed late, re-cut the engraving once (never per frame)
+  document.fonts?.ready.then(() => setEngraving(engState.mode, engState.data));
+}
+
+if (isInApp) $('scrInApp').hidden = false;
+else boot();
+</script>
+</body>
+</html>
