@@ -1,0 +1,4163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05060B">
+<meta name="referrer" content="no-referrer">
+<title>هل أنت مستعد للمستقبل؟</title>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     FUTURE READINESS · هل أنت مستعد للمستقبل؟
+     A camera-driven WebAR invitation experience. Single self-contained file.
+
+     WHAT THE FACE IS FOR: framing, anchoring the FutureField, and
+     cropping the portrait on the invitation card. It is NEVER an input to
+     the score. The score is three slider values and nothing else:
+         round(q1*0.34 + q2*0.33 + q3*0.33)
+     No randomness, no entropy, no fingerprint, no timing seed anywhere in
+     the scoring path. Same three answers -> same percentage, forever.
+
+     LAYER STACK (z-index)
+       0  black fallback stage
+       1  <video>   mirrored, JS cover-fitted
+       2  <canvas>  Three.js, transparent  — scan points + particles ONLY
+       3  atmospheric statics — depth haze, horizon grid, ambient grade
+       4  HUD DOM   — status pill, telemetry, HUD cards, viewfinder
+       5  question panel / result block
+       6  screens    — splash, orientation, error
+       7  invitation modal
+     DOM owns all typography and controls. WebGL never renders text.
+     ════════════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   1 · TOKENS
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* viewport, written by resize() against window.visualViewport */
+  --app-vw:100vw; --app-vh:100vh; --vv-top:0px; --vv-left:0px;
+
+  --violet-primary:#9A84CC;
+  --violet-deep:#6B5596;
+  --violet-text:#443B7C;
+  --cyan:#00EAF2;
+  --ice-blue:#7DDCFF;
+  --soft-bg:#F5F5FA;
+
+  --white-glass:rgba(255,255,255,.16);
+  --white-border:rgba(255,255,255,.40);
+  --glass-blur:18px;
+
+  --ink:#FFFFFF;
+  --ink-dim:rgba(255,255,255,.72);
+  --ink-faint:rgba(255,255,255,.46);
+
+  --r-lg:24px; --r-md:18px; --r-sm:12px;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+
+  --ease-out:cubic-bezier(.16,.84,.30,1);
+  --ease-inout:cubic-bezier(.65,.02,.28,1);
+}
+@supports (height:100dvh){ :root{ --app-vh:100dvh; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2 · RESET / ROOT
+   ══════════════════════════════════════════════════════════════════════════ */
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{
+  width:100%; height:100%; margin:0; padding:0;
+  overflow:hidden; touch-action:none; overscroll-behavior:none;
+  background:#05060B;
+}
+body{
+  position:fixed; inset:0;
+  font-family:'Cairo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color:var(--ink);
+  user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+}
+button{ font-family:inherit; color:inherit; border:0; background:none; cursor:pointer; }
+h1,h2,h3,p{ margin:0; }
+
+/* Every full-screen layer positions against the visual-viewport vars, never
+   against 100vh and never against left:50% — the layout and visual viewports
+   diverge the moment Safari's address bar collapses. */
+.layer{
+  position:absolute;
+  top:var(--vv-top); left:var(--vv-left);
+  width:var(--app-vw); height:var(--app-vh);
+  pointer-events:none;
+}
+.centered-x{
+  left:calc(var(--vv-left) + var(--app-vw)/2);
+  transform:translateX(-50%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3 · LAYER 0-2 — stage, video, gl canvas
+   ══════════════════════════════════════════════════════════════════════════ */
+#stage{ z-index:0; background:#05060B; }
+
+#videoWrap{ z-index:1; overflow:hidden; }
+#webcam{
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%) scaleX(-1);   /* the ONE horizontal flip */
+  object-fit:cover;
+  opacity:0; transition:opacity .7s var(--ease-out);
+  will-change:opacity;
+}
+#webcam.live{ opacity:1; }
+
+#gl{ z-index:2; display:block; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4 · LAYER 3 — atmospheric statics (§7.2 haze, §7.3 grid, §7.8 grade)
+   ══════════════════════════════════════════════════════════════════════════ */
+#atmos{ z-index:3; }
+
+/* §7.2 Depth Haze — permanently on, zero animation. This single element is
+   what turns a raw webcam feed into "looking through a device". */
+#depthHaze{
+  position:absolute; inset:0; opacity:0;
+  transition:opacity 1s var(--ease-out);
+  background:
+    radial-gradient(115% 92% at 50% 40%,
+      rgba(0,0,0,0) 30%, rgba(4,6,14,.40) 68%, rgba(2,3,8,.80) 100%),
+    radial-gradient(90% 70% at 50% 38%,
+      rgba(125,220,255,.10) 0%, rgba(0,0,0,0) 62%),
+    linear-gradient(180deg, rgba(90,140,210,.12) 0%, rgba(0,0,0,0) 28%,
+      rgba(0,0,0,0) 62%, rgba(34,16,66,.26) 100%);
+}
+#depthHaze.on{ opacity:1; }
+/* the edge desaturation half of the haze — separate node so it can carry
+   backdrop-filter without tinting the vignette above it */
+#hazeDesat{
+  position:absolute; inset:0; opacity:0;
+  transition:opacity 1s var(--ease-out);
+  -webkit-backdrop-filter:saturate(.96);
+  backdrop-filter:saturate(.96);
+  -webkit-mask-image:radial-gradient(115% 90% at 50% 44%, transparent 52%, #000 100%);
+  mask-image:radial-gradient(115% 90% at 50% 44%, transparent 52%, #000 100%);
+}
+#hazeDesat.on{ opacity:1; }
+
+/* §7.3 Horizon Grid — bottom 18%, behind the question panel, never in front
+   of the user. Shifts a few px laterally with device tilt / face position. */
+#horizonGrid{
+  position:absolute; left:0; right:0; bottom:0; height:26%;
+  opacity:0; transition:opacity .9s var(--ease-out);
+  overflow:hidden;
+}
+#horizonGrid.on{ opacity:1; }
+#horizonGridInner{
+  position:absolute; inset:-6% -12% 0 -12%;
+  will-change:transform;
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(125,220,255,.85) 0 1.5px, transparent 1.5px 62px),
+    repeating-linear-gradient(0deg,
+      rgba(154,132,204,.80) 0 1.5px, transparent 1.5px 24px);
+  -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 55%, #000 100%),
+    radial-gradient(120% 150% at 50% 120%, #000 20%, transparent 72%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(180deg, transparent 0%, #000 55%, #000 100%),
+    radial-gradient(120% 150% at 50% 120%, #000 20%, transparent 72%);
+  mask-composite:intersect;
+  transform:perspective(340px) rotateX(66deg) scale(1.35);
+  transform-origin:50% 100%;
+  opacity:.30;
+}
+
+/* Subject Glow — a soft volume of light sitting behind the user's head, tinted
+   by whichever question is live. This is what stops the scene reading as a flat
+   webcam frame with widgets on top: the user appears to be standing IN light,
+   not in front of it. Anchored to the smoothed face position, never over the
+   face itself (screen blend, and it is darkest at its own centre). */
+#subjectGlow{
+  position:absolute; left:0; top:0; width:520px; height:520px;
+  margin-left:-260px; margin-top:-260px;
+  border-radius:50%;
+  mix-blend-mode:screen;
+  background:radial-gradient(circle closest-side,
+    rgba(125,220,255,.00) 0%, rgba(125,220,255,.16) 42%,
+    rgba(154,132,204,.22) 62%, rgba(154,132,204,.00) 100%);
+  opacity:0; transition:opacity .9s var(--ease-out), background .9s linear;
+  will-change:transform, opacity;
+  pointer-events:none;
+}
+#subjectGlow.on{ opacity:1; }
+
+/* §7.8 Ambient Grade Drift — one overlay, colour+opacity tweened by state.
+   The user should never consciously notice it. */
+#gradeDrift{
+  position:absolute; inset:0;
+  mix-blend-mode:soft-light;
+  background:#5F7FBF; opacity:0;
+  transition:background-color 2.4s linear, opacity 2.4s linear;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5 · LAYER 4 — HUD
+   ══════════════════════════════════════════════════════════════════════════ */
+#hud{ z-index:4; }
+#hud > *{ pointer-events:none; }
+
+/* — viewfinder corners: continuity anchors, never move, never restyle — */
+.vf{
+  position:absolute; width:26px; height:26px;
+  border:1.5px solid rgba(255,255,255,.34);
+  opacity:0; transition:opacity .8s var(--ease-out);
+}
+#hud.framed .vf{ opacity:1; }
+#vfTL{ top:calc(var(--safe-t) + 16px); left:calc(var(--safe-l) + 16px);
+       border-right:0; border-bottom:0; border-radius:8px 0 0 0; }
+#vfTR{ top:calc(var(--safe-t) + 16px); right:calc(var(--safe-r) + 16px);
+       border-left:0; border-bottom:0; border-radius:0 8px 0 0; }
+#vfBL{ bottom:calc(var(--safe-b) + 16px); left:calc(var(--safe-l) + 16px);
+       border-right:0; border-top:0; border-radius:0 0 0 8px; }
+#vfBR{ bottom:calc(var(--safe-b) + 16px); right:calc(var(--safe-r) + 16px);
+       border-left:0; border-top:0; border-radius:0 0 8px 0; }
+
+/* — status pill + telemetry — */
+#statusStack{
+  position:absolute; top:calc(var(--safe-t) + 54px);
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+  opacity:0; transition:opacity .5s var(--ease-out);
+  max-width:min(92vw, 460px);
+}
+#statusStack.on{ opacity:1; }
+#statusPill{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:8px 17px; border-radius:999px;
+  background:rgba(10,12,24,.42);
+  border:1px solid var(--white-border);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.2);
+  backdrop-filter:blur(var(--glass-blur)) saturate(1.2);
+  font-size:clamp(12px,3.5vw,14.5px); font-weight:700; letter-spacing:.1px;
+  color:var(--ink); text-shadow:0 1px 6px rgba(0,0,0,.5);
+  white-space:nowrap;
+}
+#statusDot{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 9px var(--cyan);
+  flex:none;
+}
+#statusText{ transition:opacity .28s var(--ease-out); }
+
+/* §7.9 Telemetry Line — one line, every token a genuinely live value. */
+#telemetry{
+  direction:ltr;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10px; letter-spacing:1.2px; font-weight:400;
+  color:rgba(255,255,255,.35);
+  text-shadow:0 1px 4px rgba(0,0,0,.6);
+  opacity:0; transition:opacity .5s var(--ease-out);
+  white-space:nowrap;
+}
+#telemetry.on{ opacity:1; }
+
+/* — three HUD cards — */
+#hudCards{
+  position:absolute; top:calc(var(--safe-t) + 132px);
+  display:flex; flex-direction:row-reverse; gap:8px;
+  opacity:0; transform:translateX(-50%) translateY(-8px);
+  transition:opacity .6s var(--ease-out), transform .6s var(--ease-out);
+}
+#hudCards.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+.hud-card{
+  position:relative; overflow:hidden;
+  min-width:88px; padding:8px 12px 9px;
+  border-radius:var(--r-sm);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  text-align:center;
+  transition:background-color .45s var(--ease-out), border-color .45s var(--ease-out),
+             transform .55s var(--ease-out), opacity .45s var(--ease-out);
+}
+.hud-card .hc-idx{
+  direction:ltr; font-size:9px; letter-spacing:1.4px; font-weight:700;
+  color:rgba(255,255,255,.42); font-family:ui-monospace,Menlo,Consolas,monospace;
+}
+.hud-card .hc-title{
+  font-size:clamp(11px,3.2vw,13px); font-weight:800; margin-top:1px;
+  color:rgba(255,255,255,.66); transition:color .45s var(--ease-out);
+}
+.hud-card .hc-bar{
+  margin-top:6px; height:2px; border-radius:2px;
+  background:rgba(255,255,255,.16); overflow:hidden;
+}
+.hud-card .hc-bar i{
+  display:block; height:100%; width:0%;
+  background:linear-gradient(90deg,var(--violet-primary),var(--cyan));
+  transition:width .7s var(--ease-out);
+}
+.hud-card.active{
+  background:rgba(255,255,255,.15);
+  border-color:rgba(255,255,255,.52);
+  transform:translateY(-2px);
+}
+.hud-card.active .hc-title{ color:#fff; }
+.hud-card.done .hc-title{ color:var(--ice-blue); }
+.hud-card.done{ border-color:rgba(125,220,255,.45); }
+/* §7.4 Light Sweep — one surface at a time, driven by a JS rotation */
+.sweep::after{
+  content:''; position:absolute; top:-60%; bottom:-60%; width:42%;
+  left:-60%;
+  background:linear-gradient(105deg, transparent, rgba(255,255,255,.30), transparent);
+  transform:skewX(-16deg);
+  animation:sweepMove 1.2s var(--ease-inout) 1 forwards;
+  pointer-events:none;
+}
+@keyframes sweepMove{ from{ left:-60%; } to{ left:120%; } }
+
+/* §7.1 Signal Lock — four ticks converging once on first acquisition */
+#signalLock{ position:absolute; inset:0; opacity:0; }
+#signalLock.run{ opacity:1; }
+.sl-tick{
+  --sx:0px; --sy:0px;
+  position:absolute; background:var(--cyan);
+  box-shadow:0 0 8px rgba(0,234,242,.85);
+  opacity:0;
+}
+#signalLock.run .sl-tick{ animation:slIn .42s var(--ease-out) forwards; }
+#signalLock.run.flash .sl-tick{ animation:slOut .22s linear forwards; }
+@keyframes slIn{ 0%{opacity:0; transform:translate(var(--sx),var(--sy));}
+                 35%{opacity:1;}
+                 100%{opacity:1; transform:translate(0,0);} }
+@keyframes slOut{ 0%{opacity:1;} 40%{opacity:1; filter:brightness(2.2);} 100%{opacity:0;} }
+
+/* — framing guidance chip (safe-zone) — */
+#framingHint{
+  position:absolute; top:calc(var(--safe-t) + 196px);
+  padding:7px 15px; border-radius:999px;
+  background:rgba(10,12,24,.5); border:1px solid rgba(255,255,255,.3);
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  font-size:clamp(12px,3.4vw,14px); font-weight:700;
+  opacity:0; transition:opacity .35s var(--ease-out);
+  white-space:nowrap;
+}
+#framingHint.on{ opacity:1; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6 · LAYER 5 — question panel + result block
+   ══════════════════════════════════════════════════════════════════════════ */
+#panelLayer{ z-index:5; }
+
+.glass-panel{
+  position:absolute; bottom:calc(var(--safe-b) + 22px);
+  width:min(92vw, 470px);
+  padding:20px 20px 24px;
+  border-radius:var(--r-lg);
+  background:rgba(14,16,30,.40);
+  border:1px solid var(--white-border);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.25);
+  backdrop-filter:blur(var(--glass-blur)) saturate(1.25);
+  box-shadow:0 18px 50px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.14);
+  overflow:hidden;
+  pointer-events:auto;
+}
+
+/* — question panel — */
+#questionPanel{
+  opacity:0; transform:translateX(-50%) translateY(26px);
+  transition:opacity .5s var(--ease-out), transform .5s var(--ease-out);
+  pointer-events:none;
+}
+#questionPanel.on{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+/* §4.4 question -> question: fade slightly, shift up, swap, enter from below */
+#qBody{ transition:opacity .26s var(--ease-out), transform .26s var(--ease-out); }
+#qBody.out{ opacity:.0; transform:translateY(-12px); }
+#qBody.in{ opacity:0; transform:translateY(12px); }
+
+#qIndex{
+  direction:ltr; text-align:center;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:11px; letter-spacing:2.4px; font-weight:700;
+  color:rgba(255,255,255,.5);
+}
+#qText{
+  margin-top:10px; text-align:center;
+  font-size:clamp(17px,4.9vw,22px); font-weight:800; line-height:1.55;
+  text-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+.q-labels{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:14px; margin-top:20px;
+}
+.q-label{
+  flex:1 1 0; font-size:clamp(11.5px,3.2vw,13px); font-weight:600;
+  line-height:1.5; color:var(--ink-dim); text-shadow:0 1px 6px rgba(0,0,0,.5);
+}
+.q-label-left{ text-align:left; }
+.q-label-right{ text-align:right; }
+
+/* — the custom slider (a styled <input type=range> would not pass the bar) — */
+#slider{
+  position:relative; margin-top:12px; height:46px;
+  touch-action:none; cursor:grab;
+}
+#slider.dragging{ cursor:grabbing; }
+#sliderTrack{
+  position:absolute; top:50%; left:0; right:0; height:3px;
+  transform:translateY(-50%); border-radius:3px;
+  background:rgba(255,255,255,.20);
+  overflow:visible;
+}
+#sliderFill{
+  position:absolute; top:0; bottom:0; border-radius:3px;
+  background:linear-gradient(90deg,var(--violet-primary),var(--cyan));
+  left:50%; width:0%;
+  box-shadow:0 0 10px rgba(0,234,242,.4);
+}
+#sliderOrigin{
+  position:absolute; top:50%; left:50%;
+  width:1px; height:11px; transform:translate(-50%,-50%);
+  background:rgba(255,255,255,.45);
+}
+#sliderTrail{
+  position:absolute; top:50%; height:14px; border-radius:14px;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side, rgba(0,234,242,.30), transparent 75%);
+  width:64px; left:50%; opacity:0;
+  transition:opacity .25s var(--ease-out);
+  pointer-events:none;
+}
+#slider.dragging #sliderTrail{ opacity:1; }
+#sliderHandle{
+  position:absolute; top:50%; left:50%;
+  width:28px; height:28px; border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 34% 30%, #ffffff 0%, #E7F6FF 42%, #B7E7F7 100%);
+  border:1.5px solid rgba(255,255,255,.9);
+  box-shadow:0 0 0 8px rgba(0,234,242,.10), 0 0 18px rgba(0,234,242,.55),
+             0 4px 12px rgba(0,0,0,.4);
+  will-change:left;
+}
+/* ≥44px touch target without a 44px visual dot */
+#sliderHandle::after{
+  content:''; position:absolute; top:50%; left:50%;
+  width:48px; height:48px; transform:translate(-50%,-50%); border-radius:50%;
+}
+#sliderHandle.pulse{ animation:handlePulse .42s var(--ease-out); }
+@keyframes handlePulse{
+  0%{ box-shadow:0 0 0 8px rgba(0,234,242,.10), 0 0 18px rgba(0,234,242,.55); }
+  45%{ box-shadow:0 0 0 20px rgba(0,234,242,.0), 0 0 36px rgba(0,234,242,.95); }
+  100%{ box-shadow:0 0 0 8px rgba(0,234,242,.10), 0 0 18px rgba(0,234,242,.55); }
+}
+#slider.locked{ pointer-events:none; }
+
+#qHint{
+  margin-top:2px; text-align:center; min-height:17px;
+  font-size:clamp(11px,3.1vw,12.5px); font-weight:600;
+  color:var(--ink-faint);
+  transition:color .3s var(--ease-out), opacity .3s var(--ease-out);
+}
+#qHint.warn{ color:var(--ice-blue); }
+#qHint.ok{ color:var(--cyan); }
+
+/* — result block: occupies the same region the panel just vacated — */
+#resultBlock{
+  position:absolute; bottom:calc(var(--safe-b) + 30px);
+  width:min(92vw,470px); text-align:center;
+  opacity:0; transform:translateX(-50%) translateY(18px);
+  transition:opacity .6s var(--ease-out), transform .6s var(--ease-out);
+  pointer-events:none;
+}
+#resultBlock.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+#resultQ{
+  font-size:clamp(14px,4vw,17px); font-weight:700; color:var(--ink-dim);
+  text-shadow:0 2px 10px rgba(0,0,0,.55);
+}
+#resultNum{
+  direction:ltr;
+  font-size:clamp(74px,22vw,112px); font-weight:900; line-height:1.02;
+  letter-spacing:-2px; margin:2px 0 -2px;
+  background:linear-gradient(180deg,#FFFFFF 0%,#CFE9FF 52%,#9A84CC 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 6px 26px rgba(0,234,242,.35));
+}
+#resultNum sup{ font-size:.34em; font-weight:800; top:-.86em; margin-inline-start:2px; }
+#resultSub{
+  font-size:clamp(13px,3.7vw,15px); font-weight:700; color:#fff;
+  text-shadow:0 2px 10px rgba(0,0,0,.55);
+}
+#resultBand{
+  margin-top:10px; font-size:clamp(15px,4.3vw,18px); font-weight:800;
+  color:var(--ice-blue); text-shadow:0 2px 10px rgba(0,0,0,.55);
+  opacity:0; transition:opacity .6s var(--ease-out);
+}
+#resultBand.on{ opacity:1; }
+
+/* — tease + CTA — */
+#teaseBlock{
+  position:absolute; bottom:calc(var(--safe-b) + 34px);
+  width:min(92vw,470px); text-align:center;
+  opacity:0; transform:translateX(-50%) translateY(14px);
+  transition:opacity .55s var(--ease-out), transform .55s var(--ease-out);
+  pointer-events:none;
+}
+#teaseBlock.on{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+#teaseLine1{
+  font-size:clamp(19px,5.4vw,25px); font-weight:800;
+  text-shadow:0 2px 12px rgba(0,0,0,.6);
+  opacity:0; transition:opacity .6s var(--ease-out);
+}
+#teaseLine2{
+  margin-top:6px; font-size:clamp(14px,4vw,17px); font-weight:700;
+  color:var(--ice-blue); text-shadow:0 2px 12px rgba(0,0,0,.6);
+  opacity:0; transition:opacity .6s var(--ease-out);
+}
+#teaseLine1.on,#teaseLine2.on{ opacity:1; }
+
+.cta{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:52px; padding:0 32px; border-radius:999px;
+  font-size:clamp(15px,4.2vw,17px); font-weight:800; letter-spacing:.2px;
+  color:#12122A;
+  background:linear-gradient(135deg,#EAF9FF 0%,#BFE9FF 45%,#C9BBEC 100%);
+  box-shadow:0 10px 30px rgba(0,234,242,.28), 0 2px 0 rgba(255,255,255,.7) inset;
+  transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out), opacity .5s var(--ease-out);
+}
+.cta:active{ transform:scale(.97); }
+.cta.ghost{
+  background:rgba(255,255,255,.10); color:#fff;
+  border:1px solid var(--white-border);
+  box-shadow:none;
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+}
+#revealBtn{ margin-top:18px; opacity:0; pointer-events:none; }
+#revealBtn.on{ opacity:1; pointer-events:auto; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7 · LAYER 6 — screens (splash / orientation / error)
+   ══════════════════════════════════════════════════════════════════════════ */
+#screens{ z-index:6; }
+.screen{
+  position:absolute; top:var(--vv-top); left:var(--vv-left);
+  width:var(--app-vw); height:var(--app-vh);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:32px calc(26px + var(--safe-l)) calc(32px + var(--safe-b)) calc(26px + var(--safe-r));
+  text-align:center;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .6s var(--ease-out), visibility .6s;
+}
+.screen.on{ opacity:1; visibility:visible; pointer-events:auto; }
+
+#splash{
+  background:
+    radial-gradient(90% 70% at 50% 22%, rgba(154,132,204,.30), transparent 62%),
+    radial-gradient(80% 60% at 50% 100%, rgba(0,234,242,.14), transparent 60%),
+    linear-gradient(180deg,#0A0C18 0%,#05060B 100%);
+}
+#splashMark{
+  width:112px; height:112px; margin-bottom:6px;
+  opacity:0; transform:scale(.9);
+  transition:opacity .9s var(--ease-out), transform .9s var(--ease-out);
+}
+#splash.on #splashMark{ opacity:1; transform:scale(1); }
+#splashTitle{
+  font-size:clamp(26px,7.6vw,36px); font-weight:900; line-height:1.4;
+  text-shadow:0 4px 24px rgba(0,0,0,.5);
+}
+#splashSub{
+  max-width:32ch; font-size:clamp(14px,4.1vw,17px); font-weight:600;
+  line-height:1.75; color:var(--ink-dim);
+}
+#startBtn{ margin-top:14px; }
+#privacyLine{
+  position:absolute; bottom:calc(var(--safe-b) + 22px);
+  left:26px; right:26px;
+  font-size:clamp(11px,3.1vw,12.5px); font-weight:600; line-height:1.7;
+  color:var(--ink-faint);
+}
+#splashSpinner{
+  margin-top:14px; font-size:14px; font-weight:700; color:var(--ice-blue);
+  opacity:0; transition:opacity .4s var(--ease-out); height:0;
+}
+#splashSpinner.on{ opacity:1; }
+
+#orientation{ background:#05060B; }
+#orientation .big{ font-size:clamp(18px,5.2vw,22px); font-weight:800; line-height:1.6; }
+.rot-icon{
+  width:56px; height:84px; border:2px solid var(--white-border); border-radius:10px;
+  position:relative; margin-bottom:8px;
+}
+.rot-icon::after{
+  content:''; position:absolute; left:50%; bottom:7px; transform:translateX(-50%);
+  width:18px; height:2px; background:var(--white-border); border-radius:2px;
+}
+
+#errorScreen{
+  background:linear-gradient(180deg,#0A0C18 0%,#05060B 100%);
+}
+#errIcon{
+  width:58px; height:58px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; font-weight:900; color:var(--ice-blue);
+}
+#errTitle{ font-size:clamp(17px,4.8vw,21px); font-weight:800; line-height:1.6; max-width:26ch; }
+#errBody{ font-size:clamp(13px,3.7vw,15px); font-weight:600; line-height:1.8;
+          color:var(--ink-dim); max-width:30ch; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8 · LAYER 7 — invitation modal + card
+   ══════════════════════════════════════════════════════════════════════════ */
+#modal{
+  z-index:7;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:0;
+  padding:calc(14px + var(--safe-t)) 12px calc(14px + var(--safe-b));
+  opacity:0; visibility:hidden; pointer-events:none;
+  background:rgba(6,8,16,.55);
+  -webkit-backdrop-filter:blur(18px) saturate(1.1);
+  backdrop-filter:blur(18px) saturate(1.1);
+  transition:opacity .6s var(--ease-out), visibility .6s;
+}
+#modal.on{ opacity:1; visibility:visible; pointer-events:auto; }
+
+/* Display scaling happens on the WRAPPER only. The card itself is locked to
+   480x720 logical px so html2canvas exports exactly what was designed. */
+#cardWrap{
+  width:480px; height:720px;
+  transform-origin:center center;
+  transform:scale(.82); opacity:0;
+  transition:transform .72s var(--ease-out), opacity .6s var(--ease-out);
+  flex:none;
+}
+#modal.assembled #cardWrap{ transform:scale(var(--card-scale,1)); opacity:1; }
+
+#card{
+  width:480px !important; height:720px !important;
+  min-width:480px !important; min-height:720px !important;
+  max-width:480px !important; max-height:720px !important;
+  position:relative; overflow:hidden;
+  border-radius:24px;
+  background:
+    linear-gradient(160deg,#FCFCFE 0%,#F3F2F9 46%,#EDEDF6 100%);
+  border:1.5px solid #FFFFFF;
+  box-shadow:0 26px 60px rgba(20,16,45,.42), 0 0 0 1px rgba(154,132,204,.35);
+  color:var(--violet-text);
+  direction:rtl;
+  font-family:'Cairo',system-ui,sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:20px 26px 14px;
+}
+/* §7.12 guilloché micro-pattern + static holographic sheen. Both STATIC so
+   they survive html2canvas identically to what is on screen. */
+#cardGuilloche{
+  position:absolute; inset:0; pointer-events:none; opacity:.055;
+  background-image:
+    repeating-radial-gradient(circle at 50% 34%, #443B7C 0 .6px, transparent .6px 9px),
+    repeating-radial-gradient(circle at 12% 88%, #6B5596 0 .6px, transparent .6px 13px),
+    repeating-linear-gradient(58deg, #9A84CC 0 .5px, transparent .5px 16px);
+}
+#cardSheen{
+  position:absolute; top:-30%; bottom:-30%; left:-10%; width:52%;
+  pointer-events:none;
+  transform:skewX(-18deg);
+  background:linear-gradient(100deg,
+    rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 38%,
+    rgba(200,232,255,.42) 52%, rgba(255,255,255,0) 100%);
+  opacity:.55;
+}
+#cardAccentTop{
+  position:absolute; top:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg,#00EAF2 0%,#7DDCFF 30%,#9A84CC 70%,#6B5596 100%);
+}
+#cardGlowBl{
+  position:absolute; left:-70px; bottom:-90px; width:260px; height:260px;
+  border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(154,132,204,.28), transparent 68%);
+}
+.card-inner{ position:relative; z-index:2; width:100%;
+             display:flex; flex-direction:column; align-items:center; }
+
+/* 1 · portrait in a bracketed viewfinder frame — deliberately NOT circular,
+      echoing the viewfinder corners the user saw over the live camera */
+#cardPortraitWrap{
+  position:relative; width:138px; height:138px; flex:none; margin-top:0;
+}
+#cardPortrait{
+  position:absolute; top:9px; left:9px; width:120px; height:120px;
+  border-radius:20px; overflow:hidden;
+  background:linear-gradient(160deg,#E7E6F2,#D6D4E8);
+  box-shadow:0 6px 18px rgba(68,59,124,.22), inset 0 0 0 3px #fff;
+}
+#cardPortrait img{ width:100%; height:100%; object-fit:cover; display:block; }
+.cpb{ position:absolute; width:20px; height:20px; border:2px solid #6B5596; opacity:.75; }
+#cpbTL{ top:0;    left:0;  border-right:0; border-bottom:0; border-radius:10px 0 0 0; }
+#cpbTR{ top:0;    right:0; border-left:0;  border-bottom:0; border-radius:0 10px 0 0; }
+#cpbBL{ bottom:0; left:0;  border-right:0; border-top:0;    border-radius:0 0 0 10px; }
+#cpbBR{ bottom:0; right:0; border-left:0;  border-top:0;    border-radius:0 0 10px 0; }
+
+/* the readiness meter — a straight line, replacing the old score ring */
+#cardMeter{
+  width:100%; margin-top:7px; height:7px; border-radius:7px;
+  background:#E2E0EE; overflow:hidden; position:relative;
+}
+#cardMeterFill{
+  display:block; width:0%; height:100%; border-radius:8px;
+  background:linear-gradient(90deg,#9A84CC 0%,#7DDCFF 62%,#00C4D6 100%);
+}
+
+#cardKicker{ margin-top:11px; font-size:15px; font-weight:800; color:var(--violet-deep); }
+#cardScoreLabel{ margin-top:7px; font-size:12.5px; font-weight:700; color:#7C74A8; letter-spacing:.4px; }
+/* Solid colour on purpose: html2canvas 1.4.1 does not implement
+   background-clip:text, and a gradient-clipped number exports invisible.
+   The gradient lives on the live reveal (#resultNum), which is never exported. */
+#cardScore{
+  direction:ltr; font-size:58px; font-weight:900; line-height:1.05; margin-top:-2px;
+  color:#3C336F;
+  text-shadow:0 2px 10px rgba(107,85,150,.18);
+}
+#cardScore sup{ font-size:.34em; font-weight:800; top:-1.05em; margin-inline-start:1px; }
+
+/* 5 · three real indicators */
+#cardBars{ width:100%; margin-top:10px; display:flex; flex-direction:column; gap:7px; }
+.cbar-row{ display:flex; align-items:center; gap:10px; }
+.cbar-label{ width:64px; flex:none; font-size:12px; font-weight:800; color:var(--violet-text); }
+.cbar-track{ display:block; flex:1 1 auto; height:6px; border-radius:6px;
+             background:#E2E0EE; overflow:hidden; }
+/* display:block is load-bearing — as an inline span this ignored width/height,
+   which rendered the bars invisible AND handed html2canvas a zero-length
+   gradient box (NaN colour stops, export aborted). */
+.cbar-fill{ display:block; width:0%; height:100%; border-radius:6px;
+            background:linear-gradient(90deg,#9A84CC,#00C4D6); }
+.cbar-val{ direction:ltr; width:34px; flex:none; text-align:left;
+           font-size:11px; font-weight:800; color:#7C74A8; }
+
+#cardDivider{ width:100%; height:1px; margin:11px 0 0;
+  background:linear-gradient(90deg,transparent,rgba(107,85,150,.30),transparent); }
+
+#cardAnalysisLabel{ margin-top:9px; font-size:11px; font-weight:800; letter-spacing:1px; color:#8B83B4; }
+#cardBandTitle{ margin-top:4px; font-size:19px; font-weight:900; color:var(--violet-text); text-align:center; }
+#cardBandDesc{ margin-top:5px; font-size:11.5px; font-weight:600; line-height:1.65;
+               color:#5D5680; text-align:center; max-width:40ch; }
+
+#cardInviteHead{
+  margin-top:11px; font-size:13px; font-weight:900; letter-spacing:.6px;
+  color:var(--violet-deep);
+  display:flex; align-items:center; gap:8px;
+}
+#cardInviteHead::before,#cardInviteHead::after{
+  content:''; display:block; width:34px; height:1px; background:rgba(107,85,150,.4);
+}
+#cardEvent{
+  margin-top:6px; width:100%; border-radius:14px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(154,132,204,.30);
+  padding:8px 14px;
+  display:flex; flex-direction:column; gap:2px; align-items:center;
+}
+#cardEventName{ font-size:14.5px; font-weight:900; color:var(--violet-text); text-align:center; }
+.card-event-meta{ font-size:11.5px; font-weight:700; color:#6A6390; text-align:center; }
+#cardOutro{ margin-top:9px; font-size:13.5px; font-weight:800; color:var(--violet-deep); }
+#cardLogo{ margin-top:8px; max-height:24px; max-width:150px; object-fit:contain; display:none; }
+
+/* — modal actions (outside the card, never exported) — */
+#cardActions{
+  margin-top:14px; display:flex; flex-direction:column; align-items:center; gap:9px;
+  width:min(92vw,340px);
+}
+#cardActions .cta{ width:100%; min-height:48px; }
+#shareBtn{ display:none; }
+#exportNote{
+  font-size:11.5px; font-weight:600; color:var(--ink-faint); min-height:15px; text-align:center;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8b · TRANSIENT CENTRE LINE + APERTURE + ASSEMBLY STATES
+   ══════════════════════════════════════════════════════════════════════════ */
+/* the short centred lines: "انظر إلى الكاميرا", "تم التعرف", "اكتمل ملفك" —
+   they sit below the face region and above the panel, never over either */
+#centreLine{
+  position:absolute;
+  left:calc(var(--vv-left) + var(--app-vw)/2);
+  bottom:calc(var(--safe-b) + 46%);
+  transform:translateX(-50%) translateY(8px);
+  padding:0 18px; max-width:86vw; text-align:center;
+  font-size:clamp(15px,4.4vw,19px); font-weight:800; line-height:1.5;
+  text-shadow:0 2px 14px rgba(0,0,0,.7), 0 0 30px rgba(0,0,0,.45);
+  opacity:0; transition:opacity .45s var(--ease-out), transform .45s var(--ease-out);
+}
+#centreLine.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* §7.11 Aperture Transition — an oversized masked veil scaled from the face
+   outward. Pure transform + opacity, so it stays on the compositor. */
+#irisWrap{ z-index:6; overflow:hidden; }
+#iris{
+  position:absolute; left:0; top:0;
+  opacity:0; pointer-events:none;
+  background:rgba(5,6,11,.60);
+  -webkit-mask-image:radial-gradient(circle closest-side, transparent 0 46%, #000 66%);
+  mask-image:radial-gradient(circle closest-side, transparent 0 46%, #000 66%);
+  will-change:transform, opacity;
+}
+#iris.on{ opacity:1; }
+
+/* §6.5 assembly — HUD cards contract toward centre, the number steps back */
+#hudCards.contract{
+  transform:translateX(-50%) scale(.55);
+  opacity:0;
+  transition:opacity .55s var(--ease-out), transform .6s var(--ease-inout);
+}
+#resultBlock.collapse{
+  transform:translateX(-50%) scale(.86) translateY(-6px);
+  opacity:0;
+  transition:opacity .5s var(--ease-out), transform .6s var(--ease-inout);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9 · DEBUG (CONFIG.debug only — never reaches the export)
+   ══════════════════════════════════════════════════════════════════════════ */
+#debugPane{
+  position:absolute; top:calc(var(--safe-t) + 6px); left:6px;
+  z-index:9; direction:ltr; display:none;
+  font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9.5px; line-height:1.5;
+  background:rgba(0,0,0,.62); color:#7DFFB0; padding:6px 8px; border-radius:8px;
+  white-space:pre; pointer-events:none;
+}
+#debugPane.on{ display:block; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10 · REDUCED MOTION — every moving element freezes to its resting state.
+        The experience stays complete; only motion is removed.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.14s !important;
+  }
+  .sweep::after{ display:none !important; }
+  #horizonGridInner{ transform:perspective(340px) rotateX(66deg) scale(1.35) !important; }
+}
+
+/* very short viewports: pull the panel tighter so it never crowds the face */
+@media (max-height:640px){
+  .glass-panel{ padding:15px 17px 18px; }
+  #qText{ font-size:clamp(15px,4.4vw,19px); line-height:1.45; }
+  #slider{ height:40px; }
+  #hudCards{ top:calc(var(--safe-t) + 118px); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ── 0 · stage ─────────────────────────────────────────────────────────── -->
+<div id="stage" class="layer"></div>
+
+<!-- ── 1 · camera ────────────────────────────────────────────────────────── -->
+<div id="videoWrap" class="layer">
+  <video id="webcam" playsinline autoplay muted disablepictureinpicture></video>
+</div>
+
+<!-- ── 2 · WebGL ─────────────────────────────────────────────────────────── -->
+<canvas id="gl" class="layer"></canvas>
+
+<!-- ── 3 · atmospheric statics ───────────────────────────────────────────── -->
+<div id="atmos" class="layer">
+  <div id="subjectGlow"></div>
+  <div id="hazeDesat"></div>
+  <div id="depthHaze"></div>
+  <div id="horizonGrid"><div id="horizonGridInner"></div></div>
+  <div id="gradeDrift"></div>
+</div>
+
+<!-- ── 4 · HUD ───────────────────────────────────────────────────────────── -->
+<div id="hud" class="layer">
+  <div class="vf" id="vfTL"></div><div class="vf" id="vfTR"></div>
+  <div class="vf" id="vfBL"></div><div class="vf" id="vfBR"></div>
+
+  <div id="signalLock">
+    <div class="sl-tick" id="slT"></div><div class="sl-tick" id="slB"></div>
+    <div class="sl-tick" id="slL"></div><div class="sl-tick" id="slR"></div>
+  </div>
+
+  <div id="statusStack" class="centered-x">
+    <div id="statusPill"><span id="statusDot"></span><span id="statusText">نظام التحليل جاهز</span></div>
+    <div id="telemetry">SYSTEM · READY</div>
+  </div>
+
+  <div id="hudCards" class="centered-x">
+    <div class="hud-card" id="hudCard0">
+      <div class="hc-idx">01</div><div class="hc-title">الاكتشاف</div>
+      <div class="hc-bar"><i id="hudBar0"></i></div>
+    </div>
+    <div class="hud-card" id="hudCard1">
+      <div class="hc-idx">02</div><div class="hc-title">الابتكار</div>
+      <div class="hc-bar"><i id="hudBar1"></i></div>
+    </div>
+    <div class="hud-card" id="hudCard2">
+      <div class="hc-idx">03</div><div class="hc-title">المستقبل</div>
+      <div class="hc-bar"><i id="hudBar2"></i></div>
+    </div>
+  </div>
+
+  <div id="framingHint" class="centered-x">عد إلى الإطار</div>
+</div>
+
+<!-- ── 5 · question panel + result ───────────────────────────────────────── -->
+<div id="panelLayer" class="layer">
+
+  <section id="questionPanel" class="glass-panel centered-x" aria-live="polite">
+    <div id="qBody">
+      <div id="qIndex">01 / 03</div>
+      <h2 id="qText"></h2>
+      <div class="q-labels" dir="ltr">
+        <span class="q-label q-label-left" id="qLabelLeft" dir="rtl"></span>
+        <span class="q-label q-label-right" id="qLabelRight" dir="rtl"></span>
+      </div>
+    </div>
+    <div id="slider" dir="ltr" role="slider" tabindex="0"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+      <div id="sliderTrack">
+        <div id="sliderFill"></div>
+        <div id="sliderOrigin"></div>
+      </div>
+      <div id="sliderTrail"></div>
+      <div id="sliderHandle"></div>
+    </div>
+    <div id="qHint">حرّك المؤشر لاختيار اتجاهك</div>
+  </section>
+
+  <div id="resultBlock" class="centered-x">
+    <div id="resultQ">إلى أي مدى أنت مستعد للمستقبل؟</div>
+    <div id="resultNum"><span id="resultNumVal">0</span><sup>%</sup></div>
+    <div id="resultSub">نسبة استعدادك للمستقبل</div>
+    <div id="resultBand"></div>
+  </div>
+
+  <div id="teaseBlock" class="centered-x">
+    <div id="teaseLine1">هل أنت مستعد للمستقبل؟</div>
+    <div id="teaseLine2">نلتقي قريباً.</div>
+    <button id="revealBtn" class="cta">اكشف دعوتك</button>
+  </div>
+
+</div>
+
+<!-- ── 6 · screens ───────────────────────────────────────────────────────── -->
+<div id="screens" class="layer">
+
+  <section class="screen on" id="splash">
+    <svg id="splashMark" viewBox="0 0 120 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="smg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#00EAF2"/><stop offset="1" stop-color="#9A84CC"/>
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="60" r="46" fill="none" stroke="url(#smg)" stroke-width="1.6"
+              stroke-dasharray="150 39" stroke-linecap="round" opacity=".95"/>
+      <circle cx="60" cy="60" r="34" fill="none" stroke="rgba(255,255,255,.42)" stroke-width="1"
+              stroke-dasharray="70 36" stroke-linecap="round"/>
+      <circle cx="60" cy="60" r="21" fill="none" stroke="rgba(125,220,255,.55)" stroke-width="1"/>
+      <circle cx="106" cy="60" r="3" fill="#00EAF2"/>
+      <circle cx="60" cy="26" r="2.2" fill="#9A84CC"/>
+      <circle cx="39" cy="60" r="2" fill="rgba(255,255,255,.8)"/>
+    </svg>
+    <h1 id="splashTitle">هل أنت مستعد للمستقبل؟</h1>
+    <p id="splashSub">ثلاثة اختيارات تكشف طريقتك في النظر إلى ما هو قادم.</p>
+    <button id="startBtn" class="cta">ابدأ التجربة</button>
+    <div id="splashSpinner">جاري بدء التجربة...</div>
+    <p id="privacyLine">تُستخدم الكاميرا داخل جهازك لتشغيل التجربة وإنشاء دعوتك.</p>
+  </section>
+
+  <section class="screen" id="orientation">
+    <div class="rot-icon"></div>
+    <p class="big">يرجى تدوير الهاتف للوضع العمودي</p>
+  </section>
+
+  <section class="screen" id="errorScreen">
+    <div id="errIcon">!</div>
+    <h2 id="errTitle"></h2>
+    <p id="errBody"></p>
+    <button id="retryBtn" class="cta">إعادة المحاولة</button>
+  </section>
+
+</div>
+
+<!-- ── 6b · aperture veil (§7.11) ────────────────────────────────────────── -->
+<div id="irisWrap" class="layer"><div id="iris"></div></div>
+
+<!-- ── 7 · invitation modal ──────────────────────────────────────────────── -->
+<div id="modal" class="layer">
+
+  <div id="cardWrap">
+    <div id="card">
+      <div id="cardAccentTop"></div>
+      <div id="cardGuilloche"></div>
+      <div id="cardSheen"></div>
+      <div id="cardGlowBl"></div>
+
+      <div class="card-inner">
+        <!-- 1 · portrait inside a bracketed viewfinder frame -->
+        <div id="cardPortraitWrap">
+          <div id="cardPortrait"><img id="cardPortraitImg" alt=""></div>
+          <span class="cpb" id="cpbTL"></span><span class="cpb" id="cpbTR"></span>
+          <span class="cpb" id="cpbBL"></span><span class="cpb" id="cpbBR"></span>
+        </div>
+
+        <!-- 2 · headline -->
+        <div id="cardKicker">هل أنت مستعد للمستقبل؟</div>
+        <!-- 3 · score label · 4 · score -->
+        <div id="cardScoreLabel">استعدادك للمستقبل</div>
+        <div id="cardScore"><span id="cardScoreVal">0</span><sup>%</sup></div>
+        <div id="cardMeter"><span id="cardMeterFill"></span></div>
+
+        <!-- 5 · three real indicators -->
+        <div id="cardBars">
+          <div class="cbar-row">
+            <span class="cbar-label">الاكتشاف</span>
+            <span class="cbar-track"><span class="cbar-fill" id="cbar0"></span></span>
+            <span class="cbar-val" id="cval0">0%</span>
+          </div>
+          <div class="cbar-row">
+            <span class="cbar-label">الابتكار</span>
+            <span class="cbar-track"><span class="cbar-fill" id="cbar1"></span></span>
+            <span class="cbar-val" id="cval1">0%</span>
+          </div>
+          <div class="cbar-row">
+            <span class="cbar-label">المستقبل</span>
+            <span class="cbar-track"><span class="cbar-fill" id="cbar2"></span></span>
+            <span class="cbar-val" id="cval2">0%</span>
+          </div>
+        </div>
+
+        <div id="cardDivider"></div>
+
+        <!-- 6 · label · 7 · band title · 8 · band description -->
+        <div id="cardAnalysisLabel">نتيجة التحليل</div>
+        <div id="cardBandTitle"></div>
+        <div id="cardBandDesc"></div>
+
+        <!-- 9 · invitation heading · 10 · event details -->
+        <div id="cardInviteHead">دعوتك</div>
+        <div id="cardEvent">
+          <div id="cardEventName"></div>
+          <div class="card-event-meta" id="cardEventWhen"></div>
+          <div class="card-event-meta" id="cardEventVenue"></div>
+        </div>
+
+        <!-- 11 · outro · 12 · optional logo -->
+        <div id="cardOutro">نلتقي قريباً.</div>
+        <img id="cardLogo" alt="">
+      </div>
+    </div>
+  </div>
+
+  <div id="cardActions">
+    <button id="saveBtn" class="cta">حفظ الدعوة</button>
+    <button id="shareBtn" class="cta ghost">مشاركة</button>
+    <button id="restartBtn" class="cta ghost">إعادة التجربة</button>
+    <div id="exportNote"></div>
+  </div>
+
+</div>
+
+<div id="debugPane"></div>
+
+<script type="module">
+/* ══════════════════════════════════════════════════════════════════════════
+   FUTURE READINESS · main module
+   Order: config → state → viewport → camera → tracking → webgl → field →
+          hud → questions → scoring → result → invitation → card → export →
+          restart → fx → debug
+   ══════════════════════════════════════════════════════════════════════════ */
+'use strict';
+
+/* ──────────────────────────────────────────────────────────────────────────
+   1 · CONFIG — every tunable in one place
+   ────────────────────────────────────────────────────────────────────────── */
+const CONFIG = {
+  experience: {
+    title: "هل أنت مستعد للمستقبل؟",
+    scanDuration: 2.6,        // s  (§3 beat 4: 2.2–3.0)
+    analysisDuration: 1.9     // s  (§3 beat 9: 1.5–2.5)
+  },
+  event: {
+    eventName: "[اسم الفعالية]",
+    date:      "[التاريخ]",
+    time:      "[الوقت]",
+    venue:     "[المكان]",
+    logoUrl:   ""             // empty -> render nothing, no reserved gap
+  },
+  scoring: { q1Weight:0.34, q2Weight:0.33, q3Weight:0.33 },
+  camera:  { idealWidth:1280, idealHeight:720 },
+
+  tracking: {
+    moduleUrl: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0',
+    wasmUrl:   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm',
+    modelUrl:  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+    loadTimeoutMs: 12000,
+    graceFrames: 12,          // freeze the field anchor, don't vanish
+    lostFrames:  45,          // ~1.5s -> fade + "عد إلى الإطار"
+    smoothPos:   0.12,        // §5.1 — these three are the "stable, not jittery" feel
+    smoothScale: 0.10,
+    smoothFast:  0.30         // velocity-adaptive: light smoothing on fast turns
+  },
+
+  ui: {
+    padH:24, padTop:45, padBot:60,     // safe-zone padding that works (§8.4)
+    tooCloseW:0.62, tooFarW:0.20,      // face width as a fraction of viewport
+    commitThreshold:8,                 // §4.2 — ≥8% of track before a release commits
+    commitDelayMs:320,                 // §4.3 — 250–450ms before the pulse
+    commitTotalMs:900,                 // §4.3 — 700–1000ms total
+    revealCountMs:1600,                // §6.4 — 1.4–2.0s count-up
+    resultHoldMs:2100,                 // §3 beat 11 — the payoff, never skipped
+    cardAssembleMs:900                 // §6.5 — 700–1100ms
+  },
+
+  /* §7 — every futuristic element toggles here, independently. The experience
+     must be complete and beautiful with all of these false. */
+  fx: {
+    signalLock:      true,   // 7.1
+    depthHaze:       true,   // 7.2
+    horizonGrid:     true,   // 7.3
+    lightSweep:      true,   // 7.4
+    parallaxDepth:   true,   // 7.5
+    fieldBreathing:  true,   // 7.6
+    commitEcho:      true,   // 7.7
+    gradeDrift:      true,   // 7.8
+    telemetry:       true,   // 7.9
+    nodeDepthPop:    true,   // 7.10
+    apertureTransition:true, // 7.11
+    cardSheen:       true,   // 7.12
+    subjectGlow:     true,   // volumetric light behind the subject
+    /* tuning */
+    breathPeriod:4.0, breathScale:0.015, breathOpacity:0.08,
+    echoScale:1.12,  echoMs:600,
+    sweepEveryMs:7000, sweepMs:1200,
+    parallaxNear:1.5, parallaxFar:0.4,
+    gridParallax:0.3,
+    particleCount:900,       // total across BOTH depth layers (holoParticles on)
+    apertureMs:900,
+
+    /* §7.13 — the holographic volume + the per-question 3D elements. Every one
+       of these is independently switchable and the experience stays complete
+       and beautiful with all of them false: holoParticles false falls back to
+       a flat 76-mote ambient field, holoElements false simply renders no
+       element and leaves the FutureField at its original weight. */
+    holoParticles: true,     // real depth slab, curl drift, two-lobe falloff
+    holoElements:  true,     // one light 3D element per question
+    holoBanding:   true,     // field-wide interference scan
+    holoDropout:   true,     // projection instability (hash blink-out)
+    holoStreaks:   true,     // velocity-elongated minority
+    holoAssemble:  true,     // elements assemble out of the ambient field
+    autoDegrade:   true,     // silent fps rescue
+
+    /* holo tuning */
+    holoFocal:900,           // manual perspective focal length, world px
+    holoSlab:600,            // ± depth of the particle volume, world px
+    holoMaxAlpha:0.45,       // hard cap on per-particle alpha
+    holoMaxSize:48,          // hard cap on gl_PointSize (mobile clamps vary)
+    holoCurlAmp:26,          // curl drift amplitude, world px
+    holoCurlScale:0.0055,    // curl noise domain scale
+    holoCurlSpeed:0.09,      // how fast the flow field evolves
+    holoStreakFrac:0.06,     // fraction rendered elongated
+    holoEdgeFade:0.78,       // where the edge fade starts, in half-spans
+    holoRepel:1.3,           // head repulsion radius, × face radius
+    holoElementSize:0.42,    // element radius, × face width
+    holoOrbitR:1.7,          // orbital radius, × face width (1.4–2.2 band)
+    holoOrbitZ:420,          // orbital depth swing, world px
+    holoOrbitSpeed:0.34,     // rad/s
+    holoAssembleMs:400,      // 300–450
+    holoDissolveMs:250,
+    degradeFps:26, degradeHoldMs:2000
+  },
+
+  /* ?debug in the query string turns the pane on without editing the file */
+  debug: (function(){
+    try { return /(?:^|[?&])debug(?:=1|=true)?(?:&|$)/.test(location.search); }
+    catch(e){ return false; }
+  })()
+};
+
+/* one question config, one reusable panel, one reusable slider (§4) */
+const QUESTIONS = [
+  {
+    id: "q1",
+    hudTitle: "الاكتشاف",
+    question: "عندما يظهر شيء جديد، أين تجد نفسك؟",
+    left:  "أثق بما أعرفه",
+    right: "أفضل أن أكون من أوائل من يكتشفونه",
+    visualMode: "discovery"
+  },
+  {
+    id: "q2",
+    hudTitle: "الابتكار",
+    question: "ما الذي يهمك أكثر في عالم المستقبل؟",
+    left:  "الراحة والبساطة",
+    right: "التكنولوجيا والابتكار",
+    visualMode: "innovation"
+  },
+  {
+    id: "q3",
+    hudTitle: "المستقبل",
+    question: "عندما تفكر في المستقبل، ما الذي يثير حماسك أكثر؟",
+    left:  "أن أعرف إلى أين أتجه",
+    right: "أن أكتشف ما هو قادم",
+    visualMode: "future"
+  }
+];
+const VISUAL_MODE_INDEX = { discovery:0, innovation:1, future:2 };
+
+/* §6.3 — neutral bands. A low score is a way of looking at the future, not a
+   failure, and the copy never says otherwise. */
+const BANDS = [
+  { min:0,  max:34,  title:"تتقدم بثقة محسوبة",
+    desc:"تفضّل فهم ما أمامك بوضوح قبل الانتقال إلى الجديد، وتبني علاقتك بالمستقبل خطوة بخطوة." },
+  { min:35, max:59,  title:"توازن بين المألوف والجديد",
+    desc:"تجمع بين ما تعرفه وبين استعدادك لتجربة ما يستحق الاكتشاف عندما تكون الصورة واضحة." },
+  { min:60, max:79,  title:"منفتح على ما هو قادم",
+    desc:"تظهر اختياراتك استعداداً واضحاً للتطور مع الحفاظ على رؤية متوازنة لما يناسبك." },
+  { min:80, max:100, title:"جاهز لما هو قادم",
+    desc:"اختياراتك تعكس انفتاحاً مرتفعاً على الاكتشاف والابتكار وما يحمله المستقبل." }
+];
+function bandFor(score){
+  for (const b of BANDS) if (score >= b.min && score <= b.max) return b;
+  return BANDS[BANDS.length - 1];
+}
+
+const COPY = {
+  statusReady:     "نظام التحليل جاهز",
+  statusScanning:  "جاري التعرف",
+  statusBuilding:  "الملف قيد البناء",
+  statusAnalyzing: "جاري تحليل اختياراتك",
+  statusDone:      "التحليل مكتمل",
+  statusInvite:    "INVITATION READY",
+  visualMode:      "الوضع البصري",
+
+  lookAtCamera: "انظر إلى الكاميرا",
+  letsBegin:    "لنبدأ بك",
+  buildingProfile:"جاري إعداد ملفك",
+  recognised:   "تم التعرف",
+  discoverHow:  "لنكتشف كيف ترى المستقبل",
+
+  moveDown:  "تحرك قليلاً إلى الأسفل",
+  moveBack:  "ابتعد قليلاً عن الكاميرا",
+  moveCloser:"اقترب قليلاً من الكاميرا",
+  returnFrame:"عد إلى الإطار",
+  returnFrameFull:"عد إلى الإطار لإكمال دعوتك",
+
+  committed: "تم تسجيل اختيارك",
+  moveHint:  "حرّك المؤشر لاختيار اتجاهك",
+  profileComplete:"اكتمل ملفك",
+  calculating:"جاري حساب استعدادك للمستقبل...",
+
+  errInsecure:{ t:"تحتاج التجربة إلى اتصال آمن HTTPS لتشغيل الكاميرا.",
+                b:"افتح الرابط عبر https أو من localhost ثم أعد المحاولة." },
+  errDenied:  { t:"يرجى السماح بالوصول إلى الكاميرا ثم إعادة المحاولة.",
+                b:"يمكنك تعديل الإذن من إعدادات المتصفح لهذا الموقع." },
+  errNoCam:   { t:"تعذر العثور على كاميرا متاحة على هذا الجهاز.",
+                b:"تأكد من توصيل كاميرا أو افتح التجربة على هاتفك." },
+  errBusy:    { t:"تعذر تشغيل الكاميرا. أغلق التطبيقات الأخرى التي تستخدم الكاميرا ثم حاول مجدداً.",
+                b:"قد يكون تطبيق آخر يستخدم الكاميرا في هذه اللحظة." }
+};
+
+/* ──────────────────────────────────────────────────────────────────────────
+   2 · STATE MACHINE — every major transition goes through setState()
+   ────────────────────────────────────────────────────────────────────────── */
+const ExperienceState = {
+  SPLASH:"SPLASH", CAMERA_STARTING:"CAMERA_STARTING",
+  WAITING_FOR_FACE:"WAITING_FOR_FACE", SCANNING:"SCANNING",
+  PROFILE_READY:"PROFILE_READY",
+  QUESTION_1:"QUESTION_1", QUESTION_2:"QUESTION_2", QUESTION_3:"QUESTION_3",
+  ANALYZING:"ANALYZING", RESULT_REVEAL:"RESULT_REVEAL", RESULT_HOLD:"RESULT_HOLD",
+  INVITATION_READY:"INVITATION_READY", INVITATION_MODAL:"INVITATION_MODAL",
+  ERROR:"ERROR"
+};
+const S = ExperienceState;
+
+const appState = {
+  state: S.SPLASH,
+  answers: { q1:null, q2:null, q3:null },
+  readinessScore: null,
+  face: { detected:false, rect:null, center:null, scale:1 },
+  cameraReady:false, modelReady:false, currentQuestion:0
+};
+
+/* Allowed transitions. Anything not listed is rejected and logged — this is
+   what keeps twelve beats from degenerating into scattered booleans. */
+const TRANSITIONS = {
+  [S.SPLASH]:           [S.CAMERA_STARTING, S.ERROR],
+  [S.CAMERA_STARTING]:  [S.WAITING_FOR_FACE, S.ERROR],
+  [S.WAITING_FOR_FACE]: [S.SCANNING, S.ERROR],
+  [S.SCANNING]:         [S.PROFILE_READY, S.WAITING_FOR_FACE, S.ERROR],
+  [S.PROFILE_READY]:    [S.QUESTION_1, S.ERROR],
+  [S.QUESTION_1]:       [S.QUESTION_2, S.ERROR],
+  [S.QUESTION_2]:       [S.QUESTION_3, S.ERROR],
+  [S.QUESTION_3]:       [S.ANALYZING, S.ERROR],
+  [S.ANALYZING]:        [S.RESULT_REVEAL, S.ERROR],
+  [S.RESULT_REVEAL]:    [S.RESULT_HOLD, S.ERROR],
+  [S.RESULT_HOLD]:      [S.INVITATION_READY, S.ERROR],
+  [S.INVITATION_READY]: [S.INVITATION_MODAL, S.ERROR],
+  [S.INVITATION_MODAL]: [S.SCANNING, S.ERROR],      // إعادة التجربة
+  [S.ERROR]:            [S.CAMERA_STARTING, S.SPLASH]
+};
+
+const QUESTION_STATES = [S.QUESTION_1, S.QUESTION_2, S.QUESTION_3];
+
+function isQuestionState(s){ return QUESTION_STATES.indexOf(s) !== -1; }
+
+function setState(next){
+  const prev = appState.state;
+  if (prev === next) return true;
+  const allowed = TRANSITIONS[prev] || [];
+  if (allowed.indexOf(next) === -1){
+    if (CONFIG.debug) console.warn('[state] rejected', prev, '->', next);
+    return false;
+  }
+  appState.state = next;
+  if (CONFIG.debug) console.log('[state]', prev, '->', next);
+  try { onStateEnter(next, prev); } catch(e){ console.error('[state] enter failed', e); }
+  dispatch('fr:state', { from:prev, to:next });
+  return true;
+}
+function dispatch(name, detail){
+  try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch(e){}
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   3 · DOM refs + small utilities
+   ────────────────────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const el = {
+  video:$('webcam'), gl:$('gl'),
+  hud:$('hud'), statusStack:$('statusStack'), statusText:$('statusText'),
+  statusDot:$('statusDot'), telemetry:$('telemetry'),
+  hudCards:$('hudCards'), hudCard:[$('hudCard0'),$('hudCard1'),$('hudCard2')],
+  hudBar:[$('hudBar0'),$('hudBar1'),$('hudBar2')],
+  framingHint:$('framingHint'),
+  signalLock:$('signalLock'), slT:$('slT'), slB:$('slB'), slL:$('slL'), slR:$('slR'),
+  depthHaze:$('depthHaze'), hazeDesat:$('hazeDesat'),
+  horizonGrid:$('horizonGrid'), horizonGridInner:$('horizonGridInner'),
+  subjectGlow:$('subjectGlow'),
+  gradeDrift:$('gradeDrift'),
+  panel:$('questionPanel'), qBody:$('qBody'), qIndex:$('qIndex'), qText:$('qText'),
+  qLabelLeft:$('qLabelLeft'), qLabelRight:$('qLabelRight'), qHint:$('qHint'),
+  slider:$('slider'), sliderTrack:$('sliderTrack'), sliderFill:$('sliderFill'),
+  sliderHandle:$('sliderHandle'), sliderTrail:$('sliderTrail'),
+  resultBlock:$('resultBlock'), resultNum:$('resultNum'), resultBand:$('resultBand'),
+  teaseBlock:$('teaseBlock'), teaseLine1:$('teaseLine1'), teaseLine2:$('teaseLine2'),
+  revealBtn:$('revealBtn'),
+  splash:$('splash'), splashSpinner:$('splashSpinner'), startBtn:$('startBtn'),
+  orientation:$('orientation'),
+  errorScreen:$('errorScreen'), errTitle:$('errTitle'), errBody:$('errBody'),
+  retryBtn:$('retryBtn'),
+  modal:$('modal'), cardWrap:$('cardWrap'), card:$('card'),
+  cardPortraitImg:$('cardPortraitImg'), cardMeterFill:$('cardMeterFill'),
+  cardScore:$('cardScore'), cardBar:[$('cbar0'),$('cbar1'),$('cbar2')],
+  cardVal:[$('cval0'),$('cval1'),$('cval2')],
+  cardBandTitle:$('cardBandTitle'), cardBandDesc:$('cardBandDesc'),
+  cardEventName:$('cardEventName'), cardEventWhen:$('cardEventWhen'),
+  cardEventVenue:$('cardEventVenue'), cardLogo:$('cardLogo'), cardSheen:$('cardSheen'),
+  cardGuilloche:$('cardGuilloche'),
+  saveBtn:$('saveBtn'), shareBtn:$('shareBtn'), restartBtn:$('restartBtn'),
+  exportNote:$('exportNote'),
+  debugPane:$('debugPane')
+};
+
+const clamp = (v,a,b) => v < a ? a : (v > b ? b : v);
+const lerp  = (a,b,t) => a + (b-a)*t;
+const easeOutCubic = t => 1 - Math.pow(1-t, 3);
+
+/* Deterministic PRNG for scene layout. Deliberately NOT Math.random: the
+   visuals are reproducible, and nothing anywhere in this file can be mistaken
+   for an entropy source feeding the score. */
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), 1 | t);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Cancellable timers — restart must not leave a stray beat in flight. */
+const timers = new Set();
+function after(ms, fn){
+  const id = setTimeout(() => { timers.delete(id); fn(); }, ms);
+  timers.add(id);
+  return id;
+}
+function clearTimers(){ timers.forEach(clearTimeout); timers.clear(); }
+
+const REDUCED = window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function fx(name){
+  if (!CONFIG.fx[name]) return false;
+  if (REDUCED && ['signalLock','lightSweep','fieldBreathing','commitEcho',
+                  'apertureTransition','parallaxDepth','nodeDepthPop'].indexOf(name) !== -1) {
+    return false;   // §7.0 law 5 — moving elements freeze or drop out
+  }
+  return true;
+}
+
+function setStatus(text, opts){
+  if (el.statusText.textContent === text) return;
+  el.statusText.style.opacity = '0';
+  after(140, () => {
+    el.statusText.textContent = text;
+    el.statusText.style.opacity = '1';
+  });
+  if (opts && opts.dot) el.statusDot.style.background = opts.dot;
+}
+function setStatusImmediate(text){
+  el.statusText.textContent = text;
+  el.statusText.style.opacity = '1';
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   4 · VIEWPORT — visualViewport-driven, never 100vh-only
+   ────────────────────────────────────────────────────────────────────────── */
+function getViewportRect(){
+  const vp = window.visualViewport;
+  if (vp) return { width:vp.width, height:vp.height,
+                   top:vp.offsetTop||0, left:vp.offsetLeft||0 };
+  return { width:window.innerWidth, height:window.innerHeight, top:0, left:0 };
+}
+
+/* Cached layout values. Nothing in the render loop is allowed to read layout,
+   so everything the loop needs is computed here and on state change. */
+const view = { w:0, h:0, vw:0, vh:0, offsetX:0, offsetY:0, dpr:1 };
+
+function resize(){
+  const vp = getViewportRect();
+  const w = Math.max(1, Math.round(vp.width));
+  const h = Math.max(1, Math.round(vp.height));
+  view.w = w; view.h = h;
+
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--app-vw', w + 'px');
+  rootStyle.setProperty('--app-vh', h + 'px');
+  rootStyle.setProperty('--vv-top', (vp.top||0) + 'px');
+  rootStyle.setProperty('--vv-left', (vp.left||0) + 'px');
+
+  /* cover fit, computed in JS so the aspect is never distorted and so the
+     landmark mapping has the exact same numbers the CSS is using */
+  let vw, vh;
+  const vidW = el.video.videoWidth, vidH = el.video.videoHeight;
+  if (vidW && vidH){
+    const screenRatio = w/h, videoRatio = vidW/vidH;
+    if (screenRatio > videoRatio){ vw = w;            vh = w/videoRatio; }
+    else                         { vw = h*videoRatio; vh = h; }
+  } else { vw = w; vh = h; }
+  el.video.style.width  = Math.ceil(vw) + 'px';
+  el.video.style.height = Math.ceil(vh) + 'px';
+  view.vw = vw; view.vh = vh;
+  view.offsetX = (w - vw)/2;   // negative = the crop
+  view.offsetY = (h - vh)/2;
+
+  if (renderer){
+    renderer.setSize(w, h, false);
+    orthoCamera.left = -w/2; orthoCamera.right = w/2;
+    orthoCamera.top  =  h/2; orthoCamera.bottom = -h/2;
+    orthoCamera.updateProjectionMatrix();
+  }
+  layoutCardScale();
+  updateOrientationGuard();
+}
+
+/* Portrait only. The guard never destroys session state — it is a veil over a
+   still-running experience, not a reset. */
+let landscapeBlocked = false;
+function updateOrientationGuard(){
+  const isLandscape = view.w > view.h * 1.06 && view.h < 560;
+  if (isLandscape === landscapeBlocked) return;
+  landscapeBlocked = isLandscape;
+  el.orientation.classList.toggle('on', isLandscape);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => { resize(); after(260, resize); });
+if (window.visualViewport){
+  window.visualViewport.addEventListener('resize', resize);
+  window.visualViewport.addEventListener('scroll', resize);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   5 · CAMERA — one stream, never stacked, always stopped on lifecycle exit
+   ────────────────────────────────────────────────────────────────────────── */
+let activeStream = null;
+let suspended = false;          // tab hidden: stream paused, session preserved
+let pendingStart = false;       // start was requested while the page was hidden
+
+/* A hidden page is not a camera failure — it is a "not yet". Distinguishing it
+   keeps the user off an error screen they cannot act on. */
+function pageHiddenError(){
+  const e = new Error('hidden');
+  e.name = 'PageHidden';
+  return e;
+}
+function isPageHidden(err){
+  return !!err && (err.name === 'PageHidden' || err.message === 'hidden');
+}
+
+function isSecureCtx(){
+  return window.isSecureContext ||
+         location.protocol === 'https:' ||
+         location.hostname === 'localhost' ||
+         location.hostname === '127.0.0.1';
+}
+
+function waitForVideoReady(){
+  // Safari fires loadedmetadata and loadeddata inconsistently; accept either,
+  // and short-circuit if dimensions already exist.
+  return new Promise(resolve => {
+    if (el.video.videoWidth && el.video.readyState >= 2) return resolve();
+    let done = false;
+    const finish = () => { if (done) return; done = true; cleanup(); resolve(); };
+    const onMeta = () => { if (el.video.videoWidth) finish(); };
+    function cleanup(){
+      el.video.removeEventListener('loadedmetadata', onMeta);
+      el.video.removeEventListener('loadeddata', onMeta);
+      clearTimeout(to);
+    }
+    el.video.addEventListener('loadedmetadata', onMeta);
+    el.video.addEventListener('loadeddata', onMeta);
+    const to = setTimeout(finish, 4000);
+  });
+}
+
+async function startCamera(){
+  stopCamera(false);                       // never stack streams
+  if (!isSecureCtx()){ const e = new Error('insecure'); e.name = 'InsecureContext'; throw e; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    const e = new Error('unsupported'); e.name = 'NotFoundError'; throw e;
+  }
+  if (document.hidden) throw pageHiddenError();
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:'user',
+            width:{ ideal:CONFIG.camera.idealWidth },
+            height:{ ideal:CONFIG.camera.idealHeight } },
+    audio:false
+  });
+  if (document.hidden){ stream.getTracks().forEach(t => t.stop()); throw pageHiddenError(); }
+
+  activeStream = stream;
+  el.video.srcObject = stream;
+  await el.video.play();
+  await waitForVideoReady();               // dimensions must exist before...
+  resize();                                // ...or the cover math is wrong
+  el.video.classList.add('live');
+  appState.cameraReady = true;
+  startRenderLoop();
+}
+
+function stopCamera(clearSrc){
+  if (activeStream){
+    activeStream.getTracks().forEach(t => { try { t.stop(); } catch(e){} });
+    activeStream = null;
+  }
+  if (clearSrc !== false){
+    try { el.video.srcObject = null; } catch(e){}
+    el.video.classList.remove('live');
+  }
+  appState.cameraReady = false;
+}
+
+function cameraErrorCopy(err){
+  const name = (err && err.name) || '';
+  const msg  = (err && err.message) || '';
+  if (name === 'InsecureContext' || msg === 'insecure') return COPY.errInsecure;
+  if (name === 'NotAllowedError' || name === 'SecurityError' ||
+      name === 'PermissionDeniedError') return COPY.errDenied;
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError' ||
+      name === 'OverconstrainedError') return COPY.errNoCam;
+  return COPY.errBusy;                        // in use / generic
+}
+
+function showError(err){
+  const copy = cameraErrorCopy(err);
+  el.errTitle.textContent = copy.t;
+  el.errBody.textContent  = copy.b;
+  stopRenderLoop();
+  stopCamera(true);
+  appState.state = S.ERROR;                   // terminal veil; retry re-enters
+  showScreen('error');
+  dispatch('fr:error', { name:(err && err.name) || 'unknown' });
+}
+
+function showScreen(which){
+  el.splash.classList.toggle('on', which === 'splash');
+  el.errorScreen.classList.toggle('on', which === 'error');
+}
+
+/* Lifecycle. Unlike a naive implementation, hiding the tab SUSPENDS — the
+   stream and loop stop, answers / score / question index all survive. */
+function suspendSession(){
+  if (suspended) return;
+  suspended = true;
+  stopRenderLoop();
+  stopCamera(false);            // keep srcObject so resume is a re-acquire, not a reset
+}
+async function resumeSession(){
+  if (!suspended) return;
+  suspended = false;
+  if (appState.state === S.SPLASH || appState.state === S.ERROR) return;
+  try {
+    await startCamera();
+  } catch(err){
+    if (isPageHidden(err)){ suspended = true; return; }   // hidden again mid-resume
+    showError(err);
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ suspendSession(); return; }
+  if (pendingStart){ pendingStart = false; bootCamera(); return; }
+  resumeSession();
+});
+window.addEventListener('pagehide', () => { stopRenderLoop(); stopCamera(true); });
+window.addEventListener('beforeunload', () => { stopRenderLoop(); stopCamera(true); });
+
+/* ──────────────────────────────────────────────────────────────────────────
+   6 · TRACKING — MediaPipe FaceLandmarker, VIDEO mode, frame-gated
+   ────────────────────────────────────────────────────────────────────────── */
+const MP = { landmarker:null, ready:false, failed:false, loading:null, lastTs:-1 };
+
+/* Memoized: a restart must never trigger a second model download. */
+function initMediaPipe(){
+  if (MP.loading) return MP.loading;
+  MP.loading = (async () => {
+    const t = CONFIG.tracking;
+    const withTimeout = (p, ms) => Promise.race([
+      p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+    ]);
+    try {
+      const mod    = await withTimeout(import(/* @vite-ignore */ t.moduleUrl), t.loadTimeoutMs);
+      const vision = await withTimeout(mod.FilesetResolver.forVisionTasks(t.wasmUrl), t.loadTimeoutMs);
+      MP.landmarker = await withTimeout(
+        mod.FaceLandmarker.createFromOptions(vision, {
+          baseOptions:{ modelAssetPath:t.modelUrl, delegate:'CPU' },
+          runningMode:'VIDEO', numFaces:1,
+          outputFaceBlendshapes:false, outputFacialTransformationMatrixes:false
+        }), t.loadTimeoutMs);
+      MP.ready = true;
+      appState.modelReady = true;
+    } catch(e){
+      // Not fatal. The camera is the product; tracking is an enhancement, and
+      // §"الوضع البصري" is a complete, usable path.
+      MP.ready = false; MP.failed = true;
+      appState.modelReady = false;
+      if (CONFIG.debug) console.warn('[mediapipe] unavailable', e);
+      dispatch('fr:fallback', { reason:(e && e.message) || 'unavailable' });
+    }
+  })();
+  return MP.loading;
+}
+
+/* The anchor is the single source of truth every visual reads. It is always
+   valid — before the camera starts, and if MediaPipe never loads. */
+const anchor = {
+  x:0, y:0, scale:1,            // smoothed, screen px (centre) + scale factor
+  tx:0, ty:0, tscale:1,         // targets
+  yaw:0, pitch:0, tyaw:0, tpitch:0,
+  rect:null,                    // {left,right,top,bottom,w,h} screen px
+  visible:false                 // field drawn at all
+};
+const tracking = {
+  lostFrames:999, everLocked:false, lockArmed:true,
+  fps:0, _frames:0, _fpsT:0, quality:0
+};
+
+function centeredAnchorTarget(){
+  // scale 1.0 == a ~150px-wide face
+  const base = Math.min(view.w, view.h);
+  const s = clamp(base * 0.0028, 0.62, 1.6);
+  return { x: view.w * 0.5, y: view.h * 0.38, scale: s };
+}
+
+function resetAnchorImmediate(){
+  const t = centeredAnchorTarget();
+  anchor.x = anchor.tx = t.x;
+  anchor.y = anchor.ty = t.y;
+  anchor.scale = anchor.tscale = t.scale;
+  anchor.yaw = anchor.pitch = anchor.tyaw = anchor.tpitch = 0;
+  anchor.rect = { left:t.x-90, right:t.x+90, top:t.y-110, bottom:t.y+110, w:180, h:220 };
+}
+
+/* Landmark (normalized, unmirrored) -> screen px. The mirror is applied HERE
+   and nowhere else, so min/max swap sides on X (§8.4). */
+function lmToScreenX(nx){ return (1.0 - nx) * view.vw + view.offsetX; }
+function lmToScreenY(ny){ return ny * view.vh + view.offsetY; }
+/* screen px -> Three world (ortho, origin centre, +Y up) */
+function screenToWorldX(sx){ return sx - view.w/2; }
+function screenToWorldY(sy){ return view.h/2 - sy; }
+
+const faceNorm = { minX:0, maxX:0, minY:0, maxY:0, cx:0.5, cy:0.5 };
+
+function runDetection(nowMs){
+  if (!MP.ready || !MP.landmarker) return;
+  if (el.video.readyState < 2 || !el.video.videoWidth) return;
+  const ts = Math.max(nowMs, MP.lastTs + 1);   // must increase monotonically
+  MP.lastTs = ts;
+
+  let lm = null;
+  try {
+    const res = MP.landmarker.detectForVideo(el.video, ts);
+    lm = res && res.faceLandmarks && res.faceLandmarks[0];
+  } catch(e){ lm = null; }
+
+  if (lm && lm.length > 300){
+    let minX=1, maxX=0, minY=1, maxY=0;
+    for (let i=0; i<lm.length; i++){
+      const p = lm[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    faceNorm.minX=minX; faceNorm.maxX=maxX; faceNorm.minY=minY; faceNorm.maxY=maxY;
+    faceNorm.cx=(minX+maxX)*0.5; faceNorm.cy=(minY+maxY)*0.5;
+
+    // X mirrored -> normalized min maps to the screen RIGHT edge
+    const right = lmToScreenX(minX), left = lmToScreenX(maxX);
+    const top   = lmToScreenY(minY), bottom = lmToScreenY(maxY);
+    const fw = Math.abs(right - left), fh = Math.abs(bottom - top);
+
+    if (fw > 12 && fh > 12){
+      anchor.rect = { left, right, top, bottom, w:fw, h:fh, cx:(left+right)*0.5, cy:(top+bottom)*0.5 };
+      anchor.tx = anchor.rect.cx;
+      anchor.ty = anchor.rect.cy - fh * 0.06;      // anchor sits slightly high on the head
+      anchor.tscale = clamp(Math.max(fw, fh*0.78) / 150, 0.55, 3.4);
+
+      // yaw / pitch from nose offset inside the face box — cheap, and only ever
+      // used for node parallax (§7.10), never for anything the user is told.
+      const nose = lm[1] || lm[4];
+      if (nose){
+        const nx = (nose.x - faceNorm.cx) / Math.max(maxX-minX, 1e-4);
+        const ny = (nose.y - faceNorm.cy) / Math.max(maxY-minY, 1e-4);
+        anchor.tyaw   = clamp(-nx * 2.2, -1, 1);   // negated: mirrored view
+        anchor.tpitch = clamp( ny * 2.2, -1, 1);
+      }
+
+      // the scan cloud is the only consumer of the raw landmark set
+      if (scanCloud.active) writeScanPositions(lm);
+
+      appState.face.detected = true;
+      appState.face.rect = anchor.rect;
+      appState.face.center = { x:anchor.rect.cx, y:anchor.rect.cy };
+      appState.face.scale = anchor.tscale;
+      tracking.lostFrames = 0;
+      tracking.quality = clamp(fw / (view.w * 0.42), 0, 1);
+      // Fires once on acquisition, and re-arms only after a long loss (§7.1).
+      if (!tracking.everLocked || tracking.lockArmed){
+        tracking.everLocked = true;
+        tracking.lockArmed = false;
+        onFirstLock();
+      }
+      return;
+    }
+  }
+  tracking.lostFrames++;
+  if (tracking.lostFrames > CONFIG.tracking.graceFrames) appState.face.detected = false;
+  if (tracking.lostFrames > CONFIG.tracking.lostFrames * 3) tracking.lockArmed = true;
+}
+
+function updateAnchor(dt){
+  const c = CONFIG.tracking;
+  if (!MP.ready || tracking.lostFrames > c.lostFrames){
+    // No tracking (fallback mode) or a long loss: ease back to a centred anchor
+    // rather than leaving the field stranded where the face used to be.
+    const t = centeredAnchorTarget();
+    anchor.tx = t.x; anchor.ty = t.y; anchor.tscale = t.scale;
+    anchor.tyaw = 0; anchor.tpitch = 0;
+  } else if (tracking.lostFrames > c.graceFrames){
+    return;                       // grace window: FREEZE, don't drift, don't vanish
+  }
+  const dist = Math.hypot(anchor.tx - anchor.x, anchor.ty - anchor.y);
+  const base = dist > 46 ? c.smoothFast : c.smoothPos;
+  const k  = 1 - Math.pow(1 - base,        Math.min(dt,0.05) * 60);
+  const ks = 1 - Math.pow(1 - c.smoothScale, Math.min(dt,0.05) * 60);
+  anchor.x += (anchor.tx - anchor.x) * k;
+  anchor.y += (anchor.ty - anchor.y) * k;
+  anchor.scale += (anchor.tscale - anchor.scale) * ks;
+  anchor.yaw   += (anchor.tyaw   - anchor.yaw)   * ks;
+  anchor.pitch += (anchor.tpitch - anchor.pitch) * ks;
+}
+
+/* Safe-zone guidance (§8.4 padding that works: 24 / 45 / 60) */
+let framingMsg = '';
+function updateFraming(){
+  const showable = isQuestionState(appState.state) ||
+                   appState.state === S.WAITING_FOR_FACE ||
+                   appState.state === S.SCANNING ||
+                   appState.state === S.PROFILE_READY;
+  if (!showable || !MP.ready){ setFramingHint(''); return; }
+
+  const u = CONFIG.ui;
+  if (tracking.lostFrames > CONFIG.tracking.lostFrames){
+    setFramingHint(isQuestionState(appState.state) ? COPY.returnFrameFull : COPY.returnFrame);
+    return;
+  }
+  if (tracking.lostFrames > CONFIG.tracking.graceFrames){ return; }  // hold, don't flicker
+
+  const r = anchor.rect;
+  if (!r){ setFramingHint(''); return; }
+  if (r.top < u.padTop)                       setFramingHint(COPY.moveDown);
+  else if (r.w > view.w * u.tooCloseW)        setFramingHint(COPY.moveBack);
+  else if (r.w < view.w * u.tooFarW)          setFramingHint(COPY.moveCloser);
+  else if (r.left < u.padH || r.right > view.w - u.padH ||
+           r.bottom > view.h - u.padBot)      setFramingHint(COPY.returnFrame);
+  else                                        setFramingHint('');
+}
+function setFramingHint(msg){
+  if (msg === framingMsg) return;
+  framingMsg = msg;
+  if (msg) el.framingHint.textContent = msg;
+  el.framingHint.classList.toggle('on', !!msg);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   7 · WEBGL — ortho screen-space scene. WebGL owns the scan points, the field,
+       the particles and the energy motion. It never renders a glyph of text.
+   ────────────────────────────────────────────────────────────────────────── */
+let renderer = null, scene = null, orthoCamera = null, clock = null;
+
+const DISC_FRAG = `
+  precision mediump float;
+  varying float vA;
+  varying vec3  vColor;
+  void main(){
+    vec2 c = gl_PointCoord - 0.5;
+    float d = dot(c,c);
+    float k = 1.0 - d * 4.0;          // 1 at the centre, 0 at the rim
+    if (k <= 0.0) discard;
+    float a = k * k + k * 0.42;       // soft core plus a wide halo
+    gl_FragColor = vec4(vColor, a * vA);
+    if (gl_FragColor.a < 0.004) discard;
+  }
+`;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   7a · AMBIENT PARTICLES — a holographic VOLUME, not confetti.
+
+   Architecture is unchanged: two THREE.Points layers, one ShaderMaterial each,
+   one draw call each, every scrap of motion in the vertex shader, zero
+   allocation per frame. What changed is what it looks like and how it moves.
+
+   Depth is real. Every particle carries a z inside a ±uSlab slab and the
+   perspective divide is done BY HAND, because swapping in a perspective camera
+   would invalidate every number in resize(), screenToWorldX/Y() and the whole
+   pixel-space layout. Depth then drives size, alpha, softness and colour.
+
+   RESERVED-WORD WATCH (see the note at makeScanPoints): `half` compiles to
+   nothing and silently takes the shader with it. Nothing below is named half,
+   sample, filter, input, output, noise1..4, packed, common or partition.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Two-lobe falloff — the core change. A tight bright core plus a wide low-alpha
+   halo. No single particle is ever solid (alpha is capped at CONFIG.fx
+   .holoMaxAlpha); presence comes from accumulation across ~900 of them.
+
+   The halo is BIASED so it reaches exactly zero at the sprite corner. Without
+   that subtraction, 900 additive quads stack their non-zero corners and the
+   field reads as a grid of faint squares. exp(-0.5*4) = 0.1353 is the corner
+   value; 1/(1-0.1353) = 1.1566 renormalises the peak back to 1. */
+const HOLO_FRAG = `
+  precision mediump float;
+  varying float vA;
+  varying float vRot;
+  varying float vStreak;
+  varying float vSoft;
+  varying vec3  vColor;
+  void main(){
+    vec2 c = gl_PointCoord - 0.5;
+    /* Velocity streaks. gl_PointSize cannot be anisotropic, so the elongated
+       minority is faked here: rotate into the particle's motion frame (vRot
+       comes across as a varying) and scale one axis. Cheaper than a second
+       InstancedBufferGeometry pass and it costs no extra draw call. */
+    float cs = cos(vRot), sn = sin(vRot);
+    vec2 r = vec2(c.x*cs + c.y*sn, c.y*cs - c.x*sn);
+    r.x /= mix(1.0, 3.1, vStreak);
+    r.y *= mix(1.0, 1.20, vStreak);
+    float dd = dot(r, r);
+    float core = exp(-dd * 38.0 * vSoft);
+    float halo = max(exp(-dd * 4.0) - 0.1353, 0.0) * 1.1566;
+    float a = (core + halo * 0.35) * vA;
+    /* streaks run past the sprite edge along their long axis; envelope them on
+       the UNROTATED radius so they end softly instead of being clipped square */
+    a *= mix(1.0, 1.0 - smoothstep(0.068, 0.25, dot(c,c)), vStreak);
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
+
+/* Coarse 3D value-noise, sampled once at seed time and used as a rejection
+   filter so the volume has thick and thin regions. A uniform box is the least
+   organic distribution available and it was most of why the old field read as
+   confetti stuck to the glass.
+
+   mulberry32 with a hardcoded seed, never Math.random — see the note on
+   mulberry32: nothing in this file may look like an entropy source. */
+function makeDensityField(seed, nx, ny, nz){
+  const rnd = mulberry32(seed);
+  const g = new Float32Array(nx*ny*nz);
+  for (let i=0; i<g.length; i++) g[i] = rnd();
+  return { g, nx, ny, nz };
+}
+function densityAt(f, x, y, z){                 // x,y,z in [0,1] -> [0,1]
+  const fx = x*(f.nx-1), fy = y*(f.ny-1), fz = z*(f.nz-1);
+  const ix = Math.min(f.nx-2, Math.max(0, Math.floor(fx)));
+  const iy = Math.min(f.ny-2, Math.max(0, Math.floor(fy)));
+  const iz = Math.min(f.nz-2, Math.max(0, Math.floor(fz)));
+  const tx = fx-ix, ty = fy-iy, tz = fz-iz;
+  const sx = tx*tx*(3-2*tx), sy = ty*ty*(3-2*ty), sz = tz*tz*(3-2*tz);
+  const g = f.g, nx = f.nx, ny = f.ny;
+  const at = (a,b,c) => g[(c*ny + b)*nx + a];
+  const c00 = lerp(at(ix,iy,iz),     at(ix+1,iy,iz),     sx);
+  const c10 = lerp(at(ix,iy+1,iz),   at(ix+1,iy+1,iz),   sx);
+  const c01 = lerp(at(ix,iy,iz+1),   at(ix+1,iy,iz+1),   sx);
+  const c11 = lerp(at(ix,iy+1,iz+1), at(ix+1,iy+1,iz+1), sx);
+  return lerp(lerp(c00,c10,sy), lerp(c01,c11,sy), sz);
+}
+
+function makeParticleLayer(count, seedBase, opts){
+  const geo = new THREE.BufferGeometry();
+  const pos  = new Float32Array(count*3);
+  const seed = new Float32Array(count*3);
+  const rnd8 = new Float32Array(count*3);
+  const rnd  = mulberry32(seedBase);
+  const dens = makeDensityField(seedBase ^ 0x5EED51, 6, 6, 4);
+
+  for (let i=0; i<count; i++){
+    // rejection-sample against the density field: clustered, never empty.
+    // Bounded attempts — a starved sample just lands wherever it last tried.
+    let x = 0.5, y = 0.5, z = 0.5;
+    for (let a=0; a<12; a++){
+      x = rnd(); y = rnd(); z = rnd();
+      const d = densityAt(dens, x, y, z);
+      if (rnd() < 0.18 + 0.82 * d * d) break;
+    }
+    pos[i*3+0] = x - 0.5;                      // normalized box, scaled by uSpan
+    pos[i*3+1] = y - 0.5;
+    pos[i*3+2] = (z - 0.5) * 2.0;              // -1..1, scaled by uSlab
+
+    seed[i*3+0] = rnd();                       // phase (kept for compatibility)
+    seed[i*3+1] = 0.10 + rnd()*0.24;           // speed
+    seed[i*3+2] = opts.sizeMin + rnd()*(opts.sizeMax - opts.sizeMin);
+
+    rnd8[i*3+0] = rnd();                       // dropout phase
+    rnd8[i*3+1] = rnd();                       // dropout period
+    rnd8[i*3+2] = rnd();                       // streak gate + capture jitter
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seed,3));
+  geo.setAttribute('aRnd',     new THREE.BufferAttribute(rnd8,3));
+  geo.setDrawRange(0, count);
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms:{
+      uTime:{value:0}, uSpan:{value:new THREE.Vector2(1,1)},
+      uOpacity:{value:opts.opacity}, uParallax:{value:opts.parallax},
+      uOffset:{value:new THREE.Vector2(0,0)},
+      uAnchor:{value:new THREE.Vector2(0,0)},
+      uDrift:{value:opts.drift}, uReach:{value:0},
+      uFocal:{value:CONFIG.fx.holoFocal},
+      uSlab:{value:opts.slab},
+      uMaxSize:{value:CONFIG.fx.holoMaxSize},
+      uMaxAlpha:{value:opts.maxAlpha},
+      uCurlAmp:{value:opts.curlAmp},
+      uCurlScale:{value:CONFIG.fx.holoCurlScale},
+      uCurlSpeed:{value:CONFIG.fx.holoCurlSpeed},
+      uBand:{value:0}, uDropout:{value:0}, uStreak:{value:0},
+      uEdge:{value:CONFIG.fx.holoEdgeFade},
+      uRepel:{value:CONFIG.fx.holoRepel}, uFaceR:{value:90},
+      uAssemble:{value:0}, uElemR:{value:120},
+      uElemC:{value:new THREE.Vector3(0,0,0)},
+      uColorA:{value:new THREE.Color(opts.colorFar)},
+      uColorB:{value:new THREE.Color(opts.colorNear)}
+    },
+    vertexShader:`
+      attribute vec3 aSeed;
+      attribute vec3 aRnd;
+      uniform float uTime, uOpacity, uParallax, uDrift, uReach;
+      uniform float uFocal, uSlab, uMaxSize, uMaxAlpha;
+      uniform float uCurlAmp, uCurlScale, uCurlSpeed;
+      uniform float uBand, uDropout, uStreak, uEdge, uRepel, uFaceR;
+      uniform float uAssemble, uElemR;
+      uniform vec2  uSpan, uOffset, uAnchor;
+      uniform vec3  uColorA, uColorB, uElemC;
+      varying float vA;
+      varying float vRot;
+      varying float vStreak;
+      varying float vSoft;
+      varying vec3  vColor;
+
+      float hash31(vec3 p){
+        p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+        p *= 17.0;
+        return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+      }
+      float vnz(vec3 x){
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        float a000 = hash31(i);
+        float a100 = hash31(i + vec3(1.0, 0.0, 0.0));
+        float a010 = hash31(i + vec3(0.0, 1.0, 0.0));
+        float a110 = hash31(i + vec3(1.0, 1.0, 0.0));
+        float a001 = hash31(i + vec3(0.0, 0.0, 1.0));
+        float a101 = hash31(i + vec3(1.0, 0.0, 1.0));
+        float a011 = hash31(i + vec3(0.0, 1.0, 1.0));
+        float a111 = hash31(i + vec3(1.0, 1.0, 1.0));
+        return mix(mix(mix(a000, a100, f.x), mix(a010, a110, f.x), f.y),
+                   mix(mix(a001, a101, f.x), mix(a011, a111, f.x), f.y), f.z);
+      }
+      /* Curl from a 3-tap gradient of ONE scalar field. Four noise fetches buys
+         volumetric, non-looping motion; the old sin/cos on a single phase
+         looped and the eye caught the loop. */
+      vec3 curl3(vec3 p){
+        float e = 0.42;
+        float n0 = vnz(p);
+        vec3  g  = vec3(vnz(p + vec3(e, 0.0, 0.0)) - n0,
+                        vnz(p + vec3(0.0, e, 0.0)) - n0,
+                        vnz(p + vec3(0.0, 0.0, e)) - n0) / e;
+        return vec3(g.y - g.z, g.z - g.x, g.x - g.y);
+      }
+
+      void main(){
+        /* Distribute xy across a span that GROWS with distance, so the volume
+           covers the frame uniformly instead of the near half flying off the
+           edges once the perspective divide multiplies it up. */
+        float zw = position.z * uSlab;
+        float persp0 = uFocal / max(uFocal - zw, 1.0);
+        vec3 base = vec3(position.xy * uSpan / persp0, zw);
+
+        /* two octaves of curl drift. uTime is held at 0 under REDUCED, which
+           freezes the whole flow field without a second code path. */
+        vec3 q  = base * uCurlScale + vec3(0.0, 0.0, uTime * uCurlSpeed);
+        vec3 c1 = curl3(q + uTime * uCurlSpeed * 0.9);
+        vec3 c2 = curl3(q * 2.3 + vec3(11.7, 4.3, 19.1) - uTime * uCurlSpeed * 1.6) * 0.45;
+        vec3 flow = (c1 + c2) * uCurlAmp * uDrift;
+        vec3 p3 = base + flow;
+
+        /* The element assembles OUT OF the field: particles inside the capture
+           shell converge onto it, hold while the question is live, then release.
+           uAssemble is tweened by enterHoloElement / dissolveHoloElement. */
+        float cap  = 1.0 - smoothstep(uElemR * 0.85, uElemR * 2.30, distance(p3, uElemC));
+        vec3  dirE = p3 - uElemC;
+        vec3  tgt  = uElemC + normalize(dirE + vec3(0.001)) * uElemR * (0.72 + aRnd.z * 0.46);
+        float grab = cap * uAssemble;
+        p3 = mix(p3, tgt, grab);
+
+        p3.xy *= (1.0 + uReach * 0.06);        // Q1 right: the field reaches outward
+
+        float persp = uFocal / max(uFocal - p3.z, 1.0);
+        vec2  sp = p3.xy * persp;
+        sp += uOffset * uParallax;             // near layer 1.5x, far 0.4x
+
+        /* The user's head displaces the volume — soft outward push plus a dim.
+           This one detail does more for "immersive" than any amount of count. */
+        vec2  rel  = sp - uAnchor;
+        float dist = length(rel);
+        float rr   = max(uFaceR * uRepel, 1.0);
+        float push = 1.0 - smoothstep(rr * 0.25, rr, dist);
+        sp += (rel / max(dist, 1.0)) * push * rr * 0.34;
+        float clear = 1.0 - push * 0.78;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(sp, 0.0, 1.0);
+
+        float near01 = clamp(p3.z / max(uSlab, 1.0) * 0.5 + 0.5, 0.0, 1.0);
+        float isStreak = step(1.0 - uStreak, aRnd.z);
+        float size = aSeed.z * persp * (1.0 + uReach * 0.25) * (1.0 + grab * 0.35);
+        size *= mix(1.0, 1.85, isStreak);
+        /* Mobile GPUs clamp large point sprites at wildly different limits and
+           the discontinuity between devices is visible. Cap it ourselves. */
+        gl_PointSize = min(size, uMaxSize);
+
+        float a = mix(0.42, 1.0, near01) * clear;   // far = dimmer
+        a *= (1.0 + grab * 0.55);
+
+        /* Interference banding — ONE coherent horizontal scan across the whole
+           field. Field-wide is the entire point; a per-particle phase here
+           would read as noise rather than as a hologram. */
+        a *= mix(1.0, 0.82 + 0.18 * sin(sp.y * 0.045 - uTime * 1.6), uBand);
+
+        /* Projection instability — fast attack, soft return over 2–6s.
+           Dark duty per particle is ~2.9%, so under 4% of the field is out. */
+        float per = 2.0 + aRnd.y * 4.0;
+        float ph  = fract(uTime / per + aRnd.x);
+        float k   = min(smoothstep(0.0, 0.05, ph), 1.0 - smoothstep(0.992, 1.0, ph));
+        a *= mix(1.0, k, uDropout);
+
+        /* Edge fade — the volume reads as infinite, not clipped at a box. */
+        vec2 ndc = abs(sp) / max(uSpan * 0.5, vec2(1.0));
+        a *= 1.0 - smoothstep(uEdge, 1.18, max(ndc.x, ndc.y));
+
+        a *= uOpacity;
+        vA = min(a * uMaxAlpha, uMaxAlpha);
+        /* atan(0,0) is undefined; the epsilon keeps a still field from NaNing */
+        vec2 fv = flow.xy + vec2(1e-4, 1e-5);
+        vRot = atan(fv.y, fv.x);
+        vStreak = isStreak;
+        vSoft = mix(1.0, 0.42, near01);        // near = larger AND blurrier
+        /* Chromatic dispersion: a narrow violet -> cyan ramp along depth only.
+           Narrow band, no rainbow. */
+        vColor = mix(uColorA, uColorB, clamp(0.16 + near01 * 0.66, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: HOLO_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  pts.userData.count = count;
+  return pts;
+}
+let particlesNear = null, particlesFar = null;
+const partCount = { far:0, near:0 };
+
+/* — 7b · scan point cloud (§8.7) — one geometry, preallocated, never realloc — */
+const MAX_SCAN_POINTS = 478;
+let scanPoints = null, scanPositions = null;
+
+function makeScanPoints(){
+  const geo = new THREE.BufferGeometry();
+  scanPositions = new Float32Array(MAX_SCAN_POINTS*3);
+  geo.setAttribute('position', new THREE.BufferAttribute(scanPositions,3));
+  geo.setDrawRange(0,0);
+  const mat = new THREE.ShaderMaterial({
+    uniforms:{
+      uTime:{value:0}, uFaceMinY:{value:0}, uFaceMaxY:{value:1},
+      uOpacity:{value:0}, uColor:{value:new THREE.Color(0x9FE9FF)}
+    },
+    vertexShader:`
+      uniform float uTime, uFaceMinY, uFaceMaxY, uOpacity;
+      uniform vec3  uColor;
+      varying float vA;
+      varying vec3  vColor;
+      void main(){
+        float faceHeight = max(uFaceMaxY - uFaceMinY, 1.0);
+        float wavePhase  = fract(uTime * 0.5);
+        float waveY      = uFaceMaxY - (wavePhase * faceHeight);
+        float dist       = position.y - waveY;
+        float pointSize  = 2.0;
+        float a          = 0.1;
+        if (dist > 0.0 && dist < faceHeight * 0.25){          // leading falloff
+          float f = 1.0 - dist / (faceHeight * 0.25);
+          a = 0.2 + 0.8 * f;  pointSize = 2.0 + 5.0 * f;
+        } else if (dist > -faceHeight * 0.05 && dist <= 0.0){ // tight trailing edge
+          float f = 1.0 - abs(dist) / (faceHeight * 0.05);
+          a = 0.2 + 0.8 * f;  pointSize = 2.0 + 6.0 * f;
+        }
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = pointSize;
+        vA = a * uOpacity;
+        vColor = uColor;
+      }
+    `,
+    fragmentShader: DISC_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  return pts;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   8 · THE FUTUREFIELD — the experience's one persistent visual construct.
+       A field of motes floating in the scene (NOT a ring, NOT a halo, nothing
+       circular). Each question owns a third of the motes and gives them their
+       own behaviour; answering locks that third into a settled state that
+       persists for the rest of the session.
+
+         fieldRoot
+           └ fieldMotes   (one Points system, one draw call, GPU-side motion)
+
+       Per-question behaviour, driven entirely by the slider (§5.2):
+         q1 DISCOVERY   left: motes hold close, ordered, slow
+                        right: motes reach outward across the scene, faster
+         q2 INNOVATION  left: free, smooth, widely spaced
+                        right: motes quantise onto a fine lattice, structured
+         q3 FUTURE      left: motes converge toward one point ahead
+                        right: motes open into a few parallel streams
+       Neither end is ever "better" — both poles are equally luminous.
+   ────────────────────────────────────────────────────────────────────────── */
+const FIELD_COUNT = 210;   // 70 motes per question
+
+let fieldRoot = null, fieldMotes = null;
+
+/* Live field state. Committed values persist; only the ACTIVE group's value
+   moves while a slider is being dragged. */
+const fieldState = {
+  opacity:0,
+  active:-1,                    // which question owns the motes right now
+  liveValue:0.5,                // the active group's live slider value
+  locked:[0,0,0],               // 0..1 settle amount per group
+  lockedValue:[0.5,0.5,0.5],    // the committed value per group
+  commit:[0,0,0],               // §7.7 one-shot echo per group, decays to 0
+  reveal:0,                     // 0..1 at RESULT_REVEAL — the field settles
+  pulse:1,                      // the invitation-assembly beat
+  breathLocked:false            // §7.6 — motion stops when the score commits
+};
+
+function makeFieldMotes(){
+  const geo = new THREE.BufferGeometry();
+  const pos   = new Float32Array(FIELD_COUNT*3);   // unused; positions are shader-side
+  const seed  = new Float32Array(FIELD_COUNT*3);   // phase, speed, size
+  const dir   = new Float32Array(FIELD_COUNT*3);   // scene position (-1..1) + lane
+  const group = new Float32Array(FIELD_COUNT);
+  const rnd = mulberry32(20260810);
+  for (let i=0; i<FIELD_COUNT; i++){
+    group[i]    = i % 3;
+    seed[i*3+0] = rnd();
+    seed[i*3+1] = 0.16 + rnd()*0.42;
+    seed[i*3+2] = 4.5 + rnd()*9.5;
+    dir[i*3+0]  = (rnd()*2 - 1) * 0.98;
+    dir[i*3+1]  = (rnd()*2 - 1) * 0.98;
+    dir[i*3+2]  = rnd();                            // lane / depth seed
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seed,3));
+  geo.setAttribute('aDir',     new THREE.BufferAttribute(dir,3));
+  geo.setAttribute('aGroup',   new THREE.BufferAttribute(group,1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms:{
+      uTime:{value:0}, uOpacity:{value:0}, uScale:{value:1},
+      uSpan:{value:new THREE.Vector2(1,1)},
+      uAnchor:{value:new THREE.Vector2(0,0)},
+      uFaceOffset:{value:new THREE.Vector2(0,0)},
+      uParallaxOn:{value:1},
+      uActive:{value:-1}, uValue:{value:0.5},
+      uLocked:{value:new THREE.Vector3(0,0,0)},
+      uLockedValue:{value:new THREE.Vector3(0.5,0.5,0.5)},
+      uCommit:{value:new THREE.Vector3(0,0,0)},
+      uReveal:{value:0}, uBreath:{value:1},
+      /* §3 composition — the scene now has a hero. This dials the field back to
+         supporting weight (0.75 size AND alpha) whenever a holo flag is on, and
+         initThree() halves its draw range to match. With both holo flags false
+         it stays at 1.0 and the original composition is untouched. */
+      uWeight:{value:1},
+      uColorA:{value:new THREE.Color(0x9A84CC)},
+      uColorB:{value:new THREE.Color(0x00EAF2)}
+    },
+    vertexShader:`
+      attribute vec3  aSeed;
+      attribute vec3  aDir;
+      attribute float aGroup;
+      uniform float uTime, uOpacity, uScale, uParallaxOn, uActive, uValue, uReveal, uBreath;
+      uniform float uWeight;
+      uniform vec2  uSpan, uAnchor, uFaceOffset;
+      uniform vec3  uLocked, uLockedValue, uCommit, uColorA, uColorB;
+      varying float vA;
+      varying vec3  vColor;
+
+      float pick(vec3 v, float g){
+        return g < 0.5 ? v.x : (g < 1.5 ? v.y : v.z);
+      }
+
+      void main(){
+        float g          = aGroup;
+        float lockedAmt  = pick(uLocked, g);
+        float lockedVal  = pick(uLockedValue, g);
+        float commit     = pick(uCommit, g);
+        float isActive   = step(abs(uActive - g), 0.5);
+        float v          = mix(lockedVal, uValue, isActive);
+        float engaged    = max(isActive, lockedAmt);
+
+        float ph = aSeed.x * 6.2831853;
+        float t  = uTime * aSeed.y;
+
+        // resting position: motes simply floating in the scene
+        vec2 base = aDir.xy * uSpan * 0.5;
+        base += vec2(sin(t + ph), cos(t * 0.83 + ph)) * 13.0;
+
+        vec2 p = base;
+        vec2 rel = base - uAnchor;
+
+        if (g < 0.5){
+          // DISCOVERY — hold close and ordered, or reach outward and explore
+          p = uAnchor + rel * (0.80 + v * 0.50);
+          vec2 outward = rel / max(length(rel), 1.0);
+          p += outward * sin(t * 1.5 + ph) * (3.0 + v * 17.0);
+        } else if (g < 1.5){
+          // INNOVATION — free and smooth, or quantised onto a fine lattice
+          float cell = mix(230.0, 48.0, v);
+          vec2 grid  = floor(base / cell) * cell + cell * 0.5;
+          p = mix(base, grid, v * 0.88);
+          p += vec2(sin(t * 1.1 + ph), cos(t * 1.27 + ph)) * (11.0 - v * 8.0);
+        } else {
+          // FUTURE — converge toward one point ahead, or open into streams
+          float lane   = floor(aDir.z * 3.0) - 1.0;
+          vec2  focus  = uAnchor + vec2(0.0, uSpan.y * 0.14);
+          vec2  target = focus + vec2(lane * uSpan.x * 0.26 * v, 0.0);
+          p = mix(target, base, 0.26 + v * 0.56);
+          p.y += sin(t * 0.95 + ph) * (5.0 + v * 12.0);
+        }
+
+        // dormant groups stay at rest; engaged ones take their behaviour
+        p = mix(base, p, engaged);
+        // a committed group settles: motion damped toward its resting order
+        p = mix(p, mix(p, base, 0.45), lockedAmt * (1.0 - isActive));
+        // §7.7 commit echo — one brief outward breath, no burst, no new object
+        p += (p - uAnchor) * commit * 0.09;
+        // at the reveal the whole field draws calmly inward and holds
+        p = mix(p, uAnchor + (p - uAnchor) * 0.90, uReveal * 0.5);
+
+        if (uParallaxOn > 0.5) p += uFaceOffset * (0.45 + aDir.z);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 0.0, 1.0);
+
+        float size = aSeed.z * (0.80 + isActive * 0.70 + lockedAmt * 0.50 + commit * 0.95);
+        gl_PointSize = size * uScale * uBreath * uWeight;
+
+        float a = 0.34 + isActive * 0.72 + lockedAmt * 0.58 + commit * 0.55;
+        a *= (0.60 + uReveal * 0.45);
+        vA = a * uOpacity * uBreath * uWeight;
+        vColor = mix(uColorA, uColorB,
+                     clamp(0.20 + v * 0.62 * engaged + lockedAmt * 0.30, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: DISC_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  return pts;
+}
+
+function buildFutureField(){
+  fieldRoot = new THREE.Group();
+  fieldRoot.visible = false;
+  fieldMotes = makeFieldMotes();
+  fieldRoot.add(fieldMotes);
+  scene.add(fieldRoot);
+}
+
+/* Push the current answer state into the field. Called on every slider move
+   and on every commit — cheap, it is four uniform writes. */
+function applyFieldState(){
+  if (!fieldMotes) return;
+  const u = fieldMotes.material.uniforms;
+  u.uActive.value = fieldState.active;
+  u.uValue.value  = fieldState.liveValue;
+  u.uLocked.value.set(fieldState.locked[0], fieldState.locked[1], fieldState.locked[2]);
+  u.uLockedValue.value.set(fieldState.lockedValue[0], fieldState.lockedValue[1], fieldState.lockedValue[2]);
+  /* the live element reads the same slider value the field does — left/right
+     mean exactly one thing across the whole scene */
+  if (fieldState.active >= 0) holoState.value = fieldState.liveValue;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   8b · THE THREE HOLOGRAPHIC ELEMENTS — one per question, exactly one visible
+        at a time, each about fist-sized.
+
+        PLACEMENT. These are deliberately NOT concentric with the face: a second
+        halo around the head is the failure mode being avoided. Each element
+        occupies a small volume OFFSET from the head, at roughly head height, on
+        an orbital path at CONFIG.fx.holoOrbitR × face width, which carries it
+        BEHIND the head on one half of its cycle and out toward the frame edge
+        on the other. Same manual perspective divide as the particle volume, so
+        it genuinely foreshortens and rotates in 3D.
+
+        The occlusion is faked: when the element's z puts it behind the head, its
+        alpha is attenuated inside the anchor.rect ellipse. Cheap, and it sells
+        depth harder than anything else available here.
+
+        The semantics are the ones that already exist — QUESTIONS[].visualMode
+        and the three groups in makeFieldMotes. Left/right mean the same thing to
+        the element as they do to the field.
+          q1 discovery   Orbital Scatter — one tight ordered shell -> shells
+                         multiply, tilt into each other, orbits widen
+          q2 innovation  Lattice Weave   — few thick struts -> dense lattice,
+                         nodes ignite at the intersections
+          q3 future      Path Bloom      — converge to one point -> a delta of
+                         diverging paths
+
+        Built ONCE at init, all three kept in the scene, toggled by .visible and
+        opacity. Never built or disposed per question — restartExperience() runs
+        repeatedly at an event and must not grow memory.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Shared GLSL: the orbit, the manual projection, the fake occlusion. Kept
+   byte-identical in intent to the JS in updateHolo() so the particle capture
+   target and the element actually coincide in space. */
+const HOLO_COMMON = `
+  uniform float uT, uV, uOpacity, uSize, uFocal;
+  uniform float uOrbitR, uOrbitZ, uOrbitY, uOrbitT;
+  uniform vec2  uAnchor, uHeadR;
+  uniform vec3  uColorA, uColorB;
+  varying float vA;
+  varying vec3  vColor;
+
+  vec3 holoCentre(){
+    return vec3(uAnchor.x + cos(uOrbitT) * uOrbitR,
+                uAnchor.y + uOrbitY,
+                sin(uOrbitT) * uOrbitZ - uOrbitZ * 0.22);
+  }
+  /* Perspective ABOUT THE HEAD, not about the screen origin: it keeps the
+     element locked to the head as it swings through depth, which is what makes
+     the occlusion test line up with the face instead of drifting to centre. */
+  vec4 holoProject(vec3 world, out float persp, out float aOcc){
+    persp = uFocal / max(uFocal - world.z, 1.0);
+    vec2 sp = uAnchor + (world.xy - uAnchor) * persp;
+    vec2 rel = (sp - uAnchor) / max(uHeadR, vec2(1.0));
+    float inHead = 1.0 - smoothstep(0.70, 1.06, length(rel));
+    float behind = clamp(-world.z / 90.0, 0.0, 1.0);
+    aOcc = 1.0 - inHead * behind * 0.88;
+    return projectionMatrix * modelViewMatrix * vec4(sp, 0.0, 1.0);
+  }
+`;
+
+/* Round two-lobe sprite, same law as HOLO_FRAG: soft core, wide faint halo,
+   biased to zero at the corner so nothing stacks into squares. */
+const HOLO_ELEM_FRAG = `
+  precision mediump float;
+  varying float vA;
+  varying vec3  vColor;
+  void main(){
+    vec2 c = gl_PointCoord - 0.5;
+    float dd = dot(c, c);
+    float core = exp(-dd * 34.0);
+    float halo = max(exp(-dd * 5.0) - 0.0821, 0.0) * 1.0895;
+    float a = (core + halo * 0.40) * vA;
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
+const HOLO_LINE_FRAG = `
+  precision mediump float;
+  varying float vA;
+  varying vec3  vColor;
+  void main(){
+    if (vA < 0.004) discard;
+    gl_FragColor = vec4(vColor, vA);
+  }
+`;
+
+function holoUniforms(){
+  return {
+    uT:{value:0}, uV:{value:0.5}, uOpacity:{value:0},
+    uSize:{value:120}, uFocal:{value:CONFIG.fx.holoFocal},
+    uOrbitR:{value:200}, uOrbitZ:{value:CONFIG.fx.holoOrbitZ},
+    uOrbitY:{value:0}, uOrbitT:{value:0},
+    uAnchor:{value:new THREE.Vector2(0,0)},
+    uHeadR:{value:new THREE.Vector2(90,110)},
+    uColorA:{value:new THREE.Color(0x9A84CC)},   // violet-primary
+    uColorB:{value:new THREE.Color(0x00EAF2)}    // cyan
+  };
+}
+
+let holoRoot = null;
+const holoElements = [null, null, null];
+const holoMats = [];
+
+/* Live element state. holoState.cx/cy/cz is the capture target handed to the
+   particle layers — the connective tissue that makes the element assemble out
+   of the ambient field rather than arrive as an unrelated prop. */
+const holoState = {
+  active:-1, opacity:0, value:0.5, assemble:0,
+  orbit:0, cx:0, cy:0, cz:0, radius:120, track:1
+};
+
+/* — q1 · ORBITAL SCATTER — points on nested 3D orbital shells.
+     v=0: one tight ordered shell (Fibonacci lattice, so it reads as ORDERED,
+     not as a random puff). v=1: shells multiply to four, tilt into each other,
+     orbits widen and the points jitter off the perfect lattice. */
+function makeOrbitalScatter(){
+  const N = 240;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N*3);
+  const sph = new Float32Array(N*3);
+  const jit = new Float32Array(N*3);
+  const rnd = mulberry32(0x0B17A1);
+  for (let i=0; i<N; i++){
+    const y  = 1 - ((i + 0.5) / N) * 2;
+    sph[i*3+0] = i * 2.399963229728653;          // golden angle
+    sph[i*3+1] = Math.acos(clamp(y, -1, 1));
+    sph[i*3+2] = ((i * 97) % N) / N;             // shell seed, decorrelated from y
+    jit[i*3+0] = rnd()*2 - 1;
+    jit[i*3+1] = rnd()*2 - 1;
+    jit[i*3+2] = rnd()*2 - 1;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aSph',     new THREE.BufferAttribute(sph,3));
+  geo.setAttribute('aJit',     new THREE.BufferAttribute(jit,3));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: holoUniforms(),
+    vertexShader: HOLO_COMMON + `
+      attribute vec3 aSph;
+      attribute vec3 aJit;
+      void main(){
+        float v = uV;
+        float shellF = 1.0 + v * 3.0;               // 1 shell -> 4
+        float si = floor(aSph.z * shellF);
+        float sn = si / max(shellF - 1.0, 1.0);
+        float r  = uSize * (0.52 + sn * 0.62) * (0.86 + v * 0.42);
+        float th = aSph.x + uT * (0.30 + sn * 0.42);
+        float ph = aSph.y;
+        vec3 q = vec3(cos(th) * sin(ph), cos(ph), sin(th) * sin(ph)) * r;
+        float tl = sn * v * 1.30;                   // shells tilt into each other
+        q.yz = vec2(q.y * cos(tl) - q.z * sin(tl), q.y * sin(tl) + q.z * cos(tl));
+        q += aJit * v * 0.20 * r;
+        vec3 world = holoCentre() + q;
+        float persp, occ;
+        gl_Position = holoProject(world, persp, occ);
+        gl_PointSize = min(uSize * 0.150 * persp * (1.0 + v * 0.25), 26.0);
+        float near01 = clamp(world.z / 420.0 * 0.5 + 0.5, 0.0, 1.0);
+        vA = uOpacity * occ * mix(0.45, 1.0, near01) * 1.00;
+        vColor = mix(uColorA, uColorB, clamp(0.15 + near01 * 0.70, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: HOLO_ELEM_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  holoMats.push(mat);
+  return pts;
+}
+
+/* — q2 · LATTICE WEAVE — a wireframe crystal frame.
+     Node set: 8 corners + 6 face centres + 12 edge midpoints + 1 centre = 27.
+     Segments carry a level: L0 the twelve cube edges (the "few thick struts"),
+     L1/L2/L3 subdivide. 98 segments total, well under the 400 budget.
+
+     "Thick" is expressed as BRIGHTNESS, not width: WebGL lineWidth is pinned at
+     1 on essentially every platform that matters, so a thicker strut is a
+     brighter one. At v=0 only L0 draws, bright; as v rises L0 dims and the
+     dense lattice fades in beneath it. */
+function buildLatticeData(){
+  const P = [], NL = [];
+  const push = (x,y,z,l) => { P.push(x,y,z); NL.push(l); return (P.length/3) - 1; };
+  const corner = [], face = [], edgeMid = [];
+  for (let sx=-1; sx<=1; sx+=2)
+    for (let sy=-1; sy<=1; sy+=2)
+      for (let sz=-1; sz<=1; sz+=2) corner.push({ i:push(sx,sy,sz,0), p:[sx,sy,sz] });
+  const faceDirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for (const d of faceDirs) face.push({ i:push(d[0],d[1],d[2],1), p:d });
+  for (let axis=0; axis<3; axis++)
+    for (let a=-1; a<=1; a+=2)
+      for (let b=-1; b<=1; b+=2){
+        const p = [0,0,0];
+        p[(axis+1)%3] = a; p[(axis+2)%3] = b;
+        edgeMid.push({ i:push(p[0],p[1],p[2],2), p:p.slice() });
+      }
+  const centre = { i:push(0,0,0,1), p:[0,0,0] };
+
+  const S = [], SL = [];
+  const link = (A,B,l) => { S.push(A.i, B.i); SL.push(l); };
+  const axisOf = f => (f.p[0] !== 0 ? 0 : (f.p[1] !== 0 ? 1 : 2));
+
+  for (let i=0; i<corner.length; i++)                    // L0 — the cube edges
+    for (let j=i+1; j<corner.length; j++){
+      let diff = 0;
+      for (let k=0; k<3; k++) if (corner[i].p[k] !== corner[j].p[k]) diff++;
+      if (diff === 1) link(corner[i], corner[j], 0);
+    }
+  for (const f of face) link(centre, f, 1);              // L1 — centre spokes
+  for (const f of face){
+    const k = axisOf(f);
+    for (const c of corner) if (c.p[k] === f.p[k]) link(f, c, 1);
+  }
+  for (const e of edgeMid){                              // L2 — the subdivision
+    const z = e.p[0] === 0 ? 0 : (e.p[1] === 0 ? 1 : 2);
+    for (const f of face){ const k = axisOf(f); if (e.p[k] === f.p[k]) link(e, f, 2); }
+    for (const c of corner){
+      let ok = true;
+      for (let k=0; k<3; k++) if (k !== z && e.p[k] !== c.p[k]) ok = false;
+      if (ok) link(e, c, 2);
+    }
+  }
+  for (const c of corner) link(centre, c, 3);            // L3 — body diagonals
+  return { P, NL, S, SL };
+}
+
+function makeLatticeWeave(){
+  const d = buildLatticeData();
+  const segCount = d.SL.length;
+  const group = new THREE.Group();
+
+  // — the struts, expanded to non-indexed LineSegments —
+  const lgeo = new THREE.BufferGeometry();
+  const lpos = new Float32Array(segCount*2*3);
+  const llev = new Float32Array(segCount*2);
+  for (let s=0; s<segCount; s++){
+    for (let e=0; e<2; e++){
+      const n = d.S[s*2+e];
+      lpos[(s*2+e)*3+0] = d.P[n*3+0];
+      lpos[(s*2+e)*3+1] = d.P[n*3+1];
+      lpos[(s*2+e)*3+2] = d.P[n*3+2];
+      llev[s*2+e] = d.SL[s];
+    }
+  }
+  lgeo.setAttribute('position', new THREE.BufferAttribute(lpos,3));
+  lgeo.setAttribute('aLevel',   new THREE.BufferAttribute(llev,1));
+
+  const LATTICE_BODY = `
+      float v = uV;
+      float lv = aLevel;
+      /* level 0 is always present; each higher level fades in over its own
+         slice of the slider, so the frame SUBDIVIDES rather than cross-fading */
+      float act = lv < 0.5 ? 1.0
+                : smoothstep((lv - 1.0) * 0.30 + 0.05, (lv - 1.0) * 0.30 + 0.42, v);
+      float ry = uT * 0.28;
+      float rx = 0.35 + sin(uT * 0.19) * 0.22;
+      vec3 q = position * uSize * (0.72 + v * 0.30);
+      q.xz = vec2(q.x * cos(ry) - q.z * sin(ry), q.x * sin(ry) + q.z * cos(ry));
+      q.yz = vec2(q.y * cos(rx) - q.z * sin(rx), q.y * sin(rx) + q.z * cos(rx));
+      vec3 world = holoCentre() + q;
+      float persp, occ;
+      vec4 clipPos = holoProject(world, persp, occ);
+      float near01 = clamp(world.z / 420.0 * 0.5 + 0.5, 0.0, 1.0);
+  `;
+
+  const lmat = new THREE.ShaderMaterial({
+    uniforms: holoUniforms(),
+    vertexShader: HOLO_COMMON + `
+      attribute float aLevel;
+      void main(){
+        ${LATTICE_BODY}
+        gl_Position = clipPos;
+        float thick = lv < 0.5 ? mix(1.00, 0.55, v) : 0.50;
+        vA = uOpacity * occ * thick * act * mix(0.50, 1.0, near01);
+        vColor = mix(uColorA, uColorB, clamp(0.15 + near01 * 0.70, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: HOLO_LINE_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const lines = new THREE.LineSegments(lgeo, lmat);
+  lines.frustumCulled = false;
+  group.add(lines);
+  holoMats.push(lmat);
+
+  // — the 27 nodes, igniting at the intersections as the lattice densifies —
+  const ngeo = new THREE.BufferGeometry();
+  ngeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(d.P), 3));
+  ngeo.setAttribute('aLevel',   new THREE.BufferAttribute(new Float32Array(d.NL), 1));
+  const nmat = new THREE.ShaderMaterial({
+    uniforms: holoUniforms(),
+    vertexShader: HOLO_COMMON + `
+      attribute float aLevel;
+      void main(){
+        ${LATTICE_BODY}
+        gl_Position = clipPos;
+        float ig = smoothstep(0.35, 0.95, v) * act;
+        gl_PointSize = min(uSize * (0.080 + ig * 0.130) * persp, 22.0);
+        vA = uOpacity * occ * (0.22 + ig * 1.00) * mix(0.50, 1.0, near01);
+        vColor = mix(uColorA, uColorB, clamp(0.25 + ig * 0.60, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: HOLO_ELEM_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const nodes = new THREE.Points(ngeo, nmat);
+  nodes.frustumCulled = false;
+  group.add(nodes);
+  holoMats.push(nmat);
+
+  return group;
+}
+
+/* — q3 · PATH BLOOM — vertical light filaments.
+     v=0: every filament collapses onto one converging column. v=1: they open
+     into a delta of diverging paths, with sub-branches splitting above t=0.42.
+     A travelling pulse runs up the filaments; under REDUCED uT is 0 and the
+     pulse simply becomes a static pattern along the path. */
+function makePathBloom(){
+  const LANES = 14, SAMPLES = 16, N = LANES * SAMPLES;   // 224 points
+  const geo = new THREE.BufferGeometry();
+  const pos  = new Float32Array(N*3);
+  const path = new Float32Array(N*3);
+  const rnd  = mulberry32(0x9A7480);
+  let k = 0;
+  for (let l=0; l<LANES; l++){
+    const lane   = (l / (LANES - 1)) * 2 - 1;
+    const branch = rnd()*2 - 1;
+    for (let s=0; s<SAMPLES; s++){
+      path[k*3+0] = lane;
+      path[k*3+1] = s / (SAMPLES - 1);
+      path[k*3+2] = branch;
+      k++;
+    }
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aPath',    new THREE.BufferAttribute(path,3));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: holoUniforms(),
+    vertexShader: HOLO_COMMON + `
+      attribute vec3 aPath;
+      void main(){
+        float v = uV;
+        float t = aPath.y;
+        float lane = aPath.x;
+        float spread = mix(0.05, 1.0, v);
+        float grow = pow(t, 1.6);                 // everything meets at t = 0
+        float br = step(0.42, t) * aPath.z * v * 0.55 * (t - 0.42) / 0.58;
+        vec3 q;
+        q.x = (lane * 0.95 + br) * uSize * 1.05 * spread * grow;
+        q.y = (t - 0.42) * uSize * 2.05;
+        q.z = (sin(lane * 4.1) * 0.62 + br * 0.5) * uSize * 0.95 * spread * grow;
+        float ry = uT * 0.22;
+        q.xz = vec2(q.x * cos(ry) - q.z * sin(ry), q.x * sin(ry) + q.z * cos(ry));
+        vec3 world = holoCentre() + q;
+        float persp, occ;
+        gl_Position = holoProject(world, persp, occ);
+        gl_PointSize = min(uSize * 0.140 * persp, 24.0);
+        float near01 = clamp(world.z / 420.0 * 0.5 + 0.5, 0.0, 1.0);
+        float pulse = pow(max(0.0, sin((t * 2.4 - uT * 0.55) * 6.2831853)), 3.0);
+        vA = uOpacity * occ * (0.30 + 0.70 * pulse) * mix(0.45, 1.0, near01) * 1.10;
+        vColor = mix(uColorA, uColorB, clamp(0.12 + t * 0.52 + near01 * 0.26, 0.0, 1.0));
+      }
+    `,
+    fragmentShader: HOLO_ELEM_FRAG,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  holoMats.push(mat);
+  return pts;
+}
+
+function buildHoloElements(){
+  if (!CONFIG.fx.holoElements) return;
+  holoRoot = new THREE.Group();
+  holoRoot.visible = false;
+  holoElements[VISUAL_MODE_INDEX.discovery]  = makeOrbitalScatter();
+  holoElements[VISUAL_MODE_INDEX.innovation] = makeLatticeWeave();
+  holoElements[VISUAL_MODE_INDEX.future]     = makePathBloom();
+  for (let i=0; i<3; i++){
+    holoElements[i].visible = false;
+    holoRoot.add(holoElements[i]);
+  }
+  scene.add(holoRoot);
+}
+
+/* Assemble out of the field / dissolve back into it. Both go through the
+   existing tween() helper, keyed so a fast double transition replaces rather
+   than stacks. Nothing pops: ~400ms in, ~250ms out. */
+function enterHoloElement(i){
+  if (!CONFIG.fx.holoElements || !holoRoot) return;
+  holoState.active = i;
+  holoState.value = 0.5;
+  for (let k=0; k<3; k++) if (holoElements[k]) holoElements[k].visible = (k === i);
+  holoRoot.visible = true;
+  tween(holoState.opacity, 1, CONFIG.fx.holoAssembleMs,
+        v => { holoState.opacity = v; }, null, 'holoOp');
+  tween(holoState.assemble, 1, CONFIG.fx.holoAssembleMs,
+        v => { holoState.assemble = v; }, null, 'holoAsm');
+}
+function dissolveHoloElement(){
+  if (!CONFIG.fx.holoElements || !holoRoot) return;
+  if (holoState.active < 0 && holoState.opacity <= 0.001) return;
+  tween(holoState.assemble, 0, CONFIG.fx.holoDissolveMs,
+        v => { holoState.assemble = v; }, null, 'holoAsm');
+  tween(holoState.opacity, 0, CONFIG.fx.holoDissolveMs,
+        v => { holoState.opacity = v; }, () => {
+          holoState.active = -1;
+          for (let k=0; k<3; k++) if (holoElements[k]) holoElements[k].visible = false;
+          if (holoRoot) holoRoot.visible = false;
+        }, 'holoOp');
+}
+
+function initThree(){
+  const canvas = el.gl;
+  renderer = new THREE.WebGLRenderer({
+    canvas, alpha:true, antialias:false, premultipliedAlpha:false,
+    powerPreference:'high-performance'
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));   // DPR clamp
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  orthoCamera = new THREE.OrthographicCamera(-1,1,1,-1,-1000,1000);
+  orthoCamera.position.z = 10;
+  clock = new THREE.Clock();
+
+  /* With holoParticles off the volume collapses to a flat plane with a gentle
+     drift and the original 76-mote budget — the old look, softer sprite, and
+     nothing else in the file notices. */
+  const holoOn = !!CONFIG.fx.holoParticles;
+  const total = holoOn ? CONFIG.fx.particleCount : 76;
+  const farN  = Math.round(total * 0.55);
+  partCount.far  = farN;
+  partCount.near = total - farN;
+
+  particlesFar = makeParticleLayer(farN, 1337, {
+    sizeMin:2.0, sizeMax:4.5, opacity:0.0, parallax:CONFIG.fx.parallaxFar,
+    colorFar:0x9A84CC, colorNear:0x7DDCFF, drift:0.72,
+    slab: holoOn ? CONFIG.fx.holoSlab : 0.001,
+    curlAmp: holoOn ? CONFIG.fx.holoCurlAmp : 9,
+    maxAlpha: holoOn ? CONFIG.fx.holoMaxAlpha : 0.70
+  });
+  particlesNear = makeParticleLayer(partCount.near, 4242, {
+    sizeMin:3.0, sizeMax:7.5, opacity:0.0, parallax:CONFIG.fx.parallaxNear,
+    colorFar:0x9A84CC, colorNear:0x00EAF2, drift:1.15,
+    slab: holoOn ? CONFIG.fx.holoSlab : 0.001,
+    curlAmp: holoOn ? CONFIG.fx.holoCurlAmp : 9,
+    maxAlpha: holoOn ? CONFIG.fx.holoMaxAlpha : 0.70
+  });
+  scene.add(particlesFar); scene.add(particlesNear);
+
+  scanPoints = makeScanPoints();
+  scene.add(scanPoints);
+
+  buildFutureField();
+  buildHoloElements();
+
+  /* §3 — the scene now has a hero, so the FutureField recedes to supporting
+     weight: half the motes, three quarters the size and alpha. It still carries
+     the progress read, it just stops competing. Untouched when both holo flags
+     are false. FIELD_COUNT/2 is rounded to a multiple of 3 so the three
+     per-question groups stay balanced. */
+  if (holoOn || CONFIG.fx.holoElements){
+    fieldMotes.material.uniforms.uWeight.value = 0.75;
+    fieldMotes.geometry.setDrawRange(0, 108);
+  }
+  resize();
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   9 · RENDER LOOP — allocation-free, no layout reads, MediaPipe frame-gated
+   ────────────────────────────────────────────────────────────────────────── */
+let isRenderLoopRunning = false, renderRafId = 0, lastVideoTime = -1;
+let modalOpen = false;
+let lastFrameT = 0;
+
+const scanCloud = { active:false, opacity:0, target:0, minY:0, maxY:1 };
+
+function writeScanPositions(lm){
+  const n = Math.min(lm.length, MAX_SCAN_POINTS);
+  for (let i=0; i<n; i++){
+    const p = lm[i];
+    scanPositions[i*3+0] = (0.5 - p.x) * view.vw;   // 0.5 - x  == the mirror
+    scanPositions[i*3+1] = (0.5 - p.y) * view.vh;   // flipped for Three's +Y up
+    scanPositions[i*3+2] = 0;
+  }
+  scanPoints.geometry.setDrawRange(0, n);
+  scanPoints.geometry.attributes.position.needsUpdate = true;
+  scanCloud.maxY = (0.5 - faceNorm.minY) * view.vh;
+  scanCloud.minY = (0.5 - faceNorm.maxY) * view.vh;
+}
+
+function startRenderLoop(){
+  if (isRenderLoopRunning) return;
+  isRenderLoopRunning = true;
+  lastFrameT = 0;
+  if (clock) clock.getDelta();
+  renderRafId = requestAnimationFrame(renderLoop);
+}
+function stopRenderLoop(){
+  isRenderLoopRunning = false;
+  if (renderRafId){ cancelAnimationFrame(renderRafId); renderRafId = 0; }
+}
+
+function renderLoop(){
+  if (!isRenderLoopRunning || document.hidden || !activeStream) { isRenderLoopRunning = false; return; }
+  renderRafId = requestAnimationFrame(renderLoop);
+  if (modalOpen) return;                        // don't render behind the card
+
+  const time = clock.getElapsedTime();
+  const dt   = lastFrameT ? Math.min(time - lastFrameT, 0.1) : 0.016;
+  lastFrameT = time;
+
+  // ── frame gate: never infer twice on the same camera frame ──
+  if (MP.ready && el.video.readyState >= 2 && el.video.currentTime !== lastVideoTime){
+    lastVideoTime = el.video.currentTime;
+    runDetection(performance.now());
+  }
+
+  // fps, measured not invented (the telemetry line shows this exact number)
+  tracking._frames++;
+  if (time - tracking._fpsT >= 0.5){
+    tracking.fps = Math.round(tracking._frames / (time - tracking._fpsT));
+    tracking._frames = 0; tracking._fpsT = time;
+  }
+
+  stepTweens(dt);
+  updateAnchor(dt);
+  updateAutoDegrade(dt);
+  updateScanCloud(time, dt);
+  updateField(time, dt);
+  updateHolo(time, dt);        // before updateParticles: it writes the capture target
+  updateParticles(time);
+  updateSlowUi(time);
+
+  renderer.render(scene, orthoCamera);
+}
+
+/* — scan cloud — */
+function updateScanCloud(time, dt){
+  scanCloud.opacity += (scanCloud.target - scanCloud.opacity) * Math.min(1, dt*3.2);
+  const u = scanPoints.material.uniforms;
+  u.uTime.value = time;
+  u.uOpacity.value = scanCloud.opacity;
+  u.uFaceMinY.value = scanCloud.minY;
+  u.uFaceMaxY.value = scanCloud.maxY;
+  scanPoints.visible = scanCloud.opacity > 0.005;
+}
+
+/* — the field: all motion is GPU-side, so this only pushes state into uniforms — */
+let fieldTargetOpacity = 0;
+
+function updateField(time, dt){
+  fieldState.opacity += (fieldTargetOpacity - fieldState.opacity) * Math.min(1, dt*3.0);
+  fieldRoot.visible = fieldState.opacity > 0.005;
+  if (!fieldRoot.visible) return;
+
+  // §7.6 field breathing — a slow swell in size and brightness, so the field
+  // reads as listening rather than as a static sprite. Locks at RESULT_REVEAL.
+  let breath = 1;
+  if (fx('fieldBreathing') && !fieldState.breathLocked){
+    const ph = Math.sin(time * (6.2831853 / CONFIG.fx.breathPeriod));
+    breath = 1 + ph * (CONFIG.fx.breathScale + CONFIG.fx.breathOpacity) * 0.5;
+  }
+
+  // §7.7 commit echo — one brief per-group breath, decaying cleanly to zero
+  for (let i=0; i<3; i++){
+    if (fieldState.commit[i] > 0){
+      fieldState.commit[i] -= dt * (1000 / CONFIG.fx.echoMs);
+      if (fieldState.commit[i] < 0) fieldState.commit[i] = 0;
+    }
+  }
+
+  const u = fieldMotes.material.uniforms;
+  u.uTime.value    = REDUCED ? 0 : time;
+  u.uOpacity.value = fieldState.opacity;
+  u.uBreath.value  = breath * fieldState.pulse;
+  u.uScale.value   = clamp(Math.min(view.w, view.h) / 390, 0.8, 1.5);
+  u.uSpan.value.set(view.w * 0.98, view.h * 0.98);
+  u.uAnchor.value.set(screenToWorldX(anchor.x), screenToWorldY(anchor.y));
+  u.uReveal.value  = fieldState.reveal;
+  u.uCommit.value.set(fieldState.commit[0], fieldState.commit[1], fieldState.commit[2]);
+  u.uParallaxOn.value = fx('nodeDepthPop') ? 1 : 0;
+  // head yaw/pitch gives the motes a little depth separation (§7.10)
+  u.uFaceOffset.value.set(anchor.yaw * 14, -anchor.pitch * 14);
+}
+
+/* — particles: two depth layers of a holographic volume (§7.5, §7.13).
+     Nothing is allocated here; every vector written below was allocated once at
+     material-construction time. — */
+let particleTargetOpacity = 0;
+let particleOpacity = 0;
+
+/* Auto-degrade. If measured fps sits under CONFIG.fx.degradeFps for two solid
+   seconds, halve the particle count and drop streaks and dropout. Silent — the
+   user is never told. One-way by design: a device that is slow now will be slow
+   again in ten seconds, and oscillating the count is more visible than the
+   lower count ever is. It survives restartExperience() for the same reason. */
+const degrade = { on:false, below:0 };
+function applyParticleDrawRange(){
+  const f = degrade.on ? 0.5 : 1;
+  if (particlesFar)  particlesFar.geometry.setDrawRange(0,  Math.max(1, Math.round(partCount.far  * f)));
+  if (particlesNear) particlesNear.geometry.setDrawRange(0, Math.max(1, Math.round(partCount.near * f)));
+}
+function liveParticleCount(){
+  const f = degrade.on ? 0.5 : 1;
+  return Math.max(1, Math.round(partCount.far * f)) + Math.max(1, Math.round(partCount.near * f));
+}
+function updateAutoDegrade(dt){
+  if (!CONFIG.fx.autoDegrade || degrade.on) return;
+  if (tracking.fps > 0 && tracking.fps < CONFIG.fx.degradeFps) degrade.below += dt * 1000;
+  else degrade.below = 0;
+  if (degrade.below >= CONFIG.fx.degradeHoldMs){
+    degrade.on = true;
+    applyParticleDrawRange();
+    if (CONFIG.debug) console.log('[fx] auto-degrade engaged at', tracking.fps, 'fps');
+  }
+}
+
+function updateParticles(time){
+  particleOpacity += (particleTargetOpacity - particleOpacity) * 0.04;
+  const dx = (anchor.x - view.w/2) * 0.10;
+  const dy = (view.h/2 - anchor.y) * 0.10;
+  // during q1 the ambient layers reach outward with the slider, so the whole
+  // scene answers the drag rather than just the field
+  const reach = (fieldState.active === 0 && fx('parallaxDepth'))
+    ? clamp((fieldState.liveValue - 0.5) * 2, 0, 1) : 0;
+
+  const holoOn  = !!CONFIG.fx.holoParticles;
+  const t       = REDUCED ? 0 : time;             // REDUCED freezes curl + banding + dropout
+  const parOn   = fx('parallaxDepth');
+  const faceR   = anchor.rect ? Math.max(anchor.rect.w, anchor.rect.h) * 0.5 : 90;
+  const bandOn  = (holoOn && CONFIG.fx.holoBanding && !REDUCED) ? 1 : 0;
+  const dropOn  = (holoOn && CONFIG.fx.holoDropout && !REDUCED && !degrade.on) ? 1 : 0;
+  const streak  = (holoOn && CONFIG.fx.holoStreaks && !degrade.on) ? CONFIG.fx.holoStreakFrac : 0;
+  const asm     = (CONFIG.fx.holoElements && CONFIG.fx.holoAssemble) ? holoState.assemble : 0;
+
+  for (const layer of [particlesFar, particlesNear]){
+    const u = layer.material.uniforms;
+    u.uTime.value = t;
+    u.uSpan.value.set(view.w * 1.05, view.h * 1.05);
+    u.uOpacity.value = particleOpacity * (layer === particlesNear ? 1.0 : 0.78);
+    u.uReach.value = reach;
+    u.uOffset.value.set(parOn ? dx : 0, parOn ? dy : 0);
+    u.uAnchor.value.set(screenToWorldX(anchor.x), screenToWorldY(anchor.y));
+    u.uFaceR.value = faceR;
+    u.uBand.value = bandOn;
+    u.uDropout.value = dropOn;
+    u.uStreak.value = streak;
+    u.uAssemble.value = asm;
+    u.uElemR.value = holoState.radius;
+    u.uElemC.value.set(holoState.cx, holoState.cy, holoState.cz);
+    layer.visible = particleOpacity > 0.01;
+  }
+}
+
+/* — the holo elements: one orbit computation, then a handful of uniform writes.
+     All the geometry work is in the vertex shaders. — */
+function updateHolo(time, dt){
+  if (!holoRoot) return;
+
+  /* On tracking loss, fade — never cut. Gated on MP.ready so the MediaPipe
+     fallback path (where lostFrames sits at 999 forever and the anchor is the
+     centred one) still shows the element at full strength. */
+  const lost = MP.ready && tracking.lostFrames > CONFIG.tracking.lostFrames;
+  holoState.track += ((lost ? 0.15 : 1) - holoState.track) * Math.min(1, dt * 2.2);
+
+  const fw = anchor.rect ? anchor.rect.w : 180;
+  const fh = anchor.rect ? anchor.rect.h : 220;
+  const ax = screenToWorldX(anchor.x), ay = screenToWorldY(anchor.y);
+  /* 1.4–2.2× face width is the intended band, but on a portrait phone a face
+     framed anywhere near tooCloseW would swing the element clean off screen for
+     most of its cycle. Clamp the excursion to whatever still leaves the element
+     its own radius inside the frame, so the outward half of the orbit reaches
+     TOWARD the edge and grazes it rather than disappearing past it. */
+  const elemR = fw * CONFIG.fx.holoElementSize;
+  const orbitR = Math.min(fw * CONFIG.fx.holoOrbitR,
+                          Math.max(60, view.w * 0.5 - elemR * 1.15));
+  const oy = fh * 0.06;                       // roughly head height
+  // REDUCED freezes the orbit at a fixed, well-composed angle
+  holoState.orbit = REDUCED ? 0.85 : time * CONFIG.fx.holoOrbitSpeed;
+  holoState.radius = elemR;
+
+  const F  = CONFIG.fx.holoFocal;
+  const cz = Math.sin(holoState.orbit) * CONFIG.fx.holoOrbitZ - CONFIG.fx.holoOrbitZ * 0.22;
+  const pc = F / Math.max(F - cz, 1);
+  /* The element projects about the HEAD (holoProject), the particles project
+     about the screen origin. Dividing back through pc puts the capture target
+     in the particles' space so the two actually coincide on screen. */
+  holoState.cx = ax / pc + Math.cos(holoState.orbit) * orbitR;
+  holoState.cy = ay / pc + oy;
+  holoState.cz = cz;
+
+  holoRoot.visible = holoState.opacity > 0.004;
+  if (!holoRoot.visible) return;
+
+  const t = REDUCED ? 0 : time;
+  const op = holoState.opacity * holoState.track;
+  for (let m=0; m<holoMats.length; m++){
+    const u = holoMats[m].uniforms;
+    u.uT.value = t;
+    u.uV.value = holoState.value;
+    u.uOpacity.value = op;
+    u.uSize.value = holoState.radius;
+    u.uOrbitR.value = orbitR;
+    u.uOrbitZ.value = CONFIG.fx.holoOrbitZ;
+    u.uOrbitY.value = oy;
+    u.uOrbitT.value = holoState.orbit;
+    u.uAnchor.value.set(ax, ay);
+    u.uHeadR.value.set(fw * 0.5, fh * 0.55);
+  }
+}
+
+/* — throttled DOM writes: telemetry, framing, horizon parallax.
+     Nothing here reads layout; every value comes from cached state. — */
+let lastSlowT = 0, lastTelemetry = '', lastGridX = 0, lastGlowX = -1, lastGlowY = -1;
+function updateSlowUi(time){
+  if (time - lastSlowT < 0.25) return;
+  lastSlowT = time;
+
+  updateFraming();
+
+  if (fx('telemetry') && CONFIG.fx.telemetry){
+    const mode = !MP.ready ? 'VISUAL'
+               : (tracking.lostFrames <= CONFIG.tracking.graceFrames ? 'TRACKING' : 'SEARCHING');
+    const done = answeredCount();
+    let line = mode + ' · PROFILE ' + done + '/3';
+    if (appState.state === S.SCANNING || appState.state === S.WAITING_FOR_FACE){
+      line += ' · LOCK ' + Math.round(tracking.quality * 100);
+    }
+    line += ' · ' + tracking.fps + 'FPS';
+    if (line !== lastTelemetry){ lastTelemetry = line; el.telemetry.textContent = line; }
+  }
+
+  // subject glow follows the smoothed face position (transform only, no layout)
+  if (CONFIG.fx.subjectGlow && el.subjectGlow.classList.contains('on')){
+    const gx = Math.round(anchor.x), gy = Math.round(anchor.y);
+    if (gx !== lastGlowX || gy !== lastGlowY){
+      lastGlowX = gx; lastGlowY = gy;
+      el.subjectGlow.style.transform = 'translate(' + gx + 'px,' + gy + 'px)';
+    }
+  }
+
+  if (CONFIG.fx.horizonGrid && !REDUCED){
+    const gx = clamp((anchor.x - view.w/2) * CONFIG.fx.gridParallax * 0.11, -16, 16);
+    if (Math.abs(gx - lastGridX) > 0.5){
+      lastGridX = gx;
+      el.horizonGridInner.style.transform =
+        'perspective(340px) rotateX(66deg) scale(1.35) translateX(' + gx.toFixed(1) + 'px)';
+    }
+  }
+
+  if (CONFIG.debug) updateDebugPane();
+}
+
+function answeredCount(){
+  let n = 0;
+  if (appState.answers.q1 !== null) n++;
+  if (appState.answers.q2 !== null) n++;
+  if (appState.answers.q3 !== null) n++;
+  return n;
+}
+function activeQuestionIndex(){
+  return isQuestionState(appState.state) ? appState.currentQuestion : -1;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   10 · ATMOSPHERE + TRANSITIONS (§7.1 lock, §7.3 grid, §7.4 sweep,
+        §7.8 grade drift, §7.11 aperture)
+   ────────────────────────────────────────────────────────────────────────── */
+const irisEl = $('iris');
+
+/* §7.8 — one overlay, colour + opacity tweened by state. Neutral-cool at the
+   scan, progressively warmer and slightly brighter by the result hold. The
+   user should never consciously notice it happening. */
+const GRADE = {
+  [S.WAITING_FOR_FACE]: ['#5F7FBF', 0.26],
+  [S.SCANNING]:         ['#5F7FBF', 0.28],
+  [S.PROFILE_READY]:    ['#6B80BC', 0.29],
+  [S.QUESTION_1]:       ['#7A83B6', 0.30],
+  [S.QUESTION_2]:       ['#8F86AC', 0.32],
+  [S.QUESTION_3]:       ['#A98E9E', 0.34],
+  [S.ANALYZING]:        ['#BE9A8E', 0.36],
+  [S.RESULT_REVEAL]:    ['#CFA688', 0.38],
+  [S.RESULT_HOLD]:      ['#D8AE8A', 0.40],
+  [S.INVITATION_READY]: ['#D8AE8A', 0.36],
+  [S.INVITATION_MODAL]: ['#D8AE8A', 0.10]
+};
+function applyGrade(state){
+  if (!CONFIG.fx.gradeDrift){ el.gradeDrift.style.opacity = '0'; return; }
+  const g = GRADE[state];
+  if (!g) return;
+  el.gradeDrift.style.backgroundColor = g[0];
+  el.gradeDrift.style.opacity = String(g[1]);
+}
+
+/* The glow takes the live question's tint. Neither pole of any slider is ever
+   "the good one", so this shifts per QUESTION, never per slider direction. */
+const GLOW_TINT = [
+  'rgba(125,220,255,',   // q1 discovery — cool
+  'rgba(154,200,255,',   // q2 innovation
+  'rgba(180,150,235,'    // q3 future — violet
+];
+function applySubjectGlow(state){
+  if (!CONFIG.fx.subjectGlow) return;
+  const on = state !== S.SPLASH && state !== S.CAMERA_STARTING &&
+             state !== S.ERROR && state !== S.INVITATION_MODAL;
+  el.subjectGlow.classList.toggle('on', on);
+  if (!on) return;
+  const qi = isQuestionState(state) ? QUESTION_STATES.indexOf(state) : -1;
+  const tint = GLOW_TINT[qi < 0 ? 0 : qi];
+  const warm = (state === S.RESULT_REVEAL || state === S.RESULT_HOLD ||
+                state === S.INVITATION_READY) ? 'rgba(255,205,160,' : tint;
+  el.subjectGlow.style.background =
+    'radial-gradient(circle closest-side,' +
+    warm + '0) 0%,' + warm + '.18) 42%,' +
+    warm + '.24) 62%,' + warm + '0) 100%)';
+}
+
+/* §7.1 Signal Lock — one gesture, gone in under half a second. Never loops. */
+let signalLockBusy = false;
+function onFirstLock(){
+  if (!fx('signalLock') || signalLockBusy) return;
+  const r = anchor.rect;
+  if (!r) return;
+  if (appState.state !== S.WAITING_FOR_FACE && appState.state !== S.SCANNING &&
+      !isQuestionState(appState.state)) return;
+  signalLockBusy = true;
+
+  const cx = r.cx, cy = r.cy;
+  const set = (node, left, top, w, h, sx, sy) => {
+    node.style.left = left + 'px'; node.style.top = top + 'px';
+    node.style.width = w + 'px';   node.style.height = h + 'px';
+    node.style.setProperty('--sx', sx + 'px');
+    node.style.setProperty('--sy', sy + 'px');
+  };
+  set(el.slT, cx-17, r.top-11,    34, 2,   0, -28);
+  set(el.slB, cx-17, r.bottom+9,  34, 2,   0,  28);
+  set(el.slL, r.left-11,  cy-17,   2, 34, -28,  0);
+  set(el.slR, r.right+9,  cy-17,   2, 34,  28,  0);
+
+  el.signalLock.classList.remove('flash');
+  void el.signalLock.offsetWidth;                  // restart the animation
+  el.signalLock.classList.add('run');
+  after(430, () => el.signalLock.classList.add('flash'));
+  after(680, () => {
+    el.signalLock.classList.remove('run','flash');
+    signalLockBusy = false;
+  });
+}
+
+/* §7.4 Light Sweep — one surface at a time, never two simultaneously.
+   Suppressed while a commit echo is running so the motion budget stays at 3. */
+let sweepTimer = 0, sweepIndex = 0, sweepSuppressedUntil = 0;
+function sweepSurfaces(){
+  const list = [];
+  if (el.hudCards.classList.contains('on')) list.push(el.hudCard[0], el.hudCard[1], el.hudCard[2]);
+  if (el.panel.classList.contains('on')) list.push(el.panel);
+  return list;
+}
+function startSweepCycle(){
+  stopSweepCycle();
+  if (!fx('lightSweep')) return;
+  sweepTimer = setInterval(() => {
+    if (performance.now() < sweepSuppressedUntil) return;
+    const list = sweepSurfaces();
+    if (!list.length) return;
+    const node = list[sweepIndex % list.length];
+    sweepIndex++;
+    node.classList.remove('sweep');
+    void node.offsetWidth;
+    node.classList.add('sweep');
+    setTimeout(() => node.classList.remove('sweep'), CONFIG.fx.sweepMs + 60);
+  }, CONFIG.fx.sweepEveryMs);
+}
+function stopSweepCycle(){
+  if (sweepTimer){ clearInterval(sweepTimer); sweepTimer = 0; }
+  [el.hudCard[0], el.hudCard[1], el.hudCard[2], el.panel]
+    .forEach(n => n && n.classList.remove('sweep'));
+}
+
+/* §7.11 Aperture Transition — a soft iris reveal centred on the user's own
+   face. Capped at three uses in the whole experience, by construction:
+   scan→questions, analysis→result, result→invitation. */
+let apertureUses = 0;
+function apertureTransition(){
+  if (!fx('apertureTransition') || !irisEl) return;
+  if (apertureUses >= 3) return;
+  apertureUses++;
+  const x = clamp(anchor.x, 0, view.w), y = clamp(anchor.y, 0, view.h);
+  const maxR = Math.hypot(Math.max(x, view.w-x), Math.max(y, view.h-y));
+
+  // Box sized so that scale 1 puts the opaque edge of the mask just off-screen;
+  // the hole radius is 0.46 * (box/2) * scale.
+  const box = Math.max(80, maxR * 5);
+  const holeAtOne = 0.46 * (box/2);
+  const faceR = anchor.rect ? Math.max(anchor.rect.w, anchor.rect.h) * 0.75 : 120;
+  const startScale = clamp(Math.max(60, faceR) / holeAtOne, 0.02, 1);
+
+  irisEl.style.width  = box + 'px';
+  irisEl.style.height = box + 'px';
+  const base = 'translate(' + (x - box/2).toFixed(1) + 'px,' + (y - box/2).toFixed(1) + 'px) scale(';
+  irisEl.style.transition = 'none';
+  irisEl.style.transform = base + startScale.toFixed(4) + ')';
+  irisEl.classList.add('on');
+  void irisEl.offsetWidth;
+  irisEl.style.transition =
+    'transform ' + CONFIG.fx.apertureMs + 'ms cubic-bezier(.16,.84,.30,1), opacity 300ms linear ' +
+    (CONFIG.fx.apertureMs - 300) + 'ms';
+  irisEl.style.transform = base + '1)';
+  irisEl.classList.remove('on');            // opacity fades out on the tail
+  after(CONFIG.fx.apertureMs + 60, () => { irisEl.style.transition = 'none'; });
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   11 · THE TWELVE BEATS — every one entered through setState()
+   ────────────────────────────────────────────────────────────────────────── */
+function onStateEnter(next, prev){
+  applyGrade(next);
+  applySubjectGlow(next);
+  /* leaving the questions behind: whatever element is live dissolves back into
+     the ambient field it was assembled from. Guarded so this is a no-op on the
+     states that never had one. */
+  if (!isQuestionState(next) && holoState.active >= 0) dissolveHoloElement();
+
+  switch (next){
+
+    /* 2 — CAMERA_STARTING: permission + model warm-up, splash fades 500–700ms */
+    case S.CAMERA_STARTING: {
+      el.splashSpinner.classList.add('on');
+      el.startBtn.style.opacity = '0.45';
+      el.startBtn.disabled = true;
+      bootCamera();
+      break;
+    }
+
+    /* 3 — WAITING_FOR_FACE: camera alone, then the invitation to begin */
+    case S.WAITING_FOR_FACE: {
+      showScreen(null);
+      el.hud.classList.add('framed');
+      el.statusStack.classList.add('on');
+      if (CONFIG.fx.telemetry) el.telemetry.classList.add('on');
+      if (CONFIG.fx.depthHaze){ el.depthHaze.classList.add('on'); el.hazeDesat.classList.add('on'); }
+      if (CONFIG.fx.horizonGrid) el.horizonGrid.classList.add('on');
+      particleTargetOpacity = 1;
+      setStatusImmediate(MP.failed ? COPY.visualMode : COPY.statusReady);
+      el.statusDot.style.background = MP.failed ? 'var(--violet-primary)' : 'var(--cyan)';
+
+      showTransientCentre(COPY.lookAtCamera);
+      after(1500, () => {
+        if (appState.state !== S.WAITING_FOR_FACE) return;
+        showTransientCentre(COPY.letsBegin);
+      });
+      // Wait for a face, but never strand a user whose model failed or whose
+      // face the model can't find: the scan starts regardless after 3.4s.
+      waitForFaceThenScan();
+      break;
+    }
+
+    /* 4 — SCANNING: landmark point cloud + vertical scan wave */
+    case S.SCANNING: {
+      setStatus(MP.failed ? COPY.visualMode : COPY.statusScanning);
+      showTransientCentre(COPY.buildingProfile);
+      scanCloud.active = true;
+      scanCloud.target = MP.ready ? 1 : 0.0;
+      fieldTargetOpacity = 0;
+      after(Math.round(CONFIG.experience.scanDuration * 1000), () => {
+        if (appState.state === S.SCANNING) setState(S.PROFILE_READY);
+      });
+      break;
+    }
+
+    /* 5 — PROFILE_READY: the scan energy disperses into the floating field */
+    case S.PROFILE_READY: {
+      setStatus(COPY.statusBuilding);
+      showTransientCentre(COPY.recognised, 1200);
+      scanCloud.target = 0;
+      after(700, () => { scanCloud.active = false; });
+      fieldTargetOpacity = 1;
+      el.hudCards.classList.add('on');
+      startSweepCycle();
+      after(1250, () => {
+        if (appState.state !== S.PROFILE_READY) return;
+        showTransientCentre(COPY.discoverHow, 1100);
+      });
+      after(2200, () => {
+        if (appState.state !== S.PROFILE_READY) return;
+        apertureTransition();                       // aperture use 1 of 3
+        setState(S.QUESTION_1);
+      });
+      break;
+    }
+
+    /* 6,7,8 — the three questions, one panel, content swapped in place */
+    /* each question's element assembles out of the field as the panel arrives */
+    case S.QUESTION_1: appState.currentQuestion = 0; enterQuestion(0, prev); enterHoloElement(0); break;
+    case S.QUESTION_2: appState.currentQuestion = 1; enterQuestion(1, prev); enterHoloElement(1); break;
+    case S.QUESTION_3: appState.currentQuestion = 2; enterQuestion(2, prev); enterHoloElement(2); break;
+
+    /* 9 — ANALYZING: the three groups of motes synchronise */
+    case S.ANALYZING: {
+      hideQuestionPanel();
+      setActiveHudCard(-1);
+      setStatus(COPY.statusAnalyzing);
+      showTransientCentre(COPY.profileComplete, 1200);
+      after(900, () => {
+        if (appState.state !== S.ANALYZING) return;
+        showTransientCentre(COPY.calculating, 1100);
+      });
+      after(Math.round(CONFIG.experience.analysisDuration * 1000), () => {
+        if (appState.state === S.ANALYZING) setState(S.RESULT_REVEAL);
+      });
+      break;
+    }
+
+    /* 10 — RESULT_REVEAL: the field settles, the number counts up */
+    case S.RESULT_REVEAL: {
+      apertureTransition();                         // aperture use 2 of 3
+      setStatus(COPY.statusDone);
+      fieldState.breathLocked = true;               // §7.6 — the stop is the point
+      if (CONFIG.fx.horizonGrid) el.horizonGrid.classList.remove('on');
+      computeScore();
+      revealScore();
+      break;
+    }
+
+    /* 11 — RESULT_HOLD: the score, alone, for ~2s. This beat is the payoff. */
+    case S.RESULT_HOLD: {
+      el.resultBand.classList.add('on');
+      after(CONFIG.ui.resultHoldMs, () => {
+        if (appState.state === S.RESULT_HOLD) setState(S.INVITATION_READY);
+      });
+      break;
+    }
+
+    /* 12a — the tease, then one CTA */
+    case S.INVITATION_READY: {
+      el.resultBlock.classList.remove('on');
+      after(520, () => {
+        if (appState.state !== S.INVITATION_READY) return;
+        el.teaseBlock.classList.add('on');
+        el.teaseLine1.classList.add('on');
+        after(900,  () => el.teaseLine2.classList.add('on'));
+        after(1700, () => el.revealBtn.classList.add('on'));
+      });
+      break;
+    }
+
+    /* 12b — the card assembles out of the settled field */
+    case S.INVITATION_MODAL: {
+      apertureTransition();                         // aperture use 3 of 3
+      el.telemetry.classList.remove('on');          // §7.9 — gone at the modal
+      setStatusImmediate(COPY.statusInvite);
+      runCardAssembly();
+      break;
+    }
+  }
+}
+
+/* A short centred line that sits above the panel region without competing
+   with it — used for "انظر إلى الكاميرا", "تم التعرف", "اكتمل ملفك" etc. */
+let centreNode = null, centreTimer = 0;
+function showTransientCentre(text, ms){
+  if (!centreNode){
+    centreNode = document.createElement('div');
+    centreNode.id = 'centreLine';
+    el.hud.appendChild(centreNode);
+  }
+  centreNode.textContent = text;
+  centreNode.classList.add('on');
+  clearTimeout(centreTimer);
+  centreTimer = setTimeout(() => centreNode.classList.remove('on'), ms || 1600);
+}
+
+/* WAITING_FOR_FACE -> SCANNING. Face-gated when tracking works, time-gated
+   when it doesn't, so a failed model can never dead-end the journey. */
+function waitForFaceThenScan(){
+  const started = performance.now();
+  const tick = () => {
+    if (appState.state !== S.WAITING_FOR_FACE) return;
+    const waited = performance.now() - started;
+    const haveFace = MP.ready && appState.face.detected;
+    if ((haveFace && waited > 900) || waited > 3400){
+      setState(S.SCANNING);
+      return;
+    }
+    after(160, tick);
+  };
+  after(500, tick);
+}
+
+async function bootCamera(){
+  try {
+    initMediaPipe();                       // fire and forget; never blocks the camera
+    await startCamera();
+  } catch(err){
+    // Backgrounded mid-start: hold in CAMERA_STARTING and pick up again on
+    // visibilitychange, rather than stranding the user on an error they can't fix.
+    if (isPageHidden(err)){ pendingStart = true; return; }
+    showError(err);
+    return;
+  }
+  pendingStart = false;
+  // Give the model a short head start so the scan has landmarks to draw, but
+  // never wait on it: 1.2s max, then proceed either way.
+  const raceTo = Promise.race([
+    MP.loading || Promise.resolve(),
+    new Promise(r => setTimeout(r, 1200))
+  ]);
+  await raceTo;
+  after(560, () => {                       // splash fade 500–700ms
+    if (appState.state === S.CAMERA_STARTING) setState(S.WAITING_FOR_FACE);
+  });
+  el.splash.classList.remove('on');
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   12 · TWEENS — tiny frame-rate independent tween list, stepped by the loop.
+        Allocation happens on start, never per frame.
+   ────────────────────────────────────────────────────────────────────────── */
+const tweens = [];
+function tween(from, to, ms, onUpdate, onDone, key){
+  if (key) for (let i=tweens.length-1; i>=0; i--) if (tweens[i].key === key) tweens.splice(i,1);
+  const t = { from, to, ms:Math.max(1,ms), t:0, onUpdate, onDone, key:key||null };
+  tweens.push(t);
+  onUpdate(from);
+  return t;
+}
+function stepTweens(dt){
+  for (let i=tweens.length-1; i>=0; i--){
+    const tw = tweens[i];
+    tw.t += (dt * 1000) / tw.ms;
+    if (tw.t >= 1){
+      tw.onUpdate(tw.to);
+      tweens.splice(i,1);
+      if (tw.onDone) tw.onDone();
+    } else {
+      tw.onUpdate(tw.from + (tw.to - tw.from) * easeOutCubic(tw.t));
+    }
+  }
+}
+function clearTweens(){ tweens.length = 0; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   13 · QUESTIONS — ONE panel, ONE slider, driven from QUESTIONS[]
+   ────────────────────────────────────────────────────────────────────────── */
+const slider = {
+  value:50, locked:true, dragging:false, moved:false,
+  trackLeft:0, trackWidth:1, pointerId:null
+};
+
+function renderQuestion(i){
+  const q = QUESTIONS[i];
+  el.qIndex.textContent = '0' + (i+1) + ' / 03';
+  el.qText.textContent  = q.question;
+  el.qLabelLeft.textContent  = q.left;
+  el.qLabelRight.textContent = q.right;
+  el.qHint.textContent = COPY.moveHint;
+  el.qHint.classList.remove('ok','warn');
+  el.slider.setAttribute('aria-label', q.question);
+}
+
+function setSliderValue(v, silent){
+  slider.value = clamp(v, 0, 100);
+  const pct = slider.value;
+  el.sliderHandle.style.left = pct + '%';
+  el.sliderTrail.style.left  = pct + '%';
+  if (pct >= 50){ el.sliderFill.style.left = '50%'; el.sliderFill.style.width = (pct-50) + '%'; }
+  else          { el.sliderFill.style.left = pct + '%'; el.sliderFill.style.width = (50-pct) + '%'; }
+  el.slider.setAttribute('aria-valuenow', String(Math.round(pct)));
+
+  if (!silent && isQuestionState(appState.state)){
+    fieldState.liveValue = pct / 100;               // §5.2 live field reaction
+    applyFieldState();
+  }
+}
+
+function resetSliderForQuestion(){
+  slider.moved = false;
+  slider.locked = false;
+  el.slider.classList.remove('locked');
+  setSliderValue(50, true);
+  fieldState.liveValue = 0.5;
+  applyFieldState();
+}
+
+function enterQuestion(i, prev){
+  setStatus(COPY.statusBuilding);
+  setActiveHudCard(i);
+  // hand the field over to this question's group of motes
+  fieldState.active = i;
+  applyFieldState();
+
+  // §4.4 — fade slightly, shift up, swap content, enter from below. No cut.
+  const fresh = !el.panel.classList.contains('on');
+  if (fresh){
+    renderQuestion(i);
+    resetSliderForQuestion();
+    after(60, () => el.panel.classList.add('on'));
+  } else {
+    el.qBody.classList.add('out');
+    after(280, () => {
+      renderQuestion(i);
+      resetSliderForQuestion();
+      el.qBody.classList.remove('out');
+      el.qBody.classList.add('in');
+      void el.qBody.offsetWidth;
+      el.qBody.classList.remove('in');
+    });
+  }
+}
+
+function hideQuestionPanel(){
+  el.panel.classList.remove('on');
+  slider.locked = true;
+  el.slider.classList.add('locked');
+}
+
+function setActiveHudCard(i){
+  for (let k=0; k<3; k++){
+    el.hudCard[k].classList.toggle('active', k === i);
+  }
+}
+function markHudCardDone(i){
+  el.hudCard[i].classList.add('done');
+  el.hudCard[i].classList.remove('active');
+  el.hudBar[i].style.width = '100%';    // completion, not direction
+}
+
+/* — pointer handling: pointer + touch + mouse through one code path — */
+function sliderPointFromEvent(e){
+  const x = (e.clientX != null) ? e.clientX
+          : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+  return clamp(((x - slider.trackLeft) / slider.trackWidth) * 100, 0, 100);
+}
+
+function onSliderDown(e){
+  if (slider.locked || !isQuestionState(appState.state)) return;
+  // the only layout read in the interaction, and it happens on a user gesture
+  const r = el.sliderTrack.getBoundingClientRect();
+  slider.trackLeft = r.left; slider.trackWidth = Math.max(1, r.width);
+  slider.dragging = true;
+  el.slider.classList.add('dragging');
+  if (e.pointerId != null && el.slider.setPointerCapture){
+    slider.pointerId = e.pointerId;
+    try { el.slider.setPointerCapture(e.pointerId); } catch(err){}
+  }
+  setSliderValue(sliderPointFromEvent(e));
+  updateMovedState();
+  e.preventDefault();
+}
+function onSliderMove(e){
+  if (!slider.dragging) return;
+  setSliderValue(sliderPointFromEvent(e));
+  updateMovedState();
+  e.preventDefault();
+}
+function onSliderUp(e){
+  if (!slider.dragging) return;
+  slider.dragging = false;
+  el.slider.classList.remove('dragging');
+  if (slider.pointerId != null && el.slider.releasePointerCapture){
+    try { el.slider.releasePointerCapture(slider.pointerId); } catch(err){}
+    slider.pointerId = null;
+  }
+  attemptCommit();
+}
+function updateMovedState(){
+  const enough = Math.abs(slider.value - 50) >= CONFIG.ui.commitThreshold;
+  if (enough !== slider.moved){
+    slider.moved = enough;
+    el.qHint.classList.toggle('ok', enough);
+    el.qHint.classList.remove('warn');
+  }
+}
+
+el.slider.addEventListener('pointerdown', onSliderDown);
+el.slider.addEventListener('pointermove', onSliderMove);
+el.slider.addEventListener('pointerup', onSliderUp);
+el.slider.addEventListener('pointercancel', onSliderUp);
+/* Older WebKit without Pointer Events */
+if (!window.PointerEvent){
+  el.slider.addEventListener('touchstart', onSliderDown, { passive:false });
+  el.slider.addEventListener('touchmove',  onSliderMove, { passive:false });
+  el.slider.addEventListener('touchend',   onSliderUp);
+  el.slider.addEventListener('mousedown',  onSliderDown);
+  window.addEventListener('mousemove',     onSliderMove);
+  window.addEventListener('mouseup',       onSliderUp);
+}
+/* Keyboard: the same commit rules, so the "50 is not an answer" law holds. */
+el.slider.addEventListener('keydown', e => {
+  if (slider.locked || !isQuestionState(appState.state)) return;
+  let d = 0;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp')   d =  2;
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown') d = -2;
+  if (d){
+    setSliderValue(slider.value + d);
+    updateMovedState();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'Enter' || e.key === ' '){ attemptCommit(); e.preventDefault(); }
+});
+
+/* §4.3 — commit on release. No confirm button, ever. */
+function attemptCommit(){
+  if (slider.locked || !isQuestionState(appState.state)) return;
+  if (Math.abs(slider.value - 50) < CONFIG.ui.commitThreshold){
+    // 50 is not an answer. Ask again, without scolding.
+    el.qHint.textContent = COPY.moveHint;
+    el.qHint.classList.add('warn');
+    el.qHint.classList.remove('ok');
+    return;
+  }
+  slider.locked = true;
+  el.slider.classList.add('locked');
+  const i = appState.currentQuestion;
+  const value = Math.round(slider.value);
+
+  after(CONFIG.ui.commitDelayMs, () => {
+    el.sliderHandle.classList.remove('pulse');
+    void el.sliderHandle.offsetWidth;
+    el.sliderHandle.classList.add('pulse');
+
+    appState.answers[QUESTIONS[i].id] = value;      // the ONLY score input
+    // this question's motes keep their shape for the rest of the session
+    fieldState.lockedValue[i] = value / 100;
+    applyFieldState();
+    tween(0, 1, 620, v => {
+      fieldState.locked[i] = v;
+      applyFieldState();
+    }, null, 'lock'+i);
+    fireCommitEcho(i);
+    dissolveHoloElement();      // the element releases back into the field
+
+    markHudCardDone(i);
+    el.qHint.textContent = COPY.committed;
+    el.qHint.classList.add('ok');
+    el.qHint.classList.remove('warn');
+    dispatch('fr:answer', { id:QUESTIONS[i].id, value });
+
+    after(CONFIG.ui.commitTotalMs - CONFIG.ui.commitDelayMs, () => {
+      el.sliderHandle.classList.remove('pulse');
+      advanceFromQuestion(i);
+    });
+  });
+}
+
+/* §7.7 — exactly one ghost, never a burst, never particles. */
+function fireCommitEcho(i){
+  if (!fx('commitEcho')) return;
+  fieldState.commit[i] = 1;                                      // decays in updateField
+  sweepSuppressedUntil = performance.now() + CONFIG.fx.echoMs;   // keep the budget at 3
+}
+
+function advanceFromQuestion(i){
+  if (i === 0) setState(S.QUESTION_2);
+  else if (i === 1) setState(S.QUESTION_3);
+  else setState(S.ANALYZING);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   14 · SCORING — the entire engine. Anything else in here would be a bug.
+   ────────────────────────────────────────────────────────────────────────── */
+function computeScore(){
+  const a = appState.answers;
+  const q1 = a.q1 == null ? 0 : a.q1;
+  const q2 = a.q2 == null ? 0 : a.q2;
+  const q3 = a.q3 == null ? 0 : a.q3;
+  const raw = q1 * CONFIG.scoring.q1Weight
+            + q2 * CONFIG.scoring.q2Weight
+            + q3 * CONFIG.scoring.q3Weight;
+  appState.readinessScore = clamp(Math.round(raw), 0, 100);
+  dispatch('fr:score', { score:appState.readinessScore, answers:{ ...a } });
+  return appState.readinessScore;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   15 · RESULT — the field settles; the number counts up
+   ────────────────────────────────────────────────────────────────────────── */
+const elResultNumVal = $('resultNumVal');
+const elCardScoreVal = $('cardScoreVal');
+
+function revealScore(){
+  const score = appState.readinessScore;
+  const band  = bandFor(score);
+
+  // the three groups release their questions and the whole field settles
+  // together — one calm state, arrived at from the user's own three answers
+  fieldState.active = -1;
+  applyFieldState();
+  tween(0, 1, CONFIG.ui.revealCountMs, v => { fieldState.reveal = v; }, null, 'reveal');
+
+  el.resultBlock.classList.add('on');
+  el.resultBand.textContent = band.title;
+
+  let shown = -1;
+  tween(0, score, CONFIG.ui.revealCountMs, v => {
+    const n = Math.round(v);
+    if (n !== shown){ shown = n; elResultNumVal.textContent = String(n); }
+  }, () => {
+    if (appState.state === S.RESULT_REVEAL) setState(S.RESULT_HOLD);
+  }, 'count');
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   16 · INVITATION — the card assembles out of the settled field (§6.5)
+   ────────────────────────────────────────────────────────────────────────── */
+function layoutCardScale(){
+  const availW = Math.max(200, view.w - 24);
+  const availH = Math.max(240, view.h - 196);          // room for the actions
+  const scale = Math.max(0.40, Math.min(availW/480, availH/720, 1));
+  document.documentElement.style.setProperty('--card-scale', String(scale));
+  // keep the layout box the same size as the painted box, so the actions
+  // below never get pushed off a short screen
+  const mx = (480*scale - 480)/2, my = (720*scale - 720)/2;
+  el.cardWrap.style.margin = my + 'px ' + mx + 'px';
+}
+
+function runCardAssembly(){
+  const D = CONFIG.ui.cardAssembleMs;
+
+  // 1 · the settled field pulses once
+  tween(1, 1.10, 200, v => { fieldState.pulse = v; }, () => {
+    tween(1.10, 1, 260, v => { fieldState.pulse = v; }, null, 'pulse');
+  }, 'pulse');
+
+  // 2 · HUD cards contract toward centre
+  after(120, () => el.hudCards.classList.add('contract'));
+  // 3 · the number shrinks slightly and steps back
+  after(200, () => el.resultBlock.classList.add('collapse'));
+  after(200, () => el.teaseBlock.classList.remove('on'));
+
+  // 4 · portrait + card content, built from real session state
+  after(300, () => { populateCard(); });
+
+  // 5 · the camera behind gains blur/glass, then the card scales 0.82 -> 1
+  after(D * 0.45, () => { el.modal.classList.add('on'); });
+  after(D * 0.62, () => { el.modal.classList.add('assembled'); });
+  after(D + 260, () => {
+    modalOpen = true;                       // stop rendering behind the card
+    dispatch('fr:invitation', { score:appState.readinessScore });
+  });
+}
+
+/* §6.6 — local crop from the live video, re-mirrored to match what the user
+   saw. Never uploaded, never stored remotely. */
+function capturePortrait(){
+  try {
+    const vw = el.video.videoWidth, vh = el.video.videoHeight;
+    if (!vw || !vh) return null;
+    const SIZE = 800;
+    const c = document.createElement('canvas');
+    c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+
+    let s, cx, cy;
+    const haveFace = MP.ready && anchor.rect &&
+                     (faceNorm.maxX - faceNorm.minX) > 0.02 &&
+                     tracking.lostFrames < CONFIG.tracking.lostFrames;
+    if (haveFace){
+      const fw = (faceNorm.maxX - faceNorm.minX) * vw;
+      const fh = (faceNorm.maxY - faceNorm.minY) * vh;
+      s  = clamp(Math.max(fw, fh) * 1.75, 60, Math.min(vw, vh));   // 1.6–1.9x padding
+      cx = faceNorm.cx * vw;
+      cy = faceNorm.cy * vh - fh * 0.06;
+    } else {
+      // safe centre-crop fallback — an invitation is never issued without a portrait
+      s  = Math.min(vw, vh) * 0.82;
+      cx = vw * 0.5;
+      cy = vh * 0.44;
+    }
+    const sx = clamp(cx - s/2, 0, Math.max(0, vw - s));
+    const sy = clamp(cy - s/2, 0, Math.max(0, vh - s));
+
+    ctx.save();
+    ctx.translate(SIZE, 0); ctx.scale(-1, 1);      // re-mirror: match the live view
+    ctx.drawImage(el.video, sx, sy, s, s, 0, 0, SIZE, SIZE);
+    ctx.restore();
+    return c.toDataURL('image/jpeg', 0.92);
+  } catch(e){
+    if (CONFIG.debug) console.warn('[portrait] failed', e);
+    return null;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   17 · THE CARD — all thirteen mandatory contents, values from session state
+   ────────────────────────────────────────────────────────────────────────── */
+function populateCard(){
+  const score = appState.readinessScore == null ? 0 : appState.readinessScore;
+  const band  = bandFor(score);
+  const a = appState.answers;
+
+  // 1 · portrait inside the bracketed viewfinder frame
+  const portrait = capturePortrait();
+  if (portrait){ el.cardPortraitImg.src = portrait; el.cardPortraitImg.style.display = 'block'; }
+  else { el.cardPortraitImg.removeAttribute('src'); el.cardPortraitImg.style.display = 'none'; }
+
+  // the readiness meter — the straight-line successor to the score ring
+  el.cardMeterFill.style.width = score + '%';
+
+  // 4 · the real score
+  elCardScoreVal.textContent = String(score);
+
+  // 5 · three indicators reflecting the actual answers
+  const vals = [a.q1, a.q2, a.q3];
+  for (let i=0; i<3; i++){
+    const v = vals[i] == null ? 0 : vals[i];
+    el.cardBar[i].style.width = v + '%';
+    el.cardVal[i].textContent = v + '%';
+  }
+
+  // 7 · band title  ·  8 · band description
+  el.cardBandTitle.textContent = band.title;
+  el.cardBandDesc.textContent  = band.desc;
+
+  // 10 · event details, never invented
+  el.cardEventName.textContent  = CONFIG.event.eventName || '';
+  const when = [CONFIG.event.date, CONFIG.event.time].filter(Boolean).join(' · ');
+  el.cardEventWhen.textContent  = when;
+  el.cardEventWhen.style.display = when ? '' : 'none';
+  el.cardEventVenue.textContent = CONFIG.event.venue || '';
+  el.cardEventVenue.style.display = CONFIG.event.venue ? '' : 'none';
+
+  // 12 · optional logo — empty means render nothing, no gap, no broken image
+  if (CONFIG.event.logoUrl){
+    el.cardLogo.src = CONFIG.event.logoUrl;
+    el.cardLogo.style.display = 'block';
+    el.cardLogo.onerror = () => { el.cardLogo.style.display = 'none'; };
+  } else {
+    el.cardLogo.removeAttribute('src');
+    el.cardLogo.style.display = 'none';
+  }
+
+  // §7.12 — static sheen, toggleable like every other fx element
+  el.cardSheen.style.display     = CONFIG.fx.cardSheen ? '' : 'none';
+  el.cardGuilloche.style.display = CONFIG.fx.cardSheen ? '' : 'none';
+
+  layoutCardScale();
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   18 · EXPORT — the fragile part, done exactly as it must be
+   ────────────────────────────────────────────────────────────────────────── */
+const CARD_W = 480, CARD_H = 720;
+let exporting = false;
+
+async function renderCardCanvas(){
+  if (typeof html2canvas !== 'function') throw new Error('html2canvas unavailable');
+
+  const host = document.createElement('div');
+  host.style.cssText =
+    'position:fixed;top:0;left:0;width:' + CARD_W + 'px;height:' + CARD_H + 'px;' +
+    'overflow:hidden;pointer-events:none;z-index:-9999;opacity:0.001;';
+  const clone = el.card.cloneNode(true);
+  clone.style.cssText += ';transform:none!important;margin:0!important;';
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  try {
+    // let layout settle, then make sure Cairo is really resident or the
+    // Arabic exports as tofu
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+    const canvas = await html2canvas(clone, {
+      scale:2, width:CARD_W, height:CARD_H,
+      useCORS:true, allowTaint:true, backgroundColor:null,
+      logging:false, x:0, y:0
+    });
+    return canvas;
+  } finally {
+    if (host.parentNode) document.body.removeChild(host);   // always
+  }
+}
+
+async function saveInvitation(){
+  if (exporting) return;
+  exporting = true;
+  el.exportNote.textContent = 'جاري تجهيز الدعوة...';
+  try {
+    const canvas = await renderCardCanvas();
+    const a = document.createElement('a');
+    a.download = 'Future_Readiness_Invitation.jpg';
+    a.href = canvas.toDataURL('image/jpeg', 1.0);
+    a.click();
+    el.exportNote.textContent = 'تم حفظ الدعوة.';
+  } catch(e){
+    // graceful — never a blank download
+    if (CONFIG.debug) console.warn('[export] failed', e);
+    el.exportNote.textContent = 'تعذر حفظ الصورة. يمكنك التقاط لقطة شاشة للدعوة.';
+  } finally {
+    exporting = false;
+    after(4000, () => { if (!exporting) el.exportNote.textContent = ''; });
+  }
+}
+
+function canShareFiles(){
+  try {
+    if (!navigator.share || !navigator.canShare) return false;
+    const probe = new File([new Blob([new Uint8Array(1)], { type:'image/jpeg' })],
+                           'probe.jpg', { type:'image/jpeg' });
+    return navigator.canShare({ files:[probe] });
+  } catch(e){ return false; }
+}
+
+async function shareInvitation(){
+  if (exporting) return;
+  exporting = true;
+  el.exportNote.textContent = 'جاري تجهيز الدعوة...';
+  try {
+    const canvas = await renderCardCanvas();
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+    if (!blob) throw new Error('no blob');
+    const file = new File([blob], 'Future_Readiness_Invitation.jpg', { type:'image/jpeg' });
+    await navigator.share({ files:[file], title:CONFIG.experience.title });
+    el.exportNote.textContent = '';
+  } catch(e){
+    if (e && e.name === 'AbortError') el.exportNote.textContent = '';
+    else el.exportNote.textContent = 'تعذرت المشاركة. جرّب حفظ الدعوة.';
+  } finally {
+    exporting = false;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   19 · RESTART — full reset, no page reload, no duplicated stream, no leak
+   ────────────────────────────────────────────────────────────────────────── */
+function restartExperience(){
+  clearTimers();
+  clearTweens();
+  stopSweepCycle();
+
+  modalOpen = false;
+  el.modal.classList.remove('on','assembled');
+
+  appState.answers = { q1:null, q2:null, q3:null };
+  appState.readinessScore = null;
+  appState.currentQuestion = 0;
+
+  for (let i=0; i<3; i++){
+    fieldState.locked[i] = 0;
+    fieldState.lockedValue[i] = 0.5;
+    fieldState.commit[i] = 0;
+    el.hudCard[i].classList.remove('done','active','sweep');
+    el.hudBar[i].style.width = '0%';
+  }
+  fieldState.active = -1;
+  fieldState.liveValue = 0.5;
+  fieldState.reveal = 0;
+  fieldState.breathLocked = false;
+  fieldState.pulse = 1;
+  applyFieldState();
+  apertureUses = 0;
+
+  /* the holo elements reset to hidden. Geometries and materials are NOT touched
+     — they were built once in initThree() and are reused for every run, which
+     is what keeps repeated restarts at an event from growing memory. The
+     auto-degrade decision deliberately survives: the device did not get faster. */
+  holoState.active = -1;
+  holoState.opacity = 0;
+  holoState.assemble = 0;
+  holoState.value = 0.5;
+  holoState.track = 1;
+  for (let k=0; k<3; k++) if (holoElements[k]) holoElements[k].visible = false;
+  if (holoRoot) holoRoot.visible = false;
+
+  tracking.lostFrames = 999;
+  tracking.lockArmed = true;
+  lastVideoTime = -1;
+
+  el.hudCards.classList.remove('on','contract');
+  el.resultBlock.classList.remove('on','collapse');
+  el.resultBand.classList.remove('on');
+  el.teaseBlock.classList.remove('on');
+  el.teaseLine1.classList.remove('on');
+  el.teaseLine2.classList.remove('on');
+  el.revealBtn.classList.remove('on');
+  el.exportNote.textContent = '';
+  elResultNumVal.textContent = '0';
+  el.panel.classList.remove('on');
+  el.qBody.classList.remove('in','out');
+  setFramingHint('');
+  if (CONFIG.fx.telemetry) el.telemetry.classList.add('on');
+  if (CONFIG.fx.horizonGrid) el.horizonGrid.classList.add('on');
+
+  setStatusImmediate(MP.failed ? COPY.visualMode : COPY.statusScanning);
+  appState.state = S.INVITATION_MODAL;      // legal source for the SCANNING edge
+  setState(S.SCANNING);
+  startRenderLoop();                        // camera was never stopped
+  dispatch('fr:restart', {});
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   20 · DEBUG — CONFIG.debug only. Nothing here can reach the export: the
+        pane is a sibling of the card, never a child.
+   ────────────────────────────────────────────────────────────────────────── */
+const HOLO_NAMES = ['orbital-scatter', 'lattice-weave', 'path-bloom'];
+function updateDebugPane(){
+  const a = appState.answers;
+  const alloc = partCount.far + partCount.near;
+  el.debugPane.textContent =
+    'fps        ' + tracking.fps + '\n' +
+    'particles  ' + liveParticleCount() + ' / ' + alloc +
+                    (CONFIG.fx.holoParticles ? ' holo' : ' flat') + '\n' +
+    'degrade    ' + (!CONFIG.fx.autoDegrade ? 'off'
+                     : degrade.on ? 'ENGAGED (half, no streaks/dropout)'
+                     : 'armed ' + Math.round(degrade.below) + '/' + CONFIG.fx.degradeHoldMs + 'ms') + '\n' +
+    'element    ' + (holoState.active < 0 ? '-' : HOLO_NAMES[holoState.active]) +
+                    '  v=' + holoState.value.toFixed(2) + '\n' +
+    'elem op    ' + holoState.opacity.toFixed(3) +
+                    '  asm=' + holoState.assemble.toFixed(2) +
+                    '  trk=' + holoState.track.toFixed(2) + '\n' +
+    'state      ' + appState.state + '\n' +
+    'face       ' + (appState.face.detected ? 'yes' : 'no') + ' lost=' + tracking.lostFrames + '\n' +
+    'model      ' + (appState.modelReady ? 'ready' : (MP.failed ? 'failed' : 'loading')) + '\n' +
+    'answers    ' + a.q1 + ' / ' + a.q2 + ' / ' + a.q3 + '\n' +
+    'score      ' + appState.readinessScore + '\n' +
+    'viewport   ' + view.w + 'x' + view.h + '  vid ' +
+                    (el.video.videoWidth||0) + 'x' + (el.video.videoHeight||0) + '\n' +
+    'cover      ' + Math.round(view.vw) + 'x' + Math.round(view.vh) +
+                    ' off ' + Math.round(view.offsetX) + ',' + Math.round(view.offsetY);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   21 · BOOT
+   ────────────────────────────────────────────────────────────────────────── */
+el.startBtn.addEventListener('click', () => {
+  if (appState.state !== S.SPLASH) return;
+  setState(S.CAMERA_STARTING);
+});
+el.retryBtn.addEventListener('click', () => {
+  if (appState.state !== S.ERROR) return;
+  showScreen(null);
+  el.startBtn.disabled = false;
+  el.startBtn.style.opacity = '';
+  setState(S.CAMERA_STARTING);
+});
+el.revealBtn.addEventListener('click', () => {
+  if (appState.state !== S.INVITATION_READY) return;
+  setState(S.INVITATION_MODAL);
+});
+el.saveBtn.addEventListener('click', saveInvitation);
+el.shareBtn.addEventListener('click', shareInvitation);
+el.restartBtn.addEventListener('click', restartExperience);
+
+function boot(){
+  if (typeof THREE === 'undefined'){
+    el.errTitle.textContent = 'تعذر تحميل مكونات التجربة.';
+    el.errBody.textContent  = 'تحقق من اتصالك بالإنترنت ثم أعد المحاولة.';
+    el.retryBtn.textContent = 'إعادة المحاولة';
+    el.retryBtn.onclick = () => location.reload();
+    showScreen('error');
+    return;
+  }
+  initThree();
+  resetAnchorImmediate();
+  resize();
+
+  if (CONFIG.fx.depthHaze === false){ el.depthHaze.style.display = 'none'; el.hazeDesat.style.display = 'none'; }
+  if (CONFIG.fx.horizonGrid === false) el.horizonGrid.style.display = 'none';
+  if (CONFIG.fx.gradeDrift === false) el.gradeDrift.style.display = 'none';
+  if (CONFIG.fx.subjectGlow === false) el.subjectGlow.style.display = 'none';
+  if (!CONFIG.fx.telemetry) el.telemetry.style.display = 'none';
+
+  if (canShareFiles()) el.shareBtn.style.display = '';
+  if (CONFIG.debug) el.debugPane.classList.add('on');
+
+  if (!isSecureCtx()){
+    // say it before the user taps a button that cannot possibly work
+    el.startBtn.disabled = true;
+    el.startBtn.style.opacity = '0.45';
+    after(400, () => showError({ name:'InsecureContext' }));
+  }
+  dispatch('fr:ready', {});
+}
+
+boot();
+
+/* A tiny read-only surface for host pages / QA. Exposes state, never mutates it. */
+window.FutureReadiness = {
+  get state(){ return appState.state; },
+  get answers(){ return { ...appState.answers }; },
+  get score(){ return appState.readinessScore; },
+  get config(){ return CONFIG; },
+  restart: restartExperience
+};
+
+</script>
+
+
+</body>
+</html>
