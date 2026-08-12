@@ -1,0 +1,3354 @@
+<!DOCTYPE html>
+<!--
+  بصمة الأثر — Impact Imprint WebAR
+  Single self-contained file. No build step, no backend, no external assets.
+
+  Serve over HTTPS or http://localhost — getUserMedia silently fails otherwise,
+  including over a plain-http LAN IP, which is how phones usually get tested.
+
+  Layer stack (back to front): #video → #gl → #ui → #cardLayer → #overlayLayer.
+  The camera feed stays a DOM <video> rather than a WebGL texture: it skips a
+  full-resolution GPU upload every frame, which is the difference between 30fps
+  and 22fps on a mid-tier Android once MediaPipe is also running.
+-->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05060B">
+<title>بصمة الأثر</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+
+<style>
+:root {
+  --bg:          #05060B;
+  --violet-deep: #191226;
+  --purple:      #6B5596;
+  --violet-lum:  #9A84CC;
+  --cyan:        #00EAF2;
+  --ice:         #7DDCFF;
+  --silver:      #D9F7FF;
+  --gold:        #D8B76A;
+  --white:       #FFFFFF;
+
+  --glass:        rgba(217, 247, 255, 0.045);
+  --glass-strong: rgba(217, 247, 255, 0.085);
+  --glass-line:   rgba(217, 247, 255, 0.14);
+  --glass-glow:   rgba(0, 234, 242, 0.18);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  --t-ui: 320ms;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:var(--bg); color:var(--silver);
+  font-family:'Cairo', system-ui, -apple-system, sans-serif;
+  font-weight:400;
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Layer stack ─────────────────────────────────────────────────── */
+#video {
+  position:fixed; inset:0; width:100%; height:100%;
+  object-fit:cover; transform:scaleX(-1);   /* selfie mirror; landmarks are flipped to match */
+  background:var(--bg); z-index:0; opacity:0;
+  transition:opacity 600ms var(--ease);
+}
+#video.live { opacity:1; }
+
+#gl { position:fixed; inset:0; z-index:1; pointer-events:none; }
+#gl canvas { display:block; width:100%; height:100%; }
+
+#ui           { position:fixed; inset:0; z-index:2; pointer-events:none; }
+#cardLayer    { position:fixed; inset:0; z-index:3; pointer-events:none; }
+#overlayLayer { position:fixed; inset:0; z-index:4; pointer-events:none; }
+
+/* Ambient wash so the imprint reads before the camera arrives, and stays
+   readable in a bright room where the video feed washes the field out. */
+#vignette {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    radial-gradient(120% 78% at 50% 12%, rgba(25,18,38,.00) 0%, rgba(5,6,11,.42) 62%, rgba(5,6,11,.88) 100%),
+    linear-gradient(180deg, rgba(5,6,11,.55) 0%, rgba(5,6,11,0) 28%, rgba(5,6,11,.72) 100%);
+}
+
+/* ── Panels ──────────────────────────────────────────────────────── */
+.panel {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1.35rem; text-align:center;
+  padding:calc(var(--safe-t) + 2rem) calc(var(--safe-r) + 1.5rem)
+          calc(var(--safe-b) + 2rem) calc(var(--safe-l) + 1.5rem);
+  pointer-events:auto;
+  opacity:0; visibility:hidden;
+  transition:opacity var(--t-ui) var(--ease), visibility var(--t-ui);
+}
+.panel.on { opacity:1; visibility:visible; }
+.panel.solid { background:linear-gradient(180deg, rgba(5,6,11,.92), rgba(5,6,11,.98)); }
+
+.stack { display:flex; flex-direction:column; align-items:center; gap:1.1rem; max-width:34ch; }
+
+h1 { font-size:2.35rem; font-weight:700; line-height:1.35; letter-spacing:0; color:var(--white); }
+h2 { font-size:1.35rem; font-weight:700; line-height:1.6; color:var(--white); }
+.lede  { font-size:1.075rem; font-weight:600; line-height:1.85; color:var(--ice); }
+.body  { font-size:1rem;     font-weight:400; line-height:1.95; color:rgba(217,247,255,.78); }
+.micro { font-size:.85rem;   font-weight:400; line-height:1.9;  color:rgba(217,247,255,.5); max-width:32ch; }
+
+/* Glass surfaces: one level only — never a card inside a card. */
+.glass {
+  background:var(--glass);
+  border:1px solid var(--glass-line);
+  border-radius:24px;
+  backdrop-filter:blur(14px) saturate(115%);
+  -webkit-backdrop-filter:blur(14px) saturate(115%);
+  box-shadow:0 18px 48px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.cta {
+  font-family:inherit; font-size:1.05rem; font-weight:700; color:var(--bg);
+  padding:1rem 2.6rem; border:0; border-radius:100px; cursor:pointer;
+  background:linear-gradient(135deg, var(--silver), var(--ice) 55%, var(--cyan));
+  box-shadow:0 10px 30px rgba(0,234,242,.24), inset 0 1px 0 rgba(255,255,255,.5);
+  transition:transform 220ms var(--ease), box-shadow 220ms var(--ease);
+}
+.cta:active { transform:scale(.97); }
+.cta.ghost {
+  background:var(--glass-strong); color:var(--silver);
+  border:1px solid var(--glass-line); box-shadow:none;
+}
+.cta[disabled] { opacity:.42; cursor:default; }
+
+:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; border-radius:12px; }
+
+/* ── Transient hint (face lost / status) ─────────────────────────── */
+#hint {
+  position:absolute; top:calc(var(--safe-t) + 1.15rem); left:50%; transform:translateX(-50%) translateY(-8px);
+  padding:.6rem 1.15rem; border-radius:100px; max-width:88vw;
+  font-size:.92rem; font-weight:600; color:var(--silver);
+  background:rgba(5,6,11,.62); border:1px solid var(--glass-line);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; visibility:hidden; transition:opacity 260ms var(--ease), transform 260ms var(--ease), visibility 260ms;
+}
+#hint.on { opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); }
+
+/* ── Landscape guard ─────────────────────────────────────────────── */
+#landscape {
+  position:fixed; inset:0; z-index:8; display:none;
+  align-items:center; justify-content:center; text-align:center;
+  padding:2rem; background:var(--bg);
+}
+@media (orientation:landscape) and (max-height:520px) {
+  #landscape { display:flex; }
+}
+
+/* ── Dev tuner (?debug) ──────────────────────────────────────────── */
+#tuner {
+  position:fixed; top:calc(var(--safe-t) + .5rem); left:.5rem; z-index:9;
+  width:210px; max-height:78vh; overflow-y:auto; padding:.75rem;
+  border-radius:14px; background:rgba(5,6,11,.86); border:1px solid var(--glass-line);
+  backdrop-filter:blur(10px); font-size:.68rem; direction:ltr; text-align:left;
+  font-family:ui-monospace, monospace; color:var(--silver);
+}
+#tuner label { display:block; margin-bottom:.55rem; }
+#tuner input { width:100%; margin-top:.15rem; }
+#tuner .fps { font-size:.85rem; font-weight:700; color:var(--cyan); margin-bottom:.5rem; }
+
+/* ── Reduced motion: substitute, never remove ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+  .panel { transition:opacity 160ms linear, visibility 160ms; }
+  #video { transition:opacity 160ms linear; }
+  .cta { transition:none; }
+}
+
+.sr-only {
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+/* ── Bottom-anchored panels: the face owns the upper two thirds ──── */
+.panel.bottom { justify-content:flex-end; gap:0; }
+.panel.bottom .stack { max-width:min(34ch, 100%); width:100%; }
+
+/* ── Loading pip ─────────────────────────────────────────────────── */
+.pips { display:flex; gap:.5rem; }
+.pips i {
+  width:7px; height:7px; border-radius:50%; background:var(--ice);
+  animation:pip 1.25s var(--ease) infinite;
+}
+.pips i:nth-child(2) { animation-delay:.16s; }
+.pips i:nth-child(3) { animation-delay:.32s; }
+@keyframes pip { 0%,100% { opacity:.22; transform:scale(.8); } 45% { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { .pips i { animation:none; opacity:.7; } }
+
+/* ── Alignment reticle ───────────────────────────────────────────── */
+#reticle {
+  width:min(58vw, 220px); aspect-ratio:1/1.22; border-radius:50%;
+  border:1px solid rgba(125,220,255,.34);
+  box-shadow:0 0 44px rgba(0,234,242,.1) inset;
+  margin-bottom:auto; margin-top:22vh;
+  animation:breathe 3.4s var(--ease) infinite;
+}
+@keyframes breathe { 0%,100% { transform:scale(1); opacity:.55; } 50% { transform:scale(1.035); opacity:.9; } }
+@media (prefers-reduced-motion: reduce) { #reticle { animation:none; opacity:.75; } }
+
+/* ── Question panel ──────────────────────────────────────────────── */
+/* Kept deliberately short: this panel sits over the user's shoulders, and
+   every extra line of height buries more of the imprint they are building. */
+.qwrap {
+  width:100%; padding:1.15rem 1.25rem 1.3rem;
+  display:flex; flex-direction:column; gap:.9rem;
+  margin-bottom:calc(var(--safe-b) + .9rem);
+}
+.progress { display:flex; gap:.4rem; justify-content:center; }
+.progress i {
+  height:3px; width:34px; border-radius:2px; background:rgba(217,247,255,.16);
+  transition:background var(--t-ui) var(--ease);
+}
+.progress i.done { background:rgba(217,247,255,.4); }
+.progress i.now  { background:var(--cyan); box-shadow:0 0 12px rgba(0,234,242,.6); }
+
+.qtext { font-size:1.3rem; line-height:1.72; text-align:center; }
+
+.slabels {
+  display:flex; justify-content:space-between; gap:1rem;
+  direction:ltr;                 /* physical left/right must match the track ends */
+  font-size:.92rem; font-weight:600; line-height:1.65; color:rgba(217,247,255,.72);
+}
+.slabels span { flex:1 1 0; direction:rtl; text-align:center; }
+.slabels span.hot { color:var(--white); }
+
+input[type=range] {
+  -webkit-appearance:none; appearance:none; width:100%; height:38px;
+  background:transparent; cursor:pointer; direction:ltr;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height:4px; border-radius:3px;
+  background:linear-gradient(90deg, rgba(125,220,255,.5), rgba(217,247,255,.22), rgba(0,234,242,.5));
+}
+input[type=range]::-moz-range-track {
+  height:4px; border-radius:3px;
+  background:linear-gradient(90deg, rgba(125,220,255,.5), rgba(217,247,255,.22), rgba(0,234,242,.5));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; appearance:none;
+  width:34px; height:34px; margin-top:-15px; border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, var(--white), var(--ice) 48%, var(--cyan));
+  border:2px solid rgba(255,255,255,.85);
+  box-shadow:0 0 22px rgba(0,234,242,.55), 0 4px 14px rgba(0,0,0,.5);
+}
+input[type=range]::-moz-range-thumb {
+  width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.85);
+  background:radial-gradient(circle at 34% 30%, var(--white), var(--ice) 48%, var(--cyan));
+  box-shadow:0 0 22px rgba(0,234,242,.55), 0 4px 14px rgba(0,0,0,.5);
+}
+.locked input[type=range]::-webkit-slider-thumb { animation:thumbpulse 520ms var(--ease); }
+@keyframes thumbpulse { 0% { transform:scale(1); } 40% { transform:scale(1.22); } 100% { transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .locked input[type=range]::-webkit-slider-thumb { animation:none; }
+}
+
+/* ── Result panel ────────────────────────────────────────────────── */
+.axes { display:flex; flex-direction:column; gap:.85rem; width:100%; }
+.axis { display:flex; flex-direction:column; gap:.35rem; }
+.axis .row { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; }
+.axis .name { font-size:.86rem; font-weight:400; color:rgba(217,247,255,.6); }
+.axis .band { font-size:.95rem; font-weight:600; color:var(--white); }
+.axis .bar { height:3px; border-radius:2px; background:rgba(217,247,255,.13); overflow:hidden; }
+.axis .bar i {
+  display:block; height:100%; border-radius:2px;
+  background:linear-gradient(90deg, var(--ice), var(--cyan));
+  transform-origin:left center;
+}
+
+/* ── Card panel ──────────────────────────────────────────────────── */
+#cardStage { display:flex; flex-direction:column; align-items:center; gap:1.15rem; width:100%; }
+/* The card grows out of the seal rather than cutting in: the clip circle is
+   centred on the seal mark, so the frame appears to be drawn by it. */
+#cardCanvas {
+  width:min(86vw, 340px); height:auto; aspect-ratio:480/720; border-radius:20px;
+  box-shadow:0 26px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(216,183,106,.28);
+  opacity:0; transform:scale(.86);
+  clip-path:circle(9% at 50% 21%);
+  transition:opacity 380ms var(--ease), transform 640ms var(--ease), clip-path 640ms var(--ease);
+}
+#cardCanvas.in { opacity:1; transform:scale(1); clip-path:circle(150% at 50% 21%); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Same reveal, no travel: the card fades up in place, fully intact. */
+  #cardCanvas { transform:none; clip-path:none; transition:opacity 220ms linear; }
+  #cardCanvas.in { transform:none; clip-path:none; }
+}
+.actions { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; width:min(86vw, 340px); }
+.actions .cta { padding:.8rem .6rem; font-size:.92rem; }
+.actions .cta.wide { grid-column:1 / -1; }
+
+/* ── Audio toggle ────────────────────────────────────────────────── */
+#audioBtn {
+  position:absolute; top:calc(var(--safe-t) + 1rem); left:calc(var(--safe-l) + 1rem);
+  width:38px; height:38px; border-radius:50%; cursor:pointer; pointer-events:auto;
+  background:rgba(5,6,11,.5); border:1px solid var(--glass-line); color:var(--silver);
+  backdrop-filter:blur(8px); font-size:.95rem; line-height:1;
+  display:none; align-items:center; justify-content:center;
+}
+#audioBtn.on { display:flex; }
+#audioBtn.muted { opacity:.45; }
+</style>
+</head>
+<body>
+
+<video id="video" playsinline muted autoplay disablepictureinpicture></video>
+<div id="vignette"></div>
+<div id="gl"></div>
+
+<div id="ui">
+  <div id="hint" role="status"></div>
+
+  <!-- 1 · SPLASH -->
+  <section class="panel solid" id="p-splash">
+    <div class="stack">
+      <h1>بصمة الأثر</h1>
+      <p class="lede">الأثر لا يُقاس بما يظهر لحظةً، بل بما يبقى بعدك.</p>
+      <p class="body">ثلاثة اختيارات ستبني بصمة بصرية للطريقة التي تبدأ بها الأثر، تربطه، وتجعله يستمر.</p>
+      <button class="cta" id="btnStart">ابدأ التجربة</button>
+      <p class="micro">تُستخدم الكاميرا لدمج صورتك مع البصمة البصرية. لا يتم تقييم ملامحك أو استنتاج صفاتك من وجهك.</p>
+    </div>
+  </section>
+
+  <!-- 2 · STARTING -->
+  <section class="panel solid" id="p-starting">
+    <div class="stack">
+      <div class="pips" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="lede">جاري تجهيز البصمة</p>
+    </div>
+  </section>
+
+  <!-- 6 · ALIGN -->
+  <section class="panel bottom" id="p-align">
+    <div id="reticle" aria-hidden="true"></div>
+    <div class="stack" style="margin-bottom:calc(var(--safe-b) + 2.5rem)">
+      <p class="lede">دع البصمة تتعرّف إلى موضعك</p>
+      <p class="body">ضع وجهك في منتصف الشاشة</p>
+    </div>
+  </section>
+
+  <!-- 7 · ACTIVATED -->
+  <section class="panel bottom" id="p-activated">
+    <div class="stack" style="margin-bottom:calc(var(--safe-b) + 2.5rem)">
+      <p class="lede">تم تحديد موضعك داخل المشهد</p>
+      <p class="body">كيف تختار أن تترك أثرك؟</p>
+    </div>
+  </section>
+
+  <!-- 8/10/12 · QUESTION (one panel, three layers) -->
+  <section class="panel bottom" id="p-question">
+    <div class="qwrap glass">
+      <div class="progress" id="qProgress" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="sr-only" id="qProgressText"></p>
+      <h2 class="qtext" id="qText"></h2>
+      <div>
+        <div class="slabels"><span id="qLeft"></span><span id="qRight"></span></div>
+        <input type="range" id="qSlider" dir="ltr" min="0" max="100" step="1" value="50"
+               aria-describedby="qKeyHint">
+      </div>
+      <p class="micro" style="text-align:center; align-self:center">ارفع إصبعك لتثبيت الطبقة</p>
+      <p class="sr-only" id="qKeyHint">استخدم مفتاحي السهم لتغيير الاختيار، ثم اضغط Enter لتثبيت الطبقة والانتقال.</p>
+    </div>
+  </section>
+
+  <!-- 9/11/13 · CONFIRM -->
+  <section class="panel bottom" id="p-confirm">
+    <div class="stack" style="margin-bottom:calc(var(--safe-b) + 3.5rem)">
+      <p class="lede" id="confirmText"></p>
+    </div>
+  </section>
+
+  <!-- 14 · ASSEMBLY — the three layers draw together; nothing competes with it -->
+  <section class="panel" id="p-assembly"></section>
+
+  <!-- 15 · RESULT -->
+  <section class="panel bottom" id="p-result">
+    <div class="qwrap glass">
+      <p class="micro" style="text-align:center">بصمة أثرك</p>
+      <h2 id="resTitle"></h2>
+      <p class="body" id="resDesc"></p>
+      <div class="axes" id="resAxes"></div>
+      <button class="cta" id="btnCard">افتح الدعوة</button>
+    </div>
+  </section>
+
+  <!-- 16 · CARD_TRANSFORM — the imprint compresses into the seal; no UI competes with it -->
+  <section class="panel" id="p-transform"></section>
+
+  <button id="audioBtn" type="button" aria-pressed="false" aria-label="الصوت">♪</button>
+</div>
+
+<div id="cardLayer">
+  <!-- 17 · CARD -->
+  <section class="panel solid" id="p-card">
+    <div id="cardStage">
+      <canvas id="cardCanvas" width="960" height="1440" role="img" aria-label="بطاقة الدعوة"></canvas>
+      <div class="actions">
+        <button class="cta" id="btnSave">حفظ البطاقة</button>
+        <button class="cta" id="btnShare">مشاركة</button>
+        <button class="cta ghost" id="btnIcs">إضافة إلى التقويم</button>
+        <button class="cta ghost" id="btnRestart">إعادة التجربة</button>
+        <p class="micro" id="cardNote" style="grid-column:1/-1; text-align:center"></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="overlayLayer">
+  <!-- Error / fallback panels live above the card so they can interrupt anything -->
+  <!-- 3 · CAM_DENIED -->
+  <section class="panel solid" id="p-denied">
+    <div class="stack">
+      <h2>تعذر تشغيل الكاميرا</h2>
+      <p class="body" id="deniedText">نحتاج إلى صلاحية الكاميرا لتظهر داخل التجربة. يمكنك السماح بها من إعدادات المتصفح ثم المحاولة مجدداً.</p>
+      <button class="cta" id="btnRetry">حاول مجدداً</button>
+      <button class="cta ghost" id="btnFallback">يمكنك متابعة التجربة بوضع بصري ثابت من دون تتبع الكاميرا.</button>
+    </div>
+  </section>
+
+  <!-- 4 · CAM_BUSY -->
+  <section class="panel solid" id="p-busy">
+    <div class="stack">
+      <h2>تعذر تشغيل الكاميرا</h2>
+      <p class="body">يبدو أن تطبيقاً آخر يستخدم الكاميرا. أغلقه ثم حاول مجدداً.</p>
+      <button class="cta" id="btnRetryBusy">حاول مجدداً</button>
+      <button class="cta ghost" id="btnFallbackBusy">يمكنك متابعة التجربة بوضع بصري ثابت من دون تتبع الكاميرا.</button>
+    </div>
+  </section>
+
+  <!-- 5 · FALLBACK_NOTICE — tracking unavailable, journey continues at fixed centre -->
+  <section class="panel solid" id="p-fallback">
+    <div class="stack">
+      <p class="lede">يمكنك متابعة التجربة بوضع بصري ثابت من دون تتبع الكاميرا.</p>
+      <button class="cta" id="btnFallbackGo">ابدأ التجربة</button>
+    </div>
+  </section>
+</div>
+
+<div id="landscape">
+  <p class="lede">أدر هاتفك للوضع العمودي لنكمل التجربة</p>
+</div>
+
+<p class="sr-only" id="live" aria-live="polite"></p>
+
+<!--
+  Exact pinned versions only. The three/addons/ prefix is mapped but unused:
+  this build deliberately runs no post-processing pass (the glow is additive,
+  in-shader), and keeping the prefix mapped means a hand-added addon resolves
+  at the same pinned version instead of silently pulling a different one.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIG — every tunable in the build lives here.
+   Nothing below this block should contain a hard-coded look value.
+   ═══════════════════════════════════════════════════════════════════ */
+const CONFIG = {
+
+  /* Palette. CSS mirrors these in :root; these are the WebGL-side copies. */
+  COLOR: {
+    BG:          0x05060B,
+    VIOLET_DEEP: 0x191226,
+    PURPLE:      0x6B5596,
+    VIOLET_LUM:  0x9A84CC,
+    CYAN:        0x00EAF2,
+    ICE:         0x7DDCFF,
+    SILVER:      0xD9F7FF,
+    GOLD:        0xD8B76A,
+    WHITE:       0xFFFFFF,
+  },
+
+  CAMERA: {
+    FACING: 'user',
+    WIDTH: 1280,          // 720p class. 1080p costs tracking time for no visible gain.
+    HEIGHT: 720,
+    DPR_MIN: 1.5,         // clamp window: below 1.5 the field looks gritty,
+    DPR_MAX: 2.0,         // above 2.0 fragment cost doubles for nothing at arm's length.
+  },
+
+  TRACKING: {
+    MODEL_URL: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+    WASM_BASE: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm',
+    SMOOTH_SLOW: 0.12,    // adaptive smoothing: heavy when nearly still…
+    SMOOTH_FAST: 0.45,    // …light when moving fast, so the field doesn't drag on elastic.
+    SMOOTH_VEL_REF: 0.06, // world units/frame at which smoothing reaches SMOOTH_FAST
+    SCALE_FROM_EYES: 2.6, // inter-ocular distance → face radius. Eye spacing is
+                          // stable under jaw movement; face height is not.
+    ACQUIRE_MS: 900,      // continuous detection required before the field activates
+    LOST_MS: 1400,        // grace before the "return to centre" hint appears
+    INIT_TIMEOUT_MS: 9000,// model/WASM fetch budget before falling back to fixed centre
+  },
+
+  /* Fixed-centre fallback anchors, in the same normalised space as tracking.
+     Y sits in the upper third because that is where a head lands in a portrait
+     selfie — the field hangs below it either way. */
+  FALLBACK_ANCHOR: { X: 0.0, Y: 0.44, SCALE: 0.24 },
+
+  /* Body anchor, as a multiple of the tracked face radius, measured down from
+     the face centre. Chest has to clear FACE_PROTECT.FALLOFF_MUL or the
+     nucleus is born inside its own exclusion zone. Every band hangs off this
+     one point, so there is a single anchor for the whole imprint to agree on. */
+  BODY: { CHEST_Y: 1.9 },
+
+  /* Each question owns its own radial band around the chest anchor, so three
+     locked answers read as three concentric strata rather than one crowded
+     cloud. Radii are in field units (u); XS/YS squash each band to a portrait
+     frame, where the horizontal budget is roughly half the vertical one.
+     LIFT raises a band's centre off the chest, toward the shoulder line. */
+  BANDS: [
+    { RIN: 0.12, ROUT: 0.58, XS: 1.00, YS: 0.94, LIFT: 0.00 },  // Q1 — nucleus
+    { RIN: 0.64, ROUT: 1.02, XS: 0.94, YS: 1.02, LIFT: 0.12 },  // Q2 — shoulder halo
+    { RIN: 1.08, ROUT: 1.58, XS: 0.62, YS: 1.14, LIFT: 0.05 },  // Q3 — outer aura
+  ],
+
+  FIELD: {
+    COUNT: { high: 220, medium: 150, low: 105 },   // spec bands: 180–240 / 130–160 / 90–120
+    DRIFT_SPEED: 0.34,      // global time scale for particle motion
+    BREATH: 0.11,           // nucleus breathing amplitude
+    BREATH_HZ: 0.12,
+    PARALLAX: 0.32,         // how much depth-role particles counter head movement
+    ENTRY_MUL: 2.7,         // how far outside its own band an inbound stream is
+                            // born, as a multiple of the band's outer radius
+    ALPHA: 1.0,             // master field alpha (dev tuner target)
+    GLOW: 2.0,              // master glow multiplier (dev tuner target). Raise it
+                            // for bright venues — a live feed washes additive
+                            // glow out far more than the black fallback does.
+    SCALE: 2.3,             // field size as a multiple of tracked face scale
+    SEAL_X: 0.0,            // where the imprint compresses into the invitation seal
+    SEAL_Y: 0.06,
+    SEAL_R: 0.19,
+    REDUCED_SPEED: 0.22,    // motion multiplier under prefers-reduced-motion
+    AMBIENT: 0.16,          // quiet presence before the first answer is locked
+  },
+
+  /* Alpha falls off toward the face so the user's features stay clean.
+     Radius is a multiple of the tracked face scale. */
+  FACE_PROTECT: {
+    RADIUS_MUL: 1.55,
+    FALLOFF_MUL: 2.30,      // fully unaffected beyond FALLOFF_MUL * faceScale
+    FLOOR: 0.0,             // residual alpha inside the protected core
+    LIFT_Y: 0.10,           // shift the protected ellipse up, toward the forehead
+    ELLIPSE_Y: 1.22,        // above the face: tall guard, clears hair and headwear
+    BELOW_Y: 0.72,          // below the chin: tight, so the field can sit on the
+                            // shoulders instead of being pushed off the bottom
+  },
+
+  PARTICLE: {
+    CORE_SIZE: 24.0,        // px at DPR 1, before depth scaling
+    TRAIL_SIZE: 14.0,
+    DEPTH_SIZE: 34.0,
+    SIZE_JITTER: 0.55,
+    CORE_ALPHA: 0.95,
+    TRAIL_ALPHA: 0.62,
+    DEPTH_ALPHA: 0.30,
+    HALO: 0.62,             // width of the soft outer falloff in the sprite
+    TRAIL_LEN: 0.085,       // trace length in world units
+    TRAIL_SEGMENT_ALPHA: 0.5,
+  },
+
+  CONNECTIONS: {
+    MAX: 22,                // hard cap — a full mesh is a build failure
+    MAX_LEN: 0.50,          // in field units. A long link reads as a mesh edge,
+                            // not as a group; drop it rather than draw it.
+    ALPHA: 0.55,
+    MID_BAND_MAX: 2,        // middle band shows one or two links only
+    // Cross-band links exist only during the merge beat of the assembly. They
+    // fade back to nothing by the time it settles, so the resting imprint —
+    // and therefore the exported card — never has to account for them.
+    CROSS_MAX: 12,
+    CROSS_LEN: 1.05,
+    CROSS_ALPHA: 0.5,
+  },
+
+  LAYERS: {
+    PREVIEW_ALPHA: 0.42,    // translucent = unconfirmed
+    LOCK_MS: 1050,          // answer lock animation (spec: 900–1200)
+    PULSE: 0.5,             // brightness overshoot on lock
+    CLUSTERS_CONNECT: 4,    // small meaningful groups, never one big graph
+    CLUSTERS_SPACE: 7,
+    SPREAD_BRANCHES: 2,
+    // Lock shockwave: a ring travelling out through the layer that was just
+    // written. It is the "it landed" event that a brightness pulse alone was
+    // not carrying — the layer visibly gets stamped, not just turned up.
+    WAVE_MS: 640,
+    WAVE_AMP: 0.20,         // crest displacement, in field units
+    WAVE_WIDTH: 0.30,       // crest thickness, in field units
+    WAVE_GAIN: 1.7,         // brightness multiplier on the crest
+  },
+
+  /* The final assembly runs in three beats rather than one contraction:
+     the bands separate (so the user sees three strata for the first time),
+     then collapse together, then settle into the signature. */
+  ASSEMBLY: {
+    SEPARATE: 0.34,         // end of beat 1, as a fraction of the tween
+    CONVERGE: 0.74,         // end of beat 2
+    SEP_PUSH: 0.34,         // outward push per band on the separation beat
+    CONVERGE_K: 0.60,       // contraction toward the chest on the merge beat
+    IGNITE: 0.5,            // peak gold mix as the bands meet
+  },
+
+  /* Signature geometry — one resting form per result, so the imprint itself
+     says which imprint it is. The card reuses the same sampler, so every
+     exported invitation inherits its own shape for free. */
+  SIGNATURE: {
+    SETTLE: 0.72,           // assembly progress at which the settle beat starts
+    R: 0.98,                // outer reach of every signature form, in units
+    RAYS: 8,
+    NODES: 7,
+    CLUSTERS: 5,
+    RINGS: 4,
+    BRANCHES: 3,
+    PETALS: 3,
+    SPIN: 0.06,             // resting rotation — alive, not animated
+  },
+
+  MOTION: {
+    UI_MS: 320,             // panel transitions (spec: 250–400)
+    AUTO_ADVANCE_MS: 1000,  // after lock (spec: 800–1200)
+    ASSEMBLY_MS: 2400,      // final assembly (spec: 1800–2400); the top of the
+                            // window, because it now carries three beats
+    CARD_MS: 1150,          // imprint → seal → card frame (spec: 900–1300)
+    CONFIRM_MS: 1400,       // how long a confirmation line stays up
+  },
+
+  SLIDER: {
+    MIN: 0, MAX: 100, DEFAULT: 50, STEP: 1,
+    BAND_LOW: 40,           // 0–40 low
+    BAND_HIGH: 60,          // 60–100 high; 41–59 balanced
+    KEY_LOCK_MS: 700,       // idle after arrow-key adjustment before the layer locks
+  },
+
+  CARD: {
+    W: 480, H: 720,         // logical size
+    EXPORT_SCALE: 2,
+    PORTRAIT: true,         // circular camera portrait, if a frame was captured
+    PORTRAIT_R: 62,
+    // The card packs the same field into roughly half the linear space, so the
+    // additive stack has to come down with it or the imprint blows out white.
+    IMPRINT_ALPHA: 0.55,
+    IMPRINT_DOT: 0.26,      // dot radius per unit of live particle size
+    FILENAME: 'basmat-al-athar',
+  },
+
+  /* Event details for the .ics. Leave DATE null until the event is announced —
+     the calendar button disables itself and explains why. */
+  EVENT: {
+    TITLE: 'لقاء المستقبل',
+    DATE: null,             // 'YYYY-MM-DD'
+    START: '19:00',
+    END: '21:00',
+    LOCATION: '',
+    DESCRIPTION: 'أثرك جزء من اللحظة القادمة.',
+    TZ: 'Asia/Riyadh',
+  },
+
+  AUDIO: {
+    ENABLED: true,
+    VOLUME: 0.09,           // muted by default; this is the level when unmuted
+    BASE_HZ: 92,
+  },
+
+  PERF: {
+    SAMPLE_MS: 2000,        // rolling window for the fps estimate
+    DOWNGRADE_FPS: 26,      // sustained below this → drop a particle tier
+    UPGRADE_FPS: 52,        // sustained above this → allow one tier back
+    STABLE_SAMPLES: 3,      // consecutive windows before acting (thermal, not noise)
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   COPY — Arabic strings that are set at runtime. Static copy lives in
+   the markup above. Both are verbatim from the deck.
+   ═══════════════════════════════════════════════════════════════════ */
+const COPY = Object.freeze({
+  STARTING:    'جاري تجهيز البصمة',
+  ALIGN:       'دع البصمة تتعرّف إلى موضعك',
+  INSTRUCTION: 'ضع وجهك في منتصف الشاشة',
+  ACTIVATED:   'تم تحديد موضعك داخل المشهد',
+  ACTIVATED_NEXT: 'كيف تختار أن تترك أثرك؟',
+  FACE_LOST:   'ارجع إلى منتصف الشاشة لنكمل',
+  BUSY:        'يبدو أن تطبيقاً آخر يستخدم الكاميرا. أغلقه ثم حاول مجدداً.',
+  DENIED_TEXT: 'نحتاج إلى صلاحية الكاميرا لتظهر داخل التجربة. يمكنك السماح بها من إعدادات المتصفح ثم المحاولة مجدداً.',
+  FALLBACK:    'يمكنك متابعة التجربة بوضع بصري ثابت من دون تتبع الكاميرا.',
+  // Not in the deck: in-app browsers block getUserMedia outright, and a user
+  // stuck there has no route forward without being told to leave the app.
+  INAPP:       'يمنع المتصفح المدمج داخل التطبيق الوصول إلى الكاميرا. افتح الرابط في Safari أو Chrome لتكتمل التجربة.',
+  SECURE:      'يحتاج تشغيل الكاميرا إلى اتصال آمن. افتح الرابط عبر https لتكتمل التجربة.',
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE MACHINE
+   17 states, one frozen enum, one explicit transition map. Everything
+   that "where are we" depends on reads AppState.current — there are no
+   scattered isRunning / hasAnswered / showingCard booleans anywhere in
+   this file, which is what keeps the error paths from stranding the UI.
+   ═══════════════════════════════════════════════════════════════════ */
+const S = Object.freeze({
+  SPLASH:          1,
+  STARTING:        2,
+  CAM_DENIED:      3,
+  CAM_BUSY:        4,
+  FALLBACK_NOTICE: 5,
+  ALIGN:           6,
+  ACTIVATED:       7,
+  Q1:              8,
+  Q1_LOCK:         9,
+  Q2:             10,
+  Q2_LOCK:        11,
+  Q3:             12,
+  Q3_LOCK:        13,
+  ASSEMBLY:       14,
+  RESULT:         15,
+  CARD_TRANSFORM: 16,
+  CARD:           17,
+});
+const STATE_NAME = Object.freeze(
+  Object.fromEntries(Object.entries(S).map(([k, v]) => [v, k]))
+);
+
+// Which panel owns each state, and where focus goes on entry.
+const STATE_PANEL = Object.freeze({
+  [S.SPLASH]:          { el: 'p-splash',    focus: 'btnStart' },
+  [S.STARTING]:        { el: 'p-starting',  focus: null },
+  [S.CAM_DENIED]:      { el: 'p-denied',    focus: 'btnRetry' },
+  [S.CAM_BUSY]:        { el: 'p-busy',      focus: 'btnRetryBusy' },
+  [S.FALLBACK_NOTICE]: { el: 'p-fallback',  focus: 'btnFallbackGo' },
+  [S.ALIGN]:           { el: 'p-align',     focus: null },
+  [S.ACTIVATED]:       { el: 'p-activated', focus: null },
+  [S.Q1]:              { el: 'p-question',  focus: 'qSlider' },
+  [S.Q1_LOCK]:         { el: 'p-confirm',   focus: null },
+  [S.Q2]:              { el: 'p-question',  focus: 'qSlider' },
+  [S.Q2_LOCK]:         { el: 'p-confirm',   focus: null },
+  [S.Q3]:              { el: 'p-question',  focus: 'qSlider' },
+  [S.Q3_LOCK]:         { el: 'p-confirm',   focus: null },
+  [S.ASSEMBLY]:        { el: 'p-assembly',  focus: null },
+  [S.RESULT]:          { el: 'p-result',    focus: 'btnCard' },
+  [S.CARD_TRANSFORM]:  { el: 'p-transform', focus: null },
+  [S.CARD]:            { el: 'p-card',      focus: 'btnSave' },
+});
+
+const PANEL_ELS = Object.freeze(
+  [...new Set(Object.values(STATE_PANEL).map(p => p.el))].map(id => document.getElementById(id))
+);
+
+// Allowed transitions. Camera failures can only interrupt before the
+// journey starts; once ACTIVATED, a dropped feed degrades to the fixed
+// centre rather than throwing the user back to an error screen.
+const TRANSITIONS = Object.freeze({
+  [S.SPLASH]:          [S.STARTING],
+  [S.STARTING]:        [S.ALIGN, S.CAM_DENIED, S.CAM_BUSY, S.FALLBACK_NOTICE],
+  [S.CAM_DENIED]:      [S.STARTING, S.FALLBACK_NOTICE],
+  [S.CAM_BUSY]:        [S.STARTING, S.FALLBACK_NOTICE],
+  [S.FALLBACK_NOTICE]: [S.ALIGN],
+  [S.ALIGN]:           [S.ACTIVATED, S.CAM_BUSY],
+  [S.ACTIVATED]:       [S.Q1],
+  [S.Q1]:              [S.Q1_LOCK],
+  [S.Q1_LOCK]:         [S.Q2],
+  [S.Q2]:              [S.Q2_LOCK],
+  [S.Q2_LOCK]:         [S.Q3],
+  [S.Q3]:              [S.Q3_LOCK],
+  [S.Q3_LOCK]:         [S.ASSEMBLY],
+  [S.ASSEMBLY]:        [S.RESULT],
+  [S.RESULT]:          [S.CARD_TRANSFORM],
+  [S.CARD_TRANSFORM]:  [S.CARD],
+  [S.CARD]:            [S.SPLASH],
+});
+
+const DEV = new URLSearchParams(location.search);
+const DEBUG = DEV.has('debug');
+
+const liveRegion = document.getElementById('live');
+
+const AppState = {
+  current: null,
+  _enter: new Map(),
+  _exit: new Map(),
+  _timers: new Set(),
+
+  on(state, enterFn, exitFn) {
+    if (enterFn) this._enter.set(state, enterFn);
+    if (exitFn) this._exit.set(state, exitFn);
+  },
+
+  can(next) {
+    if (this.current === null) return next === S.SPLASH;
+    return (TRANSITIONS[this.current] || []).includes(next);
+  },
+
+  go(next, payload) {
+    if (!this.can(next)) {
+      const msg = `illegal transition ${STATE_NAME[this.current] || 'NONE'} → ${STATE_NAME[next] || next}`;
+      if (DEBUG) throw new Error(msg);
+      return false;   // production: refuse and stay put rather than corrupt the journey
+    }
+    return this._force(next, payload);
+  },
+
+  // Only the debug harness and the initial boot bypass the transition map.
+  _force(next, payload) {
+    const prev = this.current;
+    this.clearTimers();
+    const exit = this._exit.get(prev);
+    if (exit) exit(next);
+
+    this.current = next;
+    // Three states share the question panel and three share the confirmation
+    // panel, so compare by element, not by state id.
+    const target = STATE_PANEL[next].el;
+    for (const el of PANEL_ELS) el.classList.toggle('on', el.id === target);
+
+    const enter = this._enter.get(next);
+    if (enter) enter(payload, prev);
+
+    const focusId = STATE_PANEL[next].focus;
+    if (focusId) {
+      const el = document.getElementById(focusId);
+      // Defer past the panel transition so focus doesn't scroll a hidden element.
+      this.after(CONFIG.MOTION.UI_MS, () => el.focus({ preventScroll: true }));
+    }
+    return true;
+  },
+
+  // Announce to assistive tech. Called by state handlers with their own copy.
+  announce(text) { liveRegion.textContent = text; },
+
+  // Timers owned by the state machine so a transition can never leave a
+  // stale callback firing into a screen the user already left.
+  after(ms, fn) {
+    const id = setTimeout(() => { this._timers.delete(id); fn(); }, ms);
+    this._timers.add(id);
+    return id;
+  },
+  clearTimers() {
+    for (const id of this._timers) clearTimeout(id);
+    this._timers.clear();
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEBUG HARNESS — dev-only, none of it reachable from the normal UI.
+     ?debug            live CONFIG sliders + fps
+     ?state=N          jump to state N, seeding anything skipped
+     ?nocam            force the no-camera path
+     ?answers=20,80,50 preset the three slider values
+     ?seed=12345       force the imprint seed
+   ═══════════════════════════════════════════════════════════════════ */
+const Dev = (() => {
+  const stateParam = DEV.has('state') ? Math.round(+DEV.get('state')) : null;
+  const jumpTo = (stateParam && STATE_NAME[stateParam]) ? stateParam : null;
+
+  const rawAnswers = DEV.get('answers');
+  const presetAnswers = rawAnswers
+    ? rawAnswers.split(',').map(n => Math.max(0, Math.min(100, Math.round(+n) || 0))).slice(0, 3)
+    : null;
+
+  const seedParam = DEV.has('seed') ? (Math.abs(Math.round(+DEV.get('seed'))) || 1) : null;
+
+  return Object.freeze({
+    jumpTo,
+    noCam: DEV.has('nocam'),
+    presetAnswers,
+    seed: seedParam,
+    // Plausible stand-ins for questions a ?state= jump skipped past.
+    FILLER: Object.freeze([28, 74, 41]),
+  });
+})();
+
+// Deterministic PRNG (mulberry32) — the imprint must be reproducible from a
+// seed alone so the exported card matches what was on screen.
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), 1 | t);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SESSION_SEED = Dev.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xFFFFFF)) >>> 0);
+
+/* Live tuner. Targets are CONFIG paths, so a dragged slider changes the same
+   constant a hand-editor would change in the block above. */
+const Tuner = {
+  fpsEl: null,
+  onChange: null,   // set by the particle system so count changes take effect live
+  build() {
+    const panel = document.createElement('div');
+    panel.id = 'tuner';
+    const fps = document.createElement('div');
+    fps.className = 'fps';
+    fps.textContent = '– fps';
+    panel.appendChild(fps);
+    this.fpsEl = fps;
+
+    const knobs = [
+      ['particles',    CONFIG.FIELD.COUNT, 'high',        90,  240, 1],
+      ['alpha',        CONFIG.FIELD,       'ALPHA',        0,   2,   0.01],
+      ['glow',         CONFIG.FIELD,       'GLOW',         0,   3,   0.01],
+      ['speed',        CONFIG.FIELD,       'DRIFT_SPEED',  0,   1.5, 0.01],
+      ['parallax',     CONFIG.FIELD,       'PARALLAX',     0,   1,   0.01],
+      ['faceRadius',   CONFIG.FACE_PROTECT,'RADIUS_MUL',   0,   4,   0.01],
+      ['faceFalloff',  CONFIG.FACE_PROTECT,'FALLOFF_MUL',  0.1, 6,   0.01],
+      ['coreSize',     CONFIG.PARTICLE,    'CORE_SIZE',    2,   40,  0.5],
+      ['trailLen',     CONFIG.PARTICLE,    'TRAIL_LEN',    0,   0.4, 0.005],
+      ['links',        CONFIG.CONNECTIONS, 'MAX',          0,   60,  1],
+      ['sigRadius',    CONFIG.SIGNATURE,   'R',            0.3, 1.8, 0.01],
+      ['waveAmp',      CONFIG.LAYERS,      'WAVE_AMP',     0,   0.6, 0.01],
+    ];
+
+    for (const [label, obj, key, min, max, step] of knobs) {
+      const l = document.createElement('label');
+      const out = document.createElement('span');
+      out.textContent = obj[key];
+      l.append(`${label} `, out);
+      const input = document.createElement('input');
+      Object.assign(input, { type: 'range', min, max, step, value: obj[key] });
+      input.oninput = () => {
+        obj[key] = +input.value;
+        out.textContent = input.value;
+        if (this.onChange) this.onChange(label, obj[key]);
+      };
+      l.appendChild(input);
+      panel.appendChild(l);
+    }
+    document.body.appendChild(panel);
+  },
+  setFps(v) { if (this.fpsEl) this.fpsEl.textContent = `${v.toFixed(0)} fps`; },
+};
+
+/* The whole journey's mutable state: three answers and one seed. Nothing
+   about the camera or the tracked face is stored here, which is what makes
+   the result provably independent of what the camera saw. */
+const Journey = {
+  answers: [null, null, null],
+  seed: SESSION_SEED,
+
+  startValue(qIndex) {
+    return Dev.presetAnswers?.[qIndex] ?? CONFIG.SLIDER.DEFAULT;
+  },
+
+  set(qIndex, value) {
+    this.answers[qIndex] = Math.max(CONFIG.SLIDER.MIN, Math.min(CONFIG.SLIDER.MAX, Math.round(value)));
+  },
+
+  // Fill in anything a ?state= jump flew past, so downstream screens have
+  // real values instead of nulls.
+  seedFor(state) {
+    const askedBy = [S.Q1, S.Q2, S.Q3];
+    askedBy.forEach((qState, i) => {
+      if (state > qState && this.answers[i] === null) {
+        this.answers[i] = Dev.presetAnswers?.[i] ?? Dev.FILLER[i];
+      }
+    });
+  },
+
+  reset() {
+    this.answers = [null, null, null];
+    this.seed = Dev.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xFFFFFF)) >>> 0);
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   CAMERA BOOTSTRAP
+   Three failure paths, each with a real Arabic screen: permission denied,
+   device busy, and no camera at all. None of them ends in a black screen.
+   ═══════════════════════════════════════════════════════════════════ */
+const videoEl = document.getElementById('video');
+
+// In-app browsers (Instagram, TikTok, LinkedIn, Facebook) frequently block
+// getUserMedia outright. Detecting early beats a permission dialog that never
+// appears and a user with no idea why.
+const IS_IN_APP = /FBAN|FBAV|FB_IAB|Instagram|Line\/|LinkedIn|TikTok|Twitter|MicroMessenger/i.test(navigator.userAgent);
+
+const CameraManager = {
+  stream: null,
+  active: false,
+
+  // 'ok' | 'denied' | 'busy' | 'none' | 'inapp' | 'insecure'
+  precheck() {
+    if (Dev.noCam) return 'none';
+    if (!window.isSecureContext) return 'insecure';
+    if (IS_IN_APP) return 'inapp';
+    if (!navigator.mediaDevices?.getUserMedia) return 'none';
+    return 'ok';
+  },
+
+  async start() {
+    const pre = this.precheck();
+    if (pre !== 'ok') throw Object.assign(new Error(pre), { reason: pre });
+
+    // Restarting the experience must not open a second stream or re-prompt.
+    if (this.active && videoEl.videoWidth) return true;
+
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: CONFIG.CAMERA.FACING,
+        width:  { ideal: CONFIG.CAMERA.WIDTH },
+        height: { ideal: CONFIG.CAMERA.HEIGHT },
+      },
+      audio: false,
+    });
+    videoEl.srcObject = this.stream;
+
+    // Awaited inside the start gesture — a rejected play() is a silent black screen on iOS.
+    await videoEl.play();
+    if (!videoEl.videoWidth) {
+      await new Promise(res => videoEl.addEventListener('loadedmetadata', res, { once: true }));
+    }
+
+    // If the OS or another app pulls the device out from under us before the
+    // journey starts, surface it rather than freezing on the last frame.
+    this.stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+      this.active = false;
+      videoEl.classList.remove('live');
+      if (AppState.can(S.CAM_BUSY)) AppState.go(S.CAM_BUSY);
+    });
+
+    this.active = true;
+    videoEl.classList.add('live');
+    return true;
+  },
+
+  stop() {
+    this.stream?.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    this.active = false;
+    videoEl.classList.remove('live');
+    videoEl.srcObject = null;
+  },
+
+  classify(err) {
+    if (err?.reason) return err.reason;
+    switch (err?.name) {
+      case 'NotAllowedError':
+      case 'SecurityError':          return 'denied';
+      case 'NotReadableError':
+      case 'AbortError':
+      case 'TrackStartError':        return 'busy';
+      case 'NotFoundError':
+      case 'DevicesNotFoundError':
+      case 'OverconstrainedError':   return 'none';
+      default:                       return 'busy';
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   TRACKING
+   MediaPipe FaceLandmarker, used for exactly three numbers: face centre x,
+   face centre y, and face scale. No landmark rendering, no mesh, no
+   blendshapes, no inference about the person — the tracker's only job is
+   to tell the imprint where the body is so it can stay off the face.
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Where the imprint believes the subject is, in world (ortho) units.
+const Track = {
+  mode: 'fallback',        // 'live' once the model is running on real frames
+  present: false,
+  everAcquired: false,
+  acquiredFor: 0,          // ms of continuous detection
+  lostFor: 0,              // ms since last detection
+  x: CONFIG.FALLBACK_ANCHOR.X,
+  y: CONFIG.FALLBACK_ANCHOR.Y,
+  s: CONFIG.FALLBACK_ANCHOR.SCALE,
+  vel: 0,
+  _raw: { x: 0, y: 0, s: 0, has: false },
+
+  // A restart has to re-earn acquisition, or ALIGN flashes past instantly.
+  reset() {
+    this.present = false;
+    this.everAcquired = false;
+    this.acquiredFor = 0;
+    this.lostFor = 0;
+  },
+};
+
+// The anchor the field hangs off. Derived from the face box alone so it works
+// identically in live and fallback mode — no separate code path to drift.
+// One anchor, not three: every band is a radius around this point, so a
+// separate shoulder pair would be a second source of truth for the same body.
+const Anchors = {
+  chest: { x: 0, y: 0 },
+  update() {
+    this.chest.x = Track.x;
+    this.chest.y = Track.y - Track.s * CONFIG.BODY.CHEST_Y;
+  },
+};
+
+const FaceTracking = {
+  landmarker: null,
+  available: false,
+  _busy: false,
+  _lastVideoTime: -1,
+  _vfcHandle: 0,
+
+  async init() {
+    // Idempotent: a restart reuses the model rather than loading a second one.
+    if (this.landmarker) { this._schedule(); return true; }
+
+    const boot = (async () => {
+      const { FilesetResolver, FaceLandmarker } = await import('@mediapipe/tasks-vision');
+      const vision = await FilesetResolver.forVisionTasks(CONFIG.TRACKING.WASM_BASE);
+      const opts = {
+        baseOptions: { modelAssetPath: CONFIG.TRACKING.MODEL_URL, delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: false,               // nothing here reads expression
+        outputFacialTransformationMatrixes: false,  // no 3D object is attached to the head
+      };
+      try {
+        return await FaceLandmarker.createFromOptions(vision, opts);
+      } catch {
+        opts.baseOptions.delegate = 'CPU';          // GPU delegate is not universal
+        return await FaceLandmarker.createFromOptions(vision, opts);
+      }
+    })();
+
+    const timeout = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('tracking-timeout')), CONFIG.TRACKING.INIT_TIMEOUT_MS));
+
+    try {
+      this.landmarker = await Promise.race([boot, timeout]);
+      this.available = true;
+      Track.mode = 'live';
+      this._schedule();
+    } catch {
+      // Model or WASM unreachable, or too slow to matter. The experience
+      // continues on the fixed centre rather than failing.
+      this.available = false;
+      Track.mode = 'fallback';
+    }
+    return this.available;
+  },
+
+  // Detect only on genuinely new video frames. Running inference on every rAF
+  // tick burns a large slice of the mobile frame budget on duplicate frames.
+  _schedule() {
+    if (!this.available || !CameraManager.active) return;
+    if (this._vfcHandle) return;                 // one callback chain, not two
+    if (videoEl.requestVideoFrameCallback) {
+      this._vfcHandle = videoEl.requestVideoFrameCallback(() => {
+        this._vfcHandle = 0;      // this callback has fired; the chain may continue
+        this._detect();
+        this._schedule();
+      });
+    }
+  },
+
+  // Called from the render loop when requestVideoFrameCallback is unavailable.
+  pump() {
+    if (videoEl.requestVideoFrameCallback) return;
+    if (videoEl.currentTime === this._lastVideoTime) return;
+    this._detect();
+  },
+
+  _detect() {
+    if (!this.landmarker || this._busy || !videoEl.videoWidth) return;
+    this._lastVideoTime = videoEl.currentTime;
+    this._busy = true;
+    try {
+      const res = this.landmarker.detectForVideo(videoEl, performance.now());
+      const lm = res?.faceLandmarks?.[0];
+      if (lm) {
+        const eyeL = lm[33], eyeR = lm[263], nose = lm[1];
+        const dx = eyeL.x - eyeR.x, dy = eyeL.y - eyeR.y;
+        Track._raw.x = (eyeL.x + eyeR.x + nose.x) / 3;
+        Track._raw.y = (eyeL.y + eyeR.y + nose.y) / 3;
+        Track._raw.s = Math.hypot(dx, dy) * CONFIG.TRACKING.SCALE_FROM_EYES;
+        Track._raw.has = true;
+      } else {
+        Track._raw.has = false;
+      }
+    } catch {
+      Track._raw.has = false;
+    } finally {
+      this._busy = false;
+    }
+  },
+
+  stop() {
+    if (this._vfcHandle && videoEl.cancelVideoFrameCallback) {
+      videoEl.cancelVideoFrameCallback(this._vfcHandle);
+      this._vfcHandle = 0;
+    }
+  },
+};
+
+/* Map the mirrored, cover-fitted video frame into world units. The video is
+   flipped in CSS for the mirror; landmark x is flipped here to match. Flipping
+   both, or neither, is the classic bug that lands effects on the wrong side. */
+const _mapped = { x: 0, y: 0, k: 0 };
+function videoToWorld(nx, ny) {
+  const vw = videoEl.videoWidth || 1, vh = videoEl.videoHeight || 1;
+  const va = vw / vh, sa = view.aspect;
+  const mx = 1 - nx;                       // display mirror
+  let sx, sy, kx;
+
+  if (sa > va) {                           // screen wider than feed → vertical crop
+    const shown = va / sa;
+    sx = mx;
+    sy = (ny - (1 - shown) / 2) / shown;
+    kx = 2 * view.aspect;
+  } else {                                 // screen taller → horizontal crop
+    const shown = sa / va;
+    sx = (mx - (1 - shown) / 2) / shown;
+    sy = ny;
+    kx = 2 * view.aspect / shown;
+  }
+
+  _mapped.x = (sx * 2 - 1) * view.aspect;
+  _mapped.y = -(sy * 2 - 1);
+  _mapped.k = kx;                          // world units per normalised x
+  return _mapped;
+}
+
+/* Adaptive smoothing: heavy when the head is nearly still so the field sits
+   dead calm, light when it moves fast so it doesn't drag on elastic. */
+function updateTracking(dtMs) {
+  if (Track.mode === 'live' && CameraManager.active) {
+    FaceTracking.pump();
+
+    if (Track._raw.has) {
+      const m = videoToWorld(Track._raw.x, Track._raw.y);
+      const tx = m.x, ty = m.y, ts = Track._raw.s * m.k * 0.5;
+
+      const dist = Math.hypot(tx - Track.x, ty - Track.y);
+      Track.vel = dist;
+      const t = Math.min(dist / CONFIG.TRACKING.SMOOTH_VEL_REF, 1);
+      const a = CONFIG.TRACKING.SMOOTH_SLOW + (CONFIG.TRACKING.SMOOTH_FAST - CONFIG.TRACKING.SMOOTH_SLOW) * t;
+
+      Track.x += (tx - Track.x) * a;
+      Track.y += (ty - Track.y) * a;
+      Track.s += (ts - Track.s) * a;
+
+      Track.present = true;
+      Track.lostFor = 0;
+      Track.acquiredFor += dtMs;
+      if (Track.acquiredFor >= CONFIG.TRACKING.ACQUIRE_MS) Track.everAcquired = true;
+    } else {
+      Track.present = false;
+      Track.acquiredFor = 0;
+      Track.lostFor += dtMs;
+      // Drift back toward the fixed centre rather than freezing where the
+      // face was — a stuck field reads as broken, a settling one reads as calm.
+      const a = 0.02;
+      Track.x += (CONFIG.FALLBACK_ANCHOR.X - Track.x) * a;
+      Track.y += (CONFIG.FALLBACK_ANCHOR.Y - Track.y) * a;
+      Track.s += (CONFIG.FALLBACK_ANCHOR.SCALE - Track.s) * a;
+    }
+  } else {
+    Track.present = false;
+    Track.x = CONFIG.FALLBACK_ANCHOR.X;
+    Track.y = CONFIG.FALLBACK_ANCHOR.Y;
+    Track.s = CONFIG.FALLBACK_ANCHOR.SCALE;
+    Track.everAcquired = true;   // nothing to acquire; the composition is fixed
+  }
+
+  Anchors.update();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ▸ SCENE / MATERIALS / SHADERS                       [Phase 3]
+   ═══════════════════════════════════════════════════════════════════ */
+const glRoot = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, premultipliedAlpha: false });
+renderer.setClearColor(0x000000, 0);
+glRoot.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+// Orthographic screen space: x ∈ [-aspect, aspect], y ∈ [-1, 1]. Depth is a
+// per-particle scalar rather than a camera dimension, so there is no FOV to
+// keep in sync with the tracker and no perspective drift at the frame edges.
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
+camera.position.z = 1;
+
+const view = { w: 0, h: 0, aspect: 1, dpr: 1 };
+// Anything that has to move when the viewport does registers here rather than
+// being reached for by name — resize() runs once before those objects exist.
+const resizeHooks = [];
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const dpr = Math.min(Math.max(window.devicePixelRatio || 1, CONFIG.CAMERA.DPR_MIN), CONFIG.CAMERA.DPR_MAX);
+  view.w = w; view.h = h; view.aspect = w / h; view.dpr = dpr;
+
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(w, h, false);
+  camera.left = -view.aspect; camera.right = view.aspect;
+  camera.top = 1; camera.bottom = -1;
+  camera.updateProjectionMatrix();
+
+  for (const fn of resizeHooks) fn();
+}
+window.addEventListener('resize', resize);
+// Mobile browsers fire resize during URL-bar collapse and again after orientation settles.
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+resize();
+
+/* ═══════════════════════════════════════════════════════════════════
+   PARTICLE SYSTEM — ImprintField + ParticleSystem
+
+   LAYER ACCUMULATION, the core mechanic: the three answers are three
+   independent parameter sets (Layers.set[0..2]) that the sampler reads.
+   Locking an answer writes one of them. Nothing anywhere clears, refills
+   or reallocates a buffer between questions, so layer 2 cannot disturb
+   layer 1 — the only thing that changes is which parameters get read.
+
+   Sampling runs on the CPU rather than in a vertex shader. At ~220
+   particles that costs nothing, and it buys the one thing that matters
+   downstream: the exported card can call the same sample() with a frozen
+   time to redraw the identical imprint into a 2D canvas.
+   ═══════════════════════════════════════════════════════════════════ */
+const TAU = Math.PI * 2;
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ROLE = Object.freeze({ CORE: 0, TRAIL: 1, DEPTH: 2 });
+// core-heavy mix: the trails and depth particles are support, not the subject.
+const ROLE_PATTERN = Object.freeze([ROLE.CORE, ROLE.CORE, ROLE.TRAIL, ROLE.CORE,
+                                    ROLE.DEPTH, ROLE.CORE, ROLE.TRAIL, ROLE.CORE]);
+
+const MAX_PARTICLES = CONFIG.FIELD.COUNT.high;
+
+function rgb(hex) {
+  return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+}
+const C = Object.freeze({
+  cyan:   rgb(CONFIG.COLOR.CYAN),
+  ice:    rgb(CONFIG.COLOR.ICE),
+  silver: rgb(CONFIG.COLOR.SILVER),
+  gold:   rgb(CONFIG.COLOR.GOLD),
+  violet: rgb(CONFIG.COLOR.VIOLET_LUM),
+  purple: rgb(CONFIG.COLOR.PURPLE),
+  white:  rgb(CONFIG.COLOR.WHITE),
+});
+
+const smooth = (a, b, x) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-6)));
+  return t * t * (3 - 2 * t);
+};
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* One fixed palette per question. Hue is the layer's identity and never moves
+   with the slider — the answer is expressed by form alone. Letting both vary
+   was the reason two of the three layers were indistinguishable on screen:
+   Q1's ice and Q2's "space" side were drawing the same colour. */
+const LAYER_COLOR = Object.freeze([
+  Object.freeze({ base: C.ice,    tip: C.white,  accent: C.cyan }),   // Q1 — البداية
+  Object.freeze({ base: C.gold,   tip: C.silver, accent: C.gold }),   // Q2 — بناء القيمة
+  Object.freeze({ base: C.violet, tip: C.purple, accent: C.ice }),    // Q3 — الاستمرار
+]);
+
+/* ── Layer parameters ───────────────────────────────────────────────
+   One entry per question. `value` is the slider 0–100, `act` animates
+   0→1 on lock, `alpha` is 1 for locked and PREVIEW_ALPHA while dragging.
+   Layers the user has not reached sit at act 0 and contribute nothing. */
+const Layers = {
+  set: [
+    { value: CONFIG.SLIDER.DEFAULT, act: 0, alpha: 0, lockedAt: 0, live: false },
+    { value: CONFIG.SLIDER.DEFAULT, act: 0, alpha: 0, lockedAt: 0, live: false },
+    { value: CONFIG.SLIDER.DEFAULT, act: 0, alpha: 0, lockedAt: 0, live: false },
+  ],
+
+  // Dragging: the layer shows translucent at the previewed value but is not
+  // committed. Untouched by any other layer's preview or lock.
+  preview(i, value) {
+    const L = this.set[i];
+    L.value = value;
+    L.live = true;
+    L.alpha = CONFIG.LAYERS.PREVIEW_ALPHA;
+    if (L.act === 0) L.act = 0.001;   // start it emerging on first touch
+  },
+
+  lock(i, value) {
+    const L = this.set[i];
+    L.value = value;
+    L.live = false;
+    L.lockedAt = performance.now();
+    L.alpha = 1;
+    // A layer can be locked without ever being dragged — arrow keys, or Enter
+    // straight from the default. Start the ramp here too or it never emerges.
+    if (L.act === 0) L.act = 0.001;
+  },
+
+  // Per-frame: act eases toward 1 for any layer that has been touched, and
+  // never eases back down. Locked layers stay locked.
+  update(dtMs) {
+    const k = Math.min(1, dtMs / CONFIG.LAYERS.LOCK_MS);
+    for (const L of this.set) {
+      if (L.act > 0 && L.act < 1) L.act = Math.min(1, L.act + k);
+      if (!L.live && L.lockedAt) L.alpha = 1;
+    }
+  },
+
+  // Brief brightness overshoot right after a lock — the "it landed" beat.
+  pulse(i, now) {
+    const L = this.set[i];
+    if (!L.lockedAt) return 0;
+    const age = now - L.lockedAt;
+    if (age > CONFIG.LAYERS.LOCK_MS) return 0;
+    const t = age / CONFIG.LAYERS.LOCK_MS;
+    return Math.sin(t * Math.PI) * CONFIG.LAYERS.PULSE;
+  },
+
+  /* Shockwave progress, 0→1 over WAVE_MS from the lock, then 0 forever. It
+     shares lockedAt with the pulse rather than carrying its own timestamp, so
+     there is exactly one clock per layer and no way for the two to disagree. */
+  wave(i, now) {
+    const L = this.set[i];
+    if (!L.lockedAt) return 0;
+    const age = now - L.lockedAt;
+    if (age >= CONFIG.LAYERS.WAVE_MS) return 0;
+    return age / CONFIG.LAYERS.WAVE_MS;
+  },
+
+  reset() {
+    for (const L of this.set) { L.value = CONFIG.SLIDER.DEFAULT; L.act = 0; L.alpha = 0; L.lockedAt = 0; L.live = false; }
+  },
+};
+
+/* ── Signature forms ────────────────────────────────────────────────
+   Seven resting geometries, one per possible result. Until now every
+   imprint settled into the same shape and only the caption differed,
+   which also meant every exported card looked alike. Each function is a
+   pure map from the particle's own statics to a position in field units
+   relative to the chest anchor, so the card renderer inherits the shape
+   by calling the same sampler — no card-side drawing code knows these
+   exist. */
+const SIG = Object.freeze({
+  FOCUS: 0, DISCOVERY: 1, NETWORK: 2, SPACE: 3, DEPTH: 4, REACH: 5, BALANCED: 6,
+});
+
+const SIG_OUT = { x: 0, y: 0, dx: 0, dy: 0 };
+
+const Signatures = [
+  /* 0 · نواة التركيز — a dense core throwing short, ordered rays. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r3 = F.r3[i], r4 = F.r4[i];
+    const spin = t * G.SPIN;
+    if (r4 < 0.44) {
+      const ang = (((r3 * G.RAYS) | 0) / G.RAYS) * TAU + spin;
+      const rad = lerp(0.30, G.R, Math.pow(r2, 0.75));
+      o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.94;
+      o.dx = Math.cos(ang); o.dy = Math.sin(ang) * 0.94;
+    } else {
+      const ang = r3 * TAU + spin * 2;
+      const rad = 0.05 + Math.pow(r2, 2.1) * 0.26;
+      o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.94;
+      o.dx = -Math.sin(ang); o.dy = Math.cos(ang);
+    }
+  },
+
+  /* 1 · مجال الاكتشاف — an open ring, deliberately unclosed, fed by
+     streams travelling inward. The gap is the point: a field still
+     admitting possibilities, not a boundary. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r1 = F.r1[i], r2 = F.r2[i], r3 = F.r3[i], r4 = F.r4[i];
+    if (r4 < 0.42) {
+      const ph = Math.pow((t * 0.07 * (0.5 + r4) + r1) % 1, 0.82);
+      const ang = r3 * TAU;
+      const rad = lerp(G.R * 1.18, 0.34, ph);
+      o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.95;
+      o.dx = Math.cos(ang); o.dy = Math.sin(ang) * 0.95;
+    } else {
+      const ang = r3 * (TAU * 0.80) + 0.62 + t * G.SPIN;
+      const rad = G.R * (0.93 + r2 * 0.12);
+      o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.95;
+      o.dx = -Math.sin(ang); o.dy = Math.cos(ang) * 0.95;
+    }
+  },
+
+  /* 2 · شبكة المعنى — particles ride the edges of a polygon, so the gold
+     link pass (which joins r6-adjacent particles) draws the network
+     rather than a cluster of dots. Cluster index is the edge index. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r4 = F.r4[i], r5 = F.r5[i];
+    const e = F.clusterOf(i, G.NODES);
+    const spin = t * G.SPIN;
+    const aA = (e / G.NODES) * TAU + spin;
+    const aB = ((e + 1) / G.NODES) * TAU + spin;
+    const RN = G.R * 0.84;
+    const ax = Math.cos(aA) * RN, ay = Math.sin(aA) * RN * 0.96;
+    const bx = Math.cos(aB) * RN, by = Math.sin(aB) * RN * 0.96;
+    // Nodes read as denser than the edges: bias the position toward the ends.
+    const s = r2 < 0.34 ? r2 * 0.18 : (r2 > 0.66 ? 1 - (1 - r2) * 0.18 : r2);
+    o.x = lerp(ax, bx, s) + (r4 - 0.5) * 0.045;
+    o.y = lerp(ay, by, s) + (r5 - 0.5) * 0.045;
+    const dx = bx - ax, dy = by - ay, inv = 1 / (Math.hypot(dx, dy) || 1);
+    o.dx = dx * inv; o.dy = dy * inv;
+  },
+
+  /* 3 · مساحة القيمة — equal clusters at equal distance, and the gaps
+     between them left visibly empty. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r3 = F.r3[i], r4 = F.r4[i];
+    const cl = F.clusterOf(i, G.CLUSTERS);
+    const ang = (cl / G.CLUSTERS) * TAU + 0.42 + t * G.SPIN * 0.5;
+    const cx = Math.cos(ang) * G.R * 0.74, cy = Math.sin(ang) * G.R * 0.74 * 0.98;
+    const rad = 0.04 + r2 * 0.13;
+    const a2 = r3 * TAU + t * 0.18 * (0.5 + r4);
+    o.x = cx + Math.cos(a2) * rad; o.y = cy + Math.sin(a2) * rad;
+    o.dx = -Math.sin(a2); o.dy = Math.cos(a2);
+  },
+
+  /* 4 · عمق الرسوخ — concentric shells turning at different rates. Reads
+     as strata laid down over time rather than as one surface. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r3 = F.r3[i];
+    const ring = F.clusterOf(i, G.RINGS);
+    const rad = G.R * (0.26 + (ring / (G.RINGS - 1)) * 0.74) * (1 + (r2 - 0.5) * 0.07);
+    const ang = r3 * TAU + t * G.SPIN * (1 - ring * 0.22);
+    o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 1.02;
+    o.dx = -Math.sin(ang); o.dy = Math.cos(ang) * 1.02;
+  },
+
+  /* 5 · أفق الامتداد — branches that widen as they reach, and are allowed
+     to run past the signature radius. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r3 = F.r3[i];
+    const br = F.clusterOf(i, G.BRANCHES);
+    const ph = Math.pow(r2, 0.85);
+    const ang = (br / G.BRANCHES) * TAU + 0.9 + t * G.SPIN * 0.4 + (r3 - 0.5) * 0.36 * ph;
+    const rad = lerp(0.16, G.R * 1.30, ph);
+    o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.96;
+    o.dx = Math.cos(ang); o.dy = Math.sin(ang) * 0.96;
+  },
+
+  /* 6 · البصمة المتوازنة — a three-fold rosette: symmetric in every
+     direction, which is the whole claim the balanced result makes. */
+  (i, F, t, o) => {
+    const G = CONFIG.SIGNATURE;
+    const r2 = F.r2[i], r3 = F.r3[i];
+    const ang = r3 * TAU + t * G.SPIN;
+    const petal = Math.abs(Math.cos((G.PETALS / 2) * ang));
+    const rad = G.R * (0.16 + 0.84 * petal) * (0.38 + 0.62 * Math.pow(r2, 0.6));
+    o.x = Math.cos(ang) * rad; o.y = Math.sin(ang) * rad * 0.98;
+    o.dx = Math.cos(ang); o.dy = Math.sin(ang) * 0.98;
+  },
+];
+
+/* ── The sampler ────────────────────────────────────────────────────
+   Pure function of (particle index, time, context). No DOM, no THREE,
+   no tracking access beyond the anchors handed to it in ctx — which is
+   what lets the card renderer reuse it verbatim. */
+const ImprintField = {
+  n: 0,
+  r1: null, r2: null, r3: null, r4: null, r5: null, r6: null,
+  layer: null, role: null, depth: null,
+  pairs: null,          // candidate gold links, precomputed and capped
+  crossPairs: null,     // candidate band-to-band links, merge beat only
+
+  seedUsed: null,
+
+  build(seed) {
+    const rnd = makeRng(seed);
+    const n = this.n = MAX_PARTICLES;
+    this.seedUsed = seed;
+    this.r1 = new Float32Array(n); this.r2 = new Float32Array(n);
+    this.r3 = new Float32Array(n); this.r4 = new Float32Array(n);
+    this.r5 = new Float32Array(n); this.r6 = new Float32Array(n);
+    this.layer = new Uint8Array(n); this.role = new Uint8Array(n);
+    this.depth = new Float32Array(n);
+
+    for (let i = 0; i < n; i++) {
+      this.r1[i] = rnd(); this.r2[i] = rnd(); this.r3[i] = rnd();
+      this.r4[i] = rnd(); this.r5[i] = rnd(); this.r6[i] = rnd();
+      // Interleaved by layer so dropping a performance tier thins all three
+      // layers evenly instead of deleting the last one.
+      this.layer[i] = i % 3;
+      this.role[i] = ROLE_PATTERN[((i / 3) | 0) % ROLE_PATTERN.length];
+      this.depth[i] = rnd() * 2 - 1;
+    }
+
+    // Gold links join particles that are near each other in cluster space, so
+    // they read as small meaningful groups. Adjacent r6 values land in the
+    // same cluster for any reasonable cluster count.
+    const l2 = [];
+    for (let i = 0; i < n; i++) if (this.layer[i] === 1) l2.push(i);
+    l2.sort((a, b) => this.r6[a] - this.r6[b]);
+    // Keep every consecutive pair as a candidate. The draw-time budget strides
+    // across this list, so a small budget still picks links from every cluster
+    // instead of piling them all into the lowest one.
+    const pairs = [];
+    for (let k = 0; k + 1 < l2.length; k++) pairs.push(l2[k], l2[k + 1]);
+    this.pairs = new Uint16Array(pairs);
+
+    // Cross-band candidates: one bridge from band 0 to band 1 and one from
+    // band 1 to band 2 per r6-rank. They are drawn only while the assembly is
+    // merging, which is the one moment the three bands are meant to be shown
+    // as connected rather than stacked.
+    const l1 = [], l3 = [];
+    for (let i = 0; i < n; i++) {
+      if (this.layer[i] === 0) l1.push(i);
+      else if (this.layer[i] === 2) l3.push(i);
+    }
+    l1.sort((a, b) => this.r6[a] - this.r6[b]);
+    l3.sort((a, b) => this.r6[a] - this.r6[b]);
+    const cross = [];
+    const rank = Math.min(l1.length, l2.length, l3.length);
+    for (let k = 0; k < rank; k++) { cross.push(l1[k], l2[k]); cross.push(l2[k], l3[k]); }
+    this.crossPairs = new Uint16Array(cross);
+    return this;
+  },
+
+  clusterOf(i, count) {
+    return Math.min(count - 1, (this.r6[i] * count) | 0);
+  },
+
+  /* ctx: { chest, unit, aspect, faceX, faceY, faceS, time,
+            layers:[{value,act,alpha,pulse,wave}],
+            assembly, unify, sigMix, signature, seal, ambient }
+     out: { x, y, dx, dy, size, r, g, b, a }  — dx/dy is the trail direction. */
+  sample(i, ctx, out) {
+    const L = this.layer[i], role = this.role[i];
+    const P = ctx.layers[L];
+    const r1 = this.r1[i], r2 = this.r2[i], r3 = this.r3[i],
+          r4 = this.r4[i], r5 = this.r5[i];
+    const t = ctx.time;
+    const u = ctx.unit;
+    const v = P.value / 100;
+
+    // 41–59 is a band with its own arrangement, not a midpoint between two.
+    const midW = smooth(0, 1, 1 - Math.abs(P.value - 50) / ((CONFIG.SLIDER.BAND_HIGH - CONFIG.SLIDER.BAND_LOW) / 2 + 1e-6));
+    const mid = midW > 0.5;
+    // Which side of the axis this particle expresses. A partition, not a lerp:
+    // at value 30, 30% of the particles run the "high" behaviour and the field
+    // reads as a real mixture instead of a smeared average. In the middle band
+    // neither side runs: that band has its own geometry below.
+    const high = r5 < v;
+
+    /* Every layer works inside its own annulus around the chest anchor, so a
+       locked answer lands in a stratum of its own instead of on top of the
+       previous one. Radii below are fractions of the band, not of the field. */
+    const B = CONFIG.BANDS[L];
+    const bx = ctx.chest.x;
+    const by = ctx.chest.y + B.LIFT * u;
+    const bIn = B.RIN * u, bOut = B.ROUT * u, bSpan = bOut - bIn;
+
+    let x = 0, y = 0, dx = 0, dy = 0, a = 1, size = 1;
+    // Hue is the layer's identity; `tone` is the only thing the form controls.
+    const CL = LAYER_COLOR[L];
+    let tone = r2, accent = 0;
+
+    if (L === 0) {
+      /* ── اتجاه البداية — نواة التركيز ↔ مجال الاكتشاف ── */
+      if (mid) {
+        // BETWEEN: two foci trading density back and forth. A balanced answer
+        // gets a shape of its own rather than a random mix of the other two.
+        const side = r1 < 0.5 ? -1 : 1;
+        const swap = Math.sin(t * 0.30 + (side > 0 ? 0 : Math.PI));
+        const fx = side * bOut * 0.62 * B.XS;
+        const ang = r3 * TAU + t * 0.34 * (0.5 + r4);
+        const rad = (bIn + bSpan * Math.pow(r2, 1.5)) * 0.62;
+        x = bx + fx * (0.82 + 0.18 * swap) + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS * 0.9;
+        dx = -Math.sin(ang); dy = Math.cos(ang) * 0.9;
+        a = 0.5 + 0.5 * (1 - r2);
+        tone = 1 - r2; accent = 0.25 + 0.25 * swap;
+      } else if (!high) {
+        // FOCUS: a concentrated nucleus, biased inward so it reads as a core
+        // with a sparse corona rather than an evenly filled disc.
+        const rad = (bIn + bSpan * Math.pow(r2, 1.7)) *
+                    (1 + CONFIG.FIELD.BREATH * Math.sin(t * CONFIG.FIELD.BREATH_HZ * TAU + r1 * TAU));
+        const ang = r3 * TAU + t * 0.20 * (0.45 + r4);
+        x = bx + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS;
+        dx = Math.cos(ang); dy = Math.sin(ang) * 0.94;   // organised, radially outward
+        a = 0.55 + 0.45 * (1 - r2);
+        tone = 1 - r2;
+      } else {
+        // DISCOVERY: possibilities converging on the core from outside it. They
+        // are born well beyond the band and cross the outer strata to get
+        // there, but the alpha is weighted toward arrival — a stream still in
+        // transit is faint, so the bright mass of this layer stays inside its
+        // own band and the three strata do not smear into each other.
+        const ph = (t * 0.055 * (0.55 + r4) + r1) % 1;
+        const eased = Math.pow(ph, 0.68);
+        const ang = r3 * TAU;
+        const spawn = bOut * CONFIG.FIELD.ENTRY_MUL;
+        const ex = bx + Math.cos(ang) * spawn * B.XS;
+        const ey = by + Math.sin(ang) * spawn * B.YS;
+        const tr = bIn + bSpan * (0.55 + r2 * 0.45);
+        const tx = bx + Math.cos(ang) * tr * B.XS;
+        const ty = by + Math.sin(ang) * tr * B.YS;
+        x = lerp(ex, tx, eased);
+        y = lerp(ey, ty, eased);
+        dx = tx - ex; dy = ty - ey;
+        const inv = 1 / (Math.hypot(dx, dy) || 1); dx *= inv; dy *= inv;
+        a = smooth(0, 0.22, ph) * (1 - smooth(0.86, 1, ph)) * (0.18 + 0.82 * eased) * 0.95;
+        tone = r2; accent = 0.35 * eased;
+      }
+
+    } else if (L === 1) {
+      /* ── بناء القيمة — شبكة المعنى ↔ مساحة القيمة ──
+         Clusters sit on the halo band itself, spread by angle. The arc that
+         crosses the head is removed by FACE_PROTECT, which is what turns this
+         band into a halo open at the top rather than a closed ring. */
+      if (mid) {
+        // BETWEEN: two counter-rotating arcs braiding through one another.
+        const strand = r1 < 0.5 ? 1 : -1;
+        const ang = r3 * TAU * 0.5 + (strand > 0 ? 0 : Math.PI) + t * 0.10 * strand;
+        const weave = Math.sin(r3 * TAU * 2 + t * 0.5) * 0.5 + 0.5;
+        const rad = bIn + bSpan * (0.18 + weave * 0.72);
+        x = bx + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS;
+        dx = -Math.sin(ang) * strand; dy = Math.cos(ang) * strand;
+        a = 0.5 + 0.4 * r2;
+        tone = weave; accent = 0.3;
+      } else {
+        const K = high ? CONFIG.LAYERS.CLUSTERS_SPACE : CONFIG.LAYERS.CLUSTERS_CONNECT;
+        const cl = this.clusterOf(i, K);
+        const cang = (cl / K) * TAU + 0.6 + t * 0.03;
+        const crad = bIn + bSpan * (high ? 0.60 : 0.42);
+        const cx = bx + Math.cos(cang) * crad * B.XS;
+        const cy = by + Math.sin(cang) * crad * B.YS;
+
+        if (!high) {
+          // CONNECTION: tight, small, meaningful groups.
+          const rad = (0.05 + r2 * 0.20) * u;
+          const ang = r3 * TAU + t * 0.30 * (0.5 + r4);
+          x = cx + Math.cos(ang) * rad;
+          y = cy + Math.sin(ang) * rad * 0.9;
+          dx = -Math.sin(ang); dy = Math.cos(ang) * 0.9;
+          a = 0.6 + 0.4 * r2;
+          tone = 0.15 + r2 * 0.35;          // stays close to gold: it is a weave
+        } else {
+          // SPACE: each cluster drifts along its own lane, gaps left open.
+          const lane = (this.r6[i] - 0.5) * 2;
+          const along = ((t * 0.06 * (0.6 + r4) + r1) % 1) - 0.5;
+          const dirx = Math.cos(cang + 1.57), diry = Math.sin(cang + 1.57);
+          x = cx + dirx * along * u * 0.66 + (-diry) * lane * u * 0.22;
+          y = cy + diry * along * u * 0.66 + (dirx) * lane * u * 0.22;
+          dx = dirx; dy = diry;
+          a = 0.5 + 0.35 * r2;
+          tone = 0.55 + r2 * 0.45;          // drifts toward silver: it is a spacing
+        }
+      }
+
+    } else {
+      /* ── استمرار الأثر — عمق الرسوخ ↔ أفق الامتداد ── */
+      if (mid) {
+        // BETWEEN: half the aura breathing inward while the other half breathes
+        // out — an imprint that neither settles nor leaves.
+        const dir = r1 < 0.5 ? 1 : -1;
+        const puls = Math.sin(t * 0.26 * dir + r4 * TAU) * 0.5 + 0.5;
+        const ang = r3 * TAU + t * 0.07 * dir;
+        const rad = bIn + bSpan * (0.12 + puls * 0.82);
+        x = bx + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS;
+        dx = Math.cos(ang) * dir * 0.4; dy = Math.sin(ang) * dir * 0.4;
+        a = 0.42 + 0.4 * puls;
+        tone = puls; accent = 0.2 * puls;
+      } else if (!high) {
+        // DEPTH: dense, low-amplitude shells that accumulate rather than flare.
+        const rad = bIn + bSpan * Math.pow(r2, 0.85);
+        const ang = r3 * TAU + t * 0.11 * (0.4 + r4);
+        x = bx + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS;
+        dx = Math.cos(ang) * 0.3; dy = Math.sin(ang) * 0.3;
+        a = 0.42 + 0.38 * r2;
+        tone = 1 - r2;
+      } else {
+        // REACH: long trails allowed past the band's outer edge, brightening
+        // toward the accent as a path transitions.
+        const branch = ((r3 * (CONFIG.LAYERS.SPREAD_BRANCHES + 1)) | 0);
+        const ang = (branch / (CONFIG.LAYERS.SPREAD_BRANCHES + 1)) * TAU + r4 * 0.7 - 0.35;
+        const ph = (t * 0.048 * (0.5 + r4) + r1) % 1;
+        const rad = lerp(bIn * 0.4, bOut * 1.35, ph);
+        x = bx + Math.cos(ang) * rad * B.XS;
+        y = by + Math.sin(ang) * rad * B.YS;
+        dx = Math.cos(ang); dy = Math.sin(ang) * 0.92;
+        a = smooth(0, 0.1, ph) * (1 - smooth(0.72, 1, ph)) * 0.9;
+        tone = 1 - ph;
+        accent = smooth(0.35, 0.75, ph) * (1 - smooth(0.8, 1, ph)) * 0.7;
+      }
+    }
+
+    /* Colour resolves once, from the layer's own palette. */
+    let cr = lerp(CL.base[0], CL.tip[0], tone);
+    let cg = lerp(CL.base[1], CL.tip[1], tone);
+    let cb = lerp(CL.base[2], CL.tip[2], tone);
+    if (accent > 0) {
+      cr = lerp(cr, CL.accent[0], accent);
+      cg = lerp(cg, CL.accent[1], accent);
+      cb = lerp(cb, CL.accent[2], accent);
+    }
+
+    /* ── lock shockwave: a ring travelling out through the layer just written ── */
+    let waveGain = 1;
+    if (P.wave > 0) {
+      const W = CONFIG.LAYERS;
+      const wdx = x - bx, wdy = y - by;
+      const d = Math.hypot(wdx, wdy) || 1e-6;
+      const front = P.wave * (bOut + W.WAVE_AMP * u * 2.2);
+      const crest = Math.exp(-Math.pow((d - front) / (W.WAVE_WIDTH * u), 2));
+      const fade = 1 - P.wave;
+      const push = crest * W.WAVE_AMP * u * fade;
+      x += (wdx / d) * push; y += (wdy / d) * push;
+      waveGain = 1 + crest * W.WAVE_GAIN * fade;
+    }
+
+    /* ── role modifiers ── */
+    if (role === ROLE.DEPTH) {
+      // Fore/background parallax: depth particles counter the head's movement.
+      const d = this.depth[i];
+      x += -(ctx.faceX) * CONFIG.FIELD.PARALLAX * d;
+      y += -(ctx.faceY) * CONFIG.FIELD.PARALLAX * d * 0.5;
+      x += d * u * 0.55;
+      size = CONFIG.PARTICLE.DEPTH_SIZE * (1 + d * 0.45);
+      a *= CONFIG.PARTICLE.DEPTH_ALPHA;
+    } else if (role === ROLE.TRAIL) {
+      size = CONFIG.PARTICLE.TRAIL_SIZE;
+      a *= CONFIG.PARTICLE.TRAIL_ALPHA;
+    } else {
+      size = CONFIG.PARTICLE.CORE_SIZE;
+      a *= CONFIG.PARTICLE.CORE_ALPHA;
+      // Soft flicker, per-particle phase so the core never pulses in unison.
+      a *= 0.78 + 0.22 * Math.sin(t * 1.7 + r1 * TAU);
+    }
+    size *= 1 + (r2 - 0.5) * CONFIG.PARTICLE.SIZE_JITTER;
+
+    /* ── layer activation, preview translucency, lock pulse ──
+       The ambient term is what the field looks like before the first answer:
+       present and alive, but plainly unwritten. It fades out as soon as a
+       layer is locked, so an activated layer never competes with it. */
+    a *= P.alpha * (0.35 + 0.65 * P.act) * (1 + P.pulse) + ctx.ambient * CONFIG.FIELD.AMBIENT;
+    a *= waveGain;
+    size *= 0.7 + 0.3 * P.act;
+
+    /* ── final assembly, in three beats ──
+       1 · the bands pull apart, so the three strata are individually visible
+           for the first time — the user sees that they built three things
+       2 · they collapse together and ignite gold as they meet
+       3 · they settle into the signature form for this result
+       The old version was beat 2 alone at 14% travel, which is why the
+       climax of the journey read as barely anything happening. */
+    if (ctx.assembly > 0) {
+      const k = ctx.assembly, A = CONFIG.ASSEMBLY;
+      const sep = smooth(0, A.SEPARATE, k) * (1 - smooth(A.SEPARATE, A.CONVERGE, k));
+      const uni = smooth(A.SEPARATE, A.CONVERGE, k);
+      const scale = (1 + sep * A.SEP_PUSH * (L + 1) / 3) * lerp(1, A.CONVERGE_K, uni);
+      x = ctx.chest.x + (x - ctx.chest.x) * scale;
+      y = ctx.chest.y + (y - ctx.chest.y) * scale;
+      // The resting total here plus the settle boost below has to land near
+      // the 1.55 the single-contraction version ended on. This is an additive
+      // stack over a camera feed: past roughly that, every core clips to white
+      // and the per-layer colour identity is the first thing to go.
+      a *= 1 + 0.30 * sep + 0.42 * uni;
+      size *= 1 + 0.14 * uni;
+
+      // Gold ignition peaks as the bands meet and is gone by the time they
+      // settle, so the resting imprint keeps its per-layer colour identity.
+      const ign = Math.sin(uni * Math.PI) * A.IGNITE;
+      if (ign > 0) {
+        cr = lerp(cr, C.gold[0], ign); cg = lerp(cg, C.gold[1], ign); cb = lerp(cb, C.gold[2], ign);
+      }
+    }
+
+    /* ── beat 3: settle into this result's signature form ── */
+    if (ctx.sigMix > 0) {
+      const m = ctx.sigMix;
+      const fn = Signatures[ctx.signature] || Signatures[SIG.BALANCED];
+      fn(i, this, t, SIG_OUT);
+      x = lerp(x, ctx.chest.x + SIG_OUT.x * u, m);
+      y = lerp(y, ctx.chest.y + SIG_OUT.y * u * 0.98, m);
+      dx = lerp(dx, SIG_OUT.dx, m); dy = lerp(dy, SIG_OUT.dy, m);
+      // A signature packs the particles far tighter than the drifting field
+      // did, so sprites overlap much more. Trim the sprite rather than the
+      // alpha: the shape stays as bright, but its structure stops fusing into
+      // one white mass.
+      a *= 1 + 0.10 * m;
+      size *= 1 - 0.20 * m;
+    }
+
+    /* ── compression into the invitation seal ── */
+    if (ctx.seal > 0) {
+      const k = ctx.seal;
+      const ang = r1 * TAU + t * 0.5;
+      const ring = CONFIG.FIELD.SEAL_R * (0.72 + r2 * 0.42);
+      const sx = CONFIG.FIELD.SEAL_X + Math.cos(ang) * ring;
+      const sy = CONFIG.FIELD.SEAL_Y + Math.sin(ang) * ring;
+      x = lerp(x, sx, k); y = lerp(y, sy, k);
+      size *= 1 - 0.35 * k;
+      // Gold takes over as the imprint becomes a seal.
+      cr = lerp(cr, C.gold[0], k * 0.75); cg = lerp(cg, C.gold[1], k * 0.75); cb = lerp(cb, C.gold[2], k * 0.75);
+    }
+
+    /* ── face protection: the field never crowds the face ── */
+    const fp = CONFIG.FACE_PROTECT;
+    const rIn = ctx.faceS * fp.RADIUS_MUL, rOut = ctx.faceS * fp.FALLOFF_MUL;
+    const pdx = x - ctx.faceX;
+    const rawY = y - (ctx.faceY + ctx.faceS * fp.LIFT_Y);
+    const pdy = rawY > 0 ? rawY / fp.ELLIPSE_Y : rawY / fp.BELOW_Y;
+    const pd = Math.hypot(pdx, pdy);
+    const mask = smooth(rIn, rOut, pd);
+    a *= fp.FLOOR + (1 - fp.FLOOR) * mask;
+
+    out.x = x; out.y = y; out.dx = dx; out.dy = dy;
+    out.size = size; out.a = Math.max(0, a) * CONFIG.FIELD.ALPHA;
+    out.r = cr; out.g = cg; out.b = cb;
+    return out;
+  },
+};
+
+/* ── PerformanceManager ─────────────────────────────────────────────
+   Picks a particle tier from what the device claims, then corrects from
+   what it actually sustains. AR runs camera, GPU and inference at once,
+   so the number that matters arrives three minutes in, not on frame one. */
+const TIERS = ['low', 'medium', 'high'];
+const PerformanceManager = {
+  tier: 'medium',
+  pinned: false,        // the dev tuner takes manual control of the count
+  _below: 0, _above: 0,
+
+  pick() {
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    this.tier = (cores >= 8 && mem >= 6) ? 'high' : (cores >= 4 && mem >= 3) ? 'medium' : 'low';
+    return CONFIG.FIELD.COUNT[this.tier];
+  },
+
+  onSample(fps) {
+    if (this.pinned) return null;
+    const idx = TIERS.indexOf(this.tier);
+    if (fps < CONFIG.PERF.DOWNGRADE_FPS) { this._below++; this._above = 0; }
+    else if (fps > CONFIG.PERF.UPGRADE_FPS) { this._above++; this._below = 0; }
+    else { this._below = 0; this._above = 0; }
+
+    if (this._below >= CONFIG.PERF.STABLE_SAMPLES && idx > 0) {
+      this._below = 0; this.tier = TIERS[idx - 1];
+      return CONFIG.FIELD.COUNT[this.tier];
+    }
+    if (this._above >= CONFIG.PERF.STABLE_SAMPLES && idx < TIERS.length - 1) {
+      this._above = 0; this.tier = TIERS[idx + 1];
+      return CONFIG.FIELD.COUNT[this.tier];
+    }
+    return null;
+  },
+};
+
+/* ── ParticleSystem ─────────────────────────────────────────────────
+   Buffers are allocated once at MAX_PARTICLES and never reallocated.
+   Tier changes move the draw range, they do not rebuild geometry.
+
+   Four roles share the one particle buffer: core and depth draw as points,
+   trails draw a short trace behind each point, and the gold connections
+   draw between points the buffer already holds. */
+const ParticleSystem = {
+  points: null, trails: null, links: null,
+  count: 0, linkCount: 0,
+  _pos: null, _col: null, _size: null,
+  _tPos: null, _tCol: null,
+  _lPos: null, _lCol: null,
+  _s: { x: 0, y: 0, dx: 0, dy: 0, size: 1, a: 1, r: 1, g: 1, b: 1 },
+
+  init(seed) {
+    ImprintField.build(seed);
+    const n = MAX_PARTICLES;
+    const cMax = CONFIG.CONNECTIONS.MAX;
+
+    this._pos  = new Float32Array(n * 3);
+    this._col  = new Float32Array(n * 4);
+    this._size = new Float32Array(n);
+    this._tPos = new Float32Array(n * 2 * 3);
+    this._tCol = new Float32Array(n * 2 * 4);
+    const lMax = cMax + CONFIG.CONNECTIONS.CROSS_MAX;
+    this._lPos = new Float32Array(lMax * 2 * 3);
+    this._lCol = new Float32Array(lMax * 2 * 4);
+
+    const uniforms = {
+      uGlow: { value: CONFIG.FIELD.GLOW },
+      uHalo: { value: CONFIG.PARTICLE.HALO },
+      uDpr:  { value: view.dpr },
+    };
+    this.uniforms = uniforms;
+
+    const pointsGeo = new THREE.BufferGeometry();
+    pointsGeo.setAttribute('position', new THREE.BufferAttribute(this._pos, 3).setUsage(THREE.DynamicDrawUsage));
+    pointsGeo.setAttribute('aColor',   new THREE.BufferAttribute(this._col, 4).setUsage(THREE.DynamicDrawUsage));
+    pointsGeo.setAttribute('aSize',    new THREE.BufferAttribute(this._size, 1).setUsage(THREE.DynamicDrawUsage));
+    // The ortho frustum culls on a bounding sphere we never recompute; the
+    // field always fills the screen, so culling it is only a way to lose it.
+    pointsGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
+
+    const pointsMat = new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true, depthTest: false, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */`
+        attribute vec4 aColor;
+        attribute float aSize;
+        uniform float uDpr;
+        varying vec4 vColor;
+        void main() {
+          vColor = aColor;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = aSize * uDpr;
+        }`,
+      fragmentShader: /* glsl */`
+        precision mediump float;
+        uniform float uGlow;
+        uniform float uHalo;
+        varying vec4 vColor;
+        void main() {
+          // Procedural sprite: a tight core inside a soft halo. Two falloff
+          // terms give additive glow without a bloom pass, which is the whole
+          // post-processing budget saved.
+          vec2 p = gl_PointCoord - 0.5;
+          float d = min(length(p) * 2.0, 1.0);
+          float k = 1.0 - d;
+          float core = k * k * k;
+          float halo = k * uHalo;
+          float a = (core + halo) * vColor.a * uGlow;
+          if (a < 0.002) discard;
+          gl_FragColor = vec4(vColor.rgb, a);
+        }`,
+    });
+    this.points = new THREE.Points(pointsGeo, pointsMat);
+    this.points.frustumCulled = false;
+    scene.add(this.points);
+
+    const lineVert = /* glsl */`
+      attribute vec4 aColor;
+      varying vec4 vColor;
+      void main() {
+        vColor = aColor;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`;
+    const lineFrag = /* glsl */`
+      precision mediump float;
+      uniform float uGlow;
+      varying vec4 vColor;
+      void main() {
+        float a = vColor.a * uGlow;
+        if (a < 0.002) discard;
+        gl_FragColor = vec4(vColor.rgb, a);
+      }`;
+    const lineMat = () => new THREE.ShaderMaterial({
+      uniforms, transparent: true, depthTest: false, depthWrite: false,
+      blending: THREE.AdditiveBlending, vertexShader: lineVert, fragmentShader: lineFrag,
+    });
+
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(this._tPos, 3).setUsage(THREE.DynamicDrawUsage));
+    trailGeo.setAttribute('aColor',   new THREE.BufferAttribute(this._tCol, 4).setUsage(THREE.DynamicDrawUsage));
+    trailGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
+    this.trails = new THREE.LineSegments(trailGeo, lineMat());
+    this.trails.frustumCulled = false;
+    scene.add(this.trails);
+
+    const linkGeo = new THREE.BufferGeometry();
+    linkGeo.setAttribute('position', new THREE.BufferAttribute(this._lPos, 3).setUsage(THREE.DynamicDrawUsage));
+    linkGeo.setAttribute('aColor',   new THREE.BufferAttribute(this._lCol, 4).setUsage(THREE.DynamicDrawUsage));
+    linkGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
+    this.links = new THREE.LineSegments(linkGeo, lineMat());
+    this.links.frustumCulled = false;
+    scene.add(this.links);
+
+    this.setCount(PerformanceManager.pick());
+    resizeHooks.push(() => { uniforms.uDpr.value = view.dpr; });
+
+    if (DEBUG) {
+      Tuner.onChange = (label, value) => {
+        if (label === 'particles') { PerformanceManager.pinned = true; this.setCount(value); }
+        if (label === 'glow') uniforms.uGlow.value = value;
+      };
+    }
+  },
+
+  setCount(n) {
+    this.count = Math.max(1, Math.min(MAX_PARTICLES, Math.round(n)));
+    this.points.geometry.setDrawRange(0, this.count);
+    this.trails.geometry.setDrawRange(0, this.count * 2);
+  },
+
+  /* One pass over the active particles. No allocation: every write lands in
+     a typed array that was sized at init. */
+  update(ctx) {
+    const s = this._s, pos = this._pos, col = this._col, sz = this._size;
+    const tp = this._tPos, tc = this._tCol;
+    const trailLen = CONFIG.PARTICLE.TRAIL_LEN;
+    const tailA = CONFIG.PARTICLE.TRAIL_SEGMENT_ALPHA;
+
+    for (let i = 0; i < this.count; i++) {
+      ImprintField.sample(i, ctx, s);
+      const i3 = i * 3, i4 = i * 4;
+      pos[i3] = s.x; pos[i3 + 1] = s.y; pos[i3 + 2] = 0;
+      col[i4] = s.r; col[i4 + 1] = s.g; col[i4 + 2] = s.b; col[i4 + 3] = s.a;
+      sz[i] = s.size;
+
+      // Trail: a short trace behind the particle along its own direction.
+      const isTrail = ImprintField.role[i] === ROLE.TRAIL;
+      const len = isTrail ? trailLen : 0;
+      const j6 = i * 6, j8 = i * 8;
+      tp[j6] = s.x; tp[j6 + 1] = s.y; tp[j6 + 2] = 0;
+      tp[j6 + 3] = s.x - s.dx * len; tp[j6 + 4] = s.y - s.dy * len; tp[j6 + 5] = 0;
+      tc[j8] = s.r; tc[j8 + 1] = s.g; tc[j8 + 2] = s.b; tc[j8 + 3] = s.a * tailA;
+      tc[j8 + 4] = s.r; tc[j8 + 5] = s.g; tc[j8 + 6] = s.b; tc[j8 + 7] = 0;
+    }
+
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.aColor.needsUpdate = true;
+    this.points.geometry.attributes.aSize.needsUpdate = true;
+    this.trails.geometry.attributes.position.needsUpdate = true;
+    this.trails.geometry.attributes.aColor.needsUpdate = true;
+
+    this._updateLinks(ctx);
+  },
+
+  /* Gold links. Hard-capped, always within one cluster — a full mesh over
+     every particle is explicitly not the effect. */
+  _updateLinks(ctx) {
+    const P = ctx.layers[1];
+    const v = P.value / 100;
+    const midW = smooth(0, 1, 1 - Math.abs(P.value - 50) / ((CONFIG.SLIDER.BAND_HIGH - CONFIG.SLIDER.BAND_LOW) / 2 + 1e-6));
+    // Once the network signature has settled, the cluster index is the polygon
+    // edge index, so joining same-cluster particles draws the polygon itself.
+    const netSig = ctx.sigMix > 0.5 && ctx.signature === SIG.NETWORK;
+    const K = netSig ? CONFIG.SIGNATURE.NODES
+            : midW > 0.5 ? 2
+            : (v >= 0.5 ? CONFIG.LAYERS.CLUSTERS_SPACE : CONFIG.LAYERS.CLUSTERS_CONNECT);
+
+    // Every term is gated on P.act so an unanswered layer contributes no
+    // links at all — including in the middle band, whose fixed one-or-two
+    // links would otherwise appear before the question was even asked.
+    let budget = netSig
+      ? CONFIG.CONNECTIONS.MAX
+      : midW > 0.5
+      ? Math.round(CONFIG.CONNECTIONS.MID_BAND_MAX * P.act)
+      : Math.round(CONFIG.CONNECTIONS.MAX * (1 - v) * P.act);
+    budget = Math.max(0, Math.min(CONFIG.CONNECTIONS.MAX, budget));
+
+    const lp = this._lPos, lc = this._lCol, pairs = ImprintField.pairs;
+    // Endpoints come straight out of the particle buffer this frame already
+    // filled, so a link can never disagree with the points it joins.
+    const pos = this._pos, col = this._col;
+    const baseA = CONFIG.CONNECTIONS.ALPHA * P.alpha * P.act * (1 + P.pulse) * CONFIG.FIELD.ALPHA;
+    const maxLen = CONFIG.CONNECTIONS.MAX_LEN * ctx.unit;
+    const maxLenSq = maxLen * maxLen;
+    let out = 0;
+
+    const totalPairs = pairs.length >> 1;
+    const stride = Math.max(1, Math.floor(totalPairs / Math.max(1, budget)));
+
+    // Strided outer pass, then the offsets in between. Picks land spread across
+    // every cluster, but a rejected candidate costs a link rather than losing
+    // one — which is what left the middle band with no links at all.
+    for (let off = 0; off < stride && out < budget; off++) {
+      for (let p = off; p < totalPairs && out < budget; p += stride) {
+        const k = p * 2;
+        const i = pairs[k], j = pairs[k + 1];
+        if (i >= this.count || j >= this.count) continue;
+        if (ImprintField.clusterOf(i, K) !== ImprintField.clusterOf(j, K)) continue;
+
+        // Same cluster is not enough: a particle expressing the "space" side of
+        // the axis sits far from its group, and joining it draws a mesh edge.
+        const ddx = pos[i * 3] - pos[j * 3], ddy = pos[i * 3 + 1] - pos[j * 3 + 1];
+        if (ddx * ddx + ddy * ddy > maxLenSq) continue;
+
+        const a = baseA * Math.min(col[i * 4 + 3], col[j * 4 + 3]) * 2.0;
+        if (a < 0.004) continue;
+
+        const o6 = out * 6, o8 = out * 8;
+        lp[o6] = pos[i * 3]; lp[o6 + 1] = pos[i * 3 + 1]; lp[o6 + 2] = 0;
+        lp[o6 + 3] = pos[j * 3]; lp[o6 + 4] = pos[j * 3 + 1]; lp[o6 + 5] = 0;
+        lc[o8] = C.gold[0]; lc[o8 + 1] = C.gold[1]; lc[o8 + 2] = C.gold[2]; lc[o8 + 3] = a;
+        lc[o8 + 4] = C.gold[0]; lc[o8 + 5] = C.gold[1]; lc[o8 + 6] = C.gold[2]; lc[o8 + 7] = a;
+        out++;
+      }
+    }
+
+    /* Band-to-band bridges, merge beat only. sin(π·unify) means they are
+       absent both before the merge and once it has settled, so the resting
+       imprint — and the card, which renders the resting imprint — never has
+       to account for them. */
+    const bridge = Math.sin(Math.min(1, ctx.unify) * Math.PI);
+    if (bridge > 0.02 && ImprintField.crossPairs) {
+      const cp = ImprintField.crossPairs;
+      const nCross = cp.length >> 1;
+      const cBudget = Math.min(CONFIG.CONNECTIONS.CROSS_MAX, nCross);
+      const cStride = Math.max(1, Math.floor(nCross / Math.max(1, cBudget)));
+      const crossLenSq = Math.pow(CONFIG.CONNECTIONS.CROSS_LEN * ctx.unit, 2);
+      const cBase = CONFIG.CONNECTIONS.CROSS_ALPHA * bridge * CONFIG.FIELD.ALPHA;
+      let done = 0;
+      for (let p = 0; p < nCross && done < cBudget; p += cStride) {
+        const i = cp[p * 2], j = cp[p * 2 + 1];
+        if (i >= this.count || j >= this.count) continue;
+        const ddx = pos[i * 3] - pos[j * 3], ddy = pos[i * 3 + 1] - pos[j * 3 + 1];
+        if (ddx * ddx + ddy * ddy > crossLenSq) continue;
+        const a = cBase * Math.min(col[i * 4 + 3], col[j * 4 + 3]) * 2.0;
+        if (a < 0.004) continue;
+
+        const o6 = out * 6, o8 = out * 8;
+        lp[o6] = pos[i * 3]; lp[o6 + 1] = pos[i * 3 + 1]; lp[o6 + 2] = 0;
+        lp[o6 + 3] = pos[j * 3]; lp[o6 + 4] = pos[j * 3 + 1]; lp[o6 + 5] = 0;
+        lc[o8] = C.gold[0]; lc[o8 + 1] = C.gold[1]; lc[o8 + 2] = C.gold[2]; lc[o8 + 3] = a;
+        lc[o8 + 4] = C.gold[0]; lc[o8 + 5] = C.gold[1]; lc[o8 + 6] = C.gold[2]; lc[o8 + 7] = a;
+        out++; done++;
+      }
+    }
+
+    this.linkCount = out;
+    this.links.geometry.setDrawRange(0, out * 2);
+    this.links.geometry.attributes.position.needsUpdate = true;
+    this.links.geometry.attributes.aColor.needsUpdate = true;
+  },
+};
+
+/* Live render context, rebuilt in place each frame — one object, no garbage. */
+const fieldCtx = {
+  time: 0, aspect: 1, unit: 1,
+  chest: { x: 0, y: 0 },
+  faceX: 0, faceY: 0, faceS: 0.22,
+  assembly: 0, seal: 0, ambient: 0,
+  // Derived from `assembly` each frame rather than stored: unify drives the
+  // cross-band links, sigMix drives the settle into the signature form.
+  unify: 0, sigMix: 0, signature: SIG.BALANCED,
+  layers: [
+    { value: 50, act: 0, alpha: 0, pulse: 0, wave: 0 },
+    { value: 50, act: 0, alpha: 0, pulse: 0, wave: 0 },
+    { value: 50, act: 0, alpha: 0, pulse: 0, wave: 0 },
+  ],
+};
+
+// Assembly and seal progress are driven by the state machine, read here.
+// `signature` is set once, when the result is computed at assembly time.
+const Stage = { assembly: 0, seal: 0, ambient: 0, signature: SIG.BALANCED };
+
+let fieldTime = 0;
+
+function updateField(dtMs) {
+  fieldTime += (dtMs / 1000) * CONFIG.FIELD.DRIFT_SPEED * (REDUCED ? CONFIG.FIELD.REDUCED_SPEED : 1);
+  Layers.update(dtMs);
+
+  const wantAmbient = (AppState.current >= S.ALIGN && !Layers.set.some(L => L.lockedAt)) ? 1 : 0;
+  Stage.ambient += (wantAmbient - Stage.ambient) * Math.min(1, dtMs / 420);
+
+  const now = performance.now();
+  fieldCtx.time = fieldTime;
+  fieldCtx.aspect = view.aspect;
+  fieldCtx.unit = Math.max(Track.s, 0.10) * CONFIG.FIELD.SCALE;
+  fieldCtx.chest.x = Anchors.chest.x; fieldCtx.chest.y = Anchors.chest.y;
+  fieldCtx.faceX = Track.x; fieldCtx.faceY = Track.y; fieldCtx.faceS = Track.s;
+  fieldCtx.assembly = Stage.assembly;
+  fieldCtx.seal = Stage.seal;
+  fieldCtx.ambient = Stage.ambient;
+  fieldCtx.signature = Stage.signature;
+  fieldCtx.unify = smooth(CONFIG.ASSEMBLY.SEPARATE, CONFIG.ASSEMBLY.CONVERGE, Stage.assembly);
+  fieldCtx.sigMix = smooth(CONFIG.SIGNATURE.SETTLE, 1, Stage.assembly);
+
+  for (let i = 0; i < 3; i++) {
+    const L = Layers.set[i], F = fieldCtx.layers[i];
+    F.value = L.value; F.act = L.act; F.alpha = L.alpha;
+    F.pulse = Layers.pulse(i, now); F.wave = Layers.wave(i, now);
+  }
+
+  ParticleSystem.update(fieldCtx);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UI CONTROLLERS
+   ═══════════════════════════════════════════════════════════════════ */
+const Hint = {
+  el: document.getElementById('hint'),
+  _text: '',
+  show(text) {
+    if (this._text === text) return;
+    this._text = text;
+    this.el.textContent = text;
+    this.el.classList.add('on');
+  },
+  hide() {
+    if (!this._text) return;
+    this._text = '';
+    this.el.classList.remove('on');
+  },
+};
+
+/* ── Camera / alignment states ──────────────────────────────────── */
+const deniedTextEl = document.getElementById('deniedText');
+
+async function bootCamera() {
+  try {
+    await CameraManager.start();
+  } catch (err) {
+    const reason = CameraManager.classify(err);
+    if (reason === 'busy') { AppState.go(S.CAM_BUSY); return; }
+    if (reason === 'none') { AppState.go(S.FALLBACK_NOTICE); return; }
+    deniedTextEl.textContent =
+      reason === 'inapp'    ? COPY.INAPP :
+      reason === 'insecure' ? COPY.SECURE : COPY.DENIED_TEXT;
+    AppState.go(S.CAM_DENIED);
+    return;
+  }
+
+  // Camera is up. Tracking is a separate failure surface: if the model or its
+  // WASM never arrives, the composite still works at a fixed centre.
+  await FaceTracking.init();
+  if (!FaceTracking.available) { AppState.go(S.FALLBACK_NOTICE); return; }
+  AppState.go(S.ALIGN);
+}
+
+AppState.on(S.SPLASH, () => {
+  Hint.hide();
+  AppState.announce('بصمة الأثر');
+});
+
+AppState.on(S.STARTING, () => {
+  AppState.announce(COPY.STARTING);
+  bootCamera();
+});
+
+AppState.on(S.CAM_DENIED, () => AppState.announce(deniedTextEl.textContent));
+AppState.on(S.CAM_BUSY,   () => AppState.announce(COPY.BUSY));
+AppState.on(S.FALLBACK_NOTICE, () => AppState.announce(COPY.FALLBACK));
+
+AppState.on(S.ALIGN, () => {
+  AppState.announce(`${COPY.ALIGN}. ${COPY.INSTRUCTION}`);
+  // Without tracking there is nothing to acquire — hold the beat, then move on.
+  if (Track.mode !== 'live') AppState.after(700, () => AppState.go(S.ACTIVATED));
+});
+
+AppState.on(S.ACTIVATED, () => {
+  AppState.announce(`${COPY.ACTIVATED}. ${COPY.ACTIVATED_NEXT}`);
+  AppState.after(1900, () => AppState.go(S.Q1));
+});
+
+/* Ambience — a low drone, built on the start gesture and muted until asked
+   for. Autoplay policy aside, sound that arrives uninvited at an event is a
+   liability; the toggle only appears once the experience has begun. */
+const Ambience = {
+  ctx: null, master: null, enabled: false, started: false,
+  btn: document.getElementById('audioBtn'),
+
+  start() {
+    if (this.started || !CONFIG.AUDIO.ENABLED) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0;                 // muted by default
+    this.master.connect(this.ctx.destination);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    filter.Q.value = 0.6;
+    filter.connect(this.master);
+
+    for (const detune of [-7, 5]) {             // two slightly detuned voices beat slowly
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = CONFIG.AUDIO.BASE_HZ;
+      osc.detune.value = detune;
+      const g = this.ctx.createGain();
+      g.gain.value = 0.5;
+      osc.connect(g); g.connect(filter);
+      osc.start();
+    }
+
+    const lfo = this.ctx.createOscillator();    // slow breathing, so it never sits still
+    lfo.frequency.value = 0.06;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 140;
+    lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
+    lfo.start();
+
+    this.started = true;
+    this.btn.classList.add('on');
+    this._paint();
+  },
+
+  toggle() {
+    if (!this.started) return;
+    this.enabled = !this.enabled;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(this.enabled ? CONFIG.AUDIO.VOLUME : 0, t, 0.35);
+    this._paint();
+  },
+
+  setSuspended(suspend) {
+    if (!this.started) return;
+    if (suspend) this.ctx.suspend?.();
+    else if (this.enabled) this.ctx.resume?.();
+  },
+
+  _paint() {
+    this.btn.setAttribute('aria-pressed', String(this.enabled));
+    this.btn.setAttribute('aria-label', this.enabled ? 'كتم الصوت' : 'تشغيل الصوت');
+    this.btn.classList.toggle('muted', !this.enabled);
+  },
+};
+Ambience.btn.addEventListener('click', () => Ambience.toggle());
+
+document.getElementById('btnStart').addEventListener('click', () => {
+  Ambience.start();
+  AppState.go(S.STARTING);
+});
+document.getElementById('btnRetry').addEventListener('click', () => AppState.go(S.STARTING));
+document.getElementById('btnRetryBusy').addEventListener('click', () => AppState.go(S.STARTING));
+document.getElementById('btnFallback').addEventListener('click', () => AppState.go(S.FALLBACK_NOTICE));
+document.getElementById('btnFallbackBusy').addEventListener('click', () => AppState.go(S.FALLBACK_NOTICE));
+document.getElementById('btnFallbackGo').addEventListener('click', () => {
+  Ambience.start();   // this button carries the same "ابدأ التجربة" gesture
+  AppState.go(S.ALIGN);
+});
+
+/* Minimal tween runner for the staged moments — assembly and the card
+   transformation. Reduced motion keeps every stage, it just gets there in a
+   fraction of the time, so nothing is ever skipped or hidden. */
+const Tweens = {
+  list: [],
+  dur(ms) { return REDUCED ? Math.min(ms, 420) : ms; },
+  to(obj, key, target, ms, onDone) {
+    const from = obj[key];
+    this.list.push({ obj, key, from, target, ms: this.dur(ms), t: 0, onDone });
+  },
+  update(dtMs) {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const tw = this.list[i];
+      tw.t = Math.min(1, tw.t + dtMs / tw.ms);
+      const e = tw.t < 0.5 ? 4 * tw.t ** 3 : 1 - (-2 * tw.t + 2) ** 3 / 2;   // easeInOutCubic
+      tw.obj[tw.key] = tw.from + (tw.target - tw.from) * e;
+      if (tw.t >= 1) { this.list.splice(i, 1); tw.onDone?.(); }
+    }
+  },
+  clear() { this.list.length = 0; },
+};
+
+/* ── Questions ──────────────────────────────────────────────────── */
+const QUESTIONS = Object.freeze([
+  Object.freeze({
+    axis:  'اتجاه البداية',
+    text:  'عندما تبدأ شيئاً جديداً، كيف يتكوّن أثرك بصورة طبيعية؟',
+    left:  'أبدأ من نقطة واضحة ثم أبني حولها',
+    right: 'أفتح مساحة ثم أكتشف أين يتكوّن الاتجاه',
+    confirm: 'تم تسجيل اتجاه بداية أثرك',
+  }),
+  Object.freeze({
+    axis:  'بناء القيمة',
+    text:  'عندما تعمل مع أفكار أو أشخاص مختلفين، أين تصنع القيمة الأكبر؟',
+    left:  'أربط العناصر حتى يظهر بينها معنى مشترك',
+    right: 'أمنح كل عنصر مساحته ليحافظ على قيمته',
+    confirm: 'تم تسجيل طريقة بنائك للأثر',
+  }),
+  Object.freeze({
+    axis:  'استمرار الأثر',
+    text:  'أي أثر يشبهك أكثر عندما يستمر بعد اللحظة؟',
+    left:  'أثر يتعمق ويثبت مع الوقت',
+    right: 'أثر ينتشر ويفتح مسارات جديدة',
+    confirm: 'اكتملت بصمة أثرك',
+  }),
+]);
+
+const Q_STATE      = [S.Q1, S.Q2, S.Q3];
+const Q_LOCK_STATE = [S.Q1_LOCK, S.Q2_LOCK, S.Q3_LOCK];
+
+/* SliderController — one control, three questions. Dragging previews the
+   layer translucently; releasing commits it. The layer being previewed is
+   never the layer that was already locked, so a change of mind on question 3
+   cannot disturb what questions 1 and 2 wrote. */
+const SliderController = {
+  el: document.getElementById('qSlider'),
+  textEl: document.getElementById('qText'),
+  leftEl: document.getElementById('qLeft'),
+  rightEl: document.getElementById('qRight'),
+  progressEl: document.getElementById('qProgress'),
+  progressText: document.getElementById('qProgressText'),
+  wrapEl: document.querySelector('#p-question .qwrap'),
+
+  index: 0,
+  locked: false,
+  _keyTimer: 0,
+
+  enter(qIndex) {
+    this.index = qIndex;
+    this.locked = false;
+    const Q = QUESTIONS[qIndex];
+
+    this.textEl.textContent = Q.text;
+    this.leftEl.textContent = Q.left;
+    this.rightEl.textContent = Q.right;
+
+    const v = Journey.startValue(qIndex);
+    this.el.value = String(v);
+    this.el.setAttribute('aria-label', Q.text);
+    this.wrapEl.classList.remove('locked');
+
+    [...this.progressEl.children].forEach((pip, i) => {
+      pip.classList.toggle('done', i < qIndex);
+      pip.classList.toggle('now', i === qIndex);
+    });
+    this.progressText.textContent = `السؤال ${qIndex + 1} من 3`;
+
+    // Show the layer straight away, translucent: the user should see what the
+    // control does before committing to it.
+    Layers.preview(qIndex, v);
+    this._describe(v);
+    AppState.announce(`${Q.text} — ${Q.left} أو ${Q.right}`);
+  },
+
+  _describe(v) {
+    const Q = QUESTIONS[this.index];
+    this.leftEl.classList.toggle('hot', v <= CONFIG.SLIDER.BAND_LOW);
+    this.rightEl.classList.toggle('hot', v >= CONFIG.SLIDER.BAND_HIGH);
+    this.el.setAttribute('aria-valuetext',
+      v <= CONFIG.SLIDER.BAND_LOW ? Q.left :
+      v >= CONFIG.SLIDER.BAND_HIGH ? Q.right : 'بين الاتجاهين');
+  },
+
+  onInput() {
+    if (this.locked) return;
+    const v = +this.el.value;
+    Layers.preview(this.index, v);
+    this._describe(v);
+  },
+
+  // Pointer/touch release, or an explicit Enter/Space, commits the layer.
+  commit() {
+    if (this.locked) return;
+    this.locked = true;
+    clearTimeout(this._keyTimer);
+
+    const v = +this.el.value;
+    Journey.set(this.index, v);
+    Layers.lock(this.index, v);
+    this.wrapEl.classList.add('locked');
+
+    AppState.go(Q_LOCK_STATE[this.index]);
+  },
+
+  // Arrow keys adjust without committing; a short idle then commits, so the
+  // keyboard path gets the same lock-and-advance rhythm as a touch release.
+  scheduleKeyCommit() {
+    clearTimeout(this._keyTimer);
+    this._keyTimer = setTimeout(() => this.commit(), CONFIG.SLIDER.KEY_LOCK_MS);
+  },
+};
+
+{
+  const sc = SliderController;
+  sc.el.addEventListener('input', () => sc.onInput());
+  sc.el.addEventListener('pointerup', () => sc.commit());
+  sc.el.addEventListener('touchend', () => sc.commit());
+  sc.el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      sc.commit();
+    } else if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End' ||
+               e.key === 'PageUp' || e.key === 'PageDown') {
+      sc.scheduleKeyCommit();
+    }
+  });
+}
+
+QUESTIONS.forEach((Q, i) => {
+  AppState.on(Q_STATE[i], () => SliderController.enter(i));
+
+  AppState.on(Q_LOCK_STATE[i], () => {
+    document.getElementById('confirmText').textContent = Q.confirm;
+    AppState.announce(Q.confirm);
+    const next = i < 2 ? Q_STATE[i + 1] : S.ASSEMBLY;
+    const dwell = i < 2 ? CONFIG.MOTION.AUTO_ADVANCE_MS : CONFIG.MOTION.CONFIRM_MS;
+    AppState.after(dwell, () => AppState.go(next));
+  });
+});
+
+/* ── Assembly & result ──────────────────────────────────────────── */
+const resTitleEl = document.getElementById('resTitle');
+const resDescEl  = document.getElementById('resDesc');
+const resAxesEl  = document.getElementById('resAxes');
+
+// The one place the result is derived. Journey.answers is the only input.
+let currentResult = null;
+
+function renderResult() {
+  currentResult = ResultEngine.compute(...Journey.answers);
+  resTitleEl.textContent = currentResult.title;
+  resDescEl.textContent = currentResult.description;
+
+  resAxesEl.replaceChildren();
+  for (const axis of currentResult.axes) {
+    const row = document.createElement('div');
+    row.className = 'axis';
+
+    const head = document.createElement('div');
+    head.className = 'row';
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = axis.name;
+    const band = document.createElement('span');
+    band.className = 'band';
+    // A balanced axis still names both ends rather than going blank — the
+    // reading is "between these", not "nothing to report".
+    band.textContent = axis.title ?? 'بين الاتجاهين';
+    head.append(name, band);
+
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.dir = 'ltr';                       // 0 at the physical left, matching the slider
+    const fill = document.createElement('i');
+    fill.style.width = `${axis.value}%`;
+    bar.appendChild(fill);
+
+    row.append(head, bar);
+    resAxesEl.appendChild(row);
+  }
+  return currentResult;
+}
+
+AppState.on(S.ASSEMBLY, () => {
+  AppState.announce('اكتملت بصمة أثرك');
+  // Grab the portrait now, while the subject is still composed in frame.
+  Portrait.capture();
+  // The result has to exist before the assembly runs, not after it: the third
+  // beat settles the field into this result's signature form, so the sampler
+  // needs to know which one it is heading for while the tween is still moving.
+  Stage.signature = signatureFor(renderResult().key);
+  Tweens.to(Stage, 'assembly', 1, CONFIG.MOTION.ASSEMBLY_MS,
+    () => AppState.go(S.RESULT));
+});
+
+AppState.on(S.RESULT, () => {
+  const r = renderResult();
+  AppState.announce(`بصمة أثرك: ${r.title}. ${r.description}`);
+});
+
+document.getElementById('btnCard').addEventListener('click', () => AppState.go(S.CARD_TRANSFORM));
+
+/* Per-frame state work: acquisition and the face-lost hint. Anything that
+   depends on tracking timing lives here rather than in a timer, so it stays
+   honest about what the camera is actually seeing. */
+const LOST_HINT_STATES = new Set([S.ACTIVATED, S.Q1, S.Q1_LOCK, S.Q2, S.Q2_LOCK, S.Q3, S.Q3_LOCK]);
+
+function tickState() {
+  const st = AppState.current;
+
+  if (st === S.ALIGN && Track.mode === 'live' && Track.everAcquired) {
+    AppState.go(S.ACTIVATED);
+    return;
+  }
+
+  if (Track.mode === 'live' && LOST_HINT_STATES.has(st) &&
+      !Track.present && Track.lostFor > CONFIG.TRACKING.LOST_MS) {
+    Hint.show(COPY.FACE_LOST);
+  } else if (Hint._text === COPY.FACE_LOST) {
+    Hint.hide();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESULT ENGINE
+
+   A pure function of the three slider values. It closes over nothing but
+   CONFIG and its own tables — it cannot reach Track, CameraManager,
+   FaceTracking or any DOM node, so there is no path by which anything the
+   camera saw could reach the result. That is a structural guarantee, not
+   a convention: to break it you would have to add an import to this block.
+   ═══════════════════════════════════════════════════════════════════ */
+const AXES = Object.freeze([
+  Object.freeze({
+    name: 'اتجاه البداية',
+    low:  'نواة التركيز',
+    high: 'مجال الاكتشاف',
+  }),
+  Object.freeze({
+    name: 'بناء القيمة',
+    low:  'شبكة المعنى',
+    high: 'مساحة القيمة',
+  }),
+  Object.freeze({
+    name: 'استمرار الأثر',
+    low:  'عمق الرسوخ',
+    high: 'أفق الامتداد',
+  }),
+]);
+
+const BALANCED_KEY = 'البصمة المتوازنة';
+
+const DESCRIPTIONS = Object.freeze({
+  'نواة التركيز':   'أثر يبدأ من فكرة واضحة، يمنحها شكلاً قابلاً للبناء، ثم يوسّع حضورها بخطوات محسوبة.',
+  'مجال الاكتشاف':  'أثر يلتقط الاحتمالات قبل تثبيت اتجاه واحد، ويجد النقطة التي تستحق أن تتحول إلى مسار.',
+  'شبكة المعنى':    'قدرة على رؤية الصلات بين العناصر وتحويلها إلى معنى مشترك من دون إلغاء اختلافها.',
+  'مساحة القيمة':   'أثر يمنح كل فكرة أو شخص مساحة كافية ليظهر بقيمته، ثم يبني المشهد من توازن الأجزاء.',
+  'عمق الرسوخ':     'أثر لا يعتمد على الظهور السريع؛ يتراكم بهدوء ويصبح أكثر ثباتاً ووضوحاً مع الوقت.',
+  'أفق الامتداد':   'أثر يفتح طرقاً جديدة ويمنح الفكرة فرصة للانتقال والتوسع من دون فقدان مصدرها.',
+  [BALANCED_KEY]:   'أثر يعرف متى يركز، ومتى يستكشف، ومتى يربط، ومتى يترك المساحة، ومتى يتعمق أو يمتد.',
+});
+
+/* Result → resting geometry. This is the only place the two are tied
+   together; the sampler takes an index and knows nothing about the copy. */
+const SIGNATURE_OF = Object.freeze({
+  'نواة التركيز':  SIG.FOCUS,
+  'مجال الاكتشاف': SIG.DISCOVERY,
+  'شبكة المعنى':   SIG.NETWORK,
+  'مساحة القيمة':  SIG.SPACE,
+  'عمق الرسوخ':    SIG.DEPTH,
+  'أفق الامتداد':  SIG.REACH,
+  [BALANCED_KEY]:  SIG.BALANCED,
+});
+const signatureFor = key => SIGNATURE_OF[key] ?? SIG.BALANCED;
+
+const ResultEngine = Object.freeze({
+  band(value) {
+    if (value <= CONFIG.SLIDER.BAND_LOW) return 'low';
+    if (value >= CONFIG.SLIDER.BAND_HIGH) return 'high';
+    return 'balanced';
+  },
+
+  /* (a1, a2, a3) → result. Dominant axis is the answer farthest from 50.
+     Ties resolve by axis order, which is deterministic rather than arbitrary:
+     the earlier question is the one the whole imprint was built on top of. */
+  compute(a1, a2, a3) {
+    const values = [a1, a2, a3].map(v => {
+      const n = Math.round(Number(v));
+      return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 50;
+    });
+
+    const axes = values.map((value, i) => {
+      const band = this.band(value);
+      return {
+        name: AXES[i].name,
+        value,
+        band,
+        title: band === 'high' ? AXES[i].high : band === 'low' ? AXES[i].low : null,
+        deviation: Math.abs(value - 50),
+      };
+    });
+
+    let dominant = -1;
+    for (let i = 0; i < axes.length; i++) {
+      if (axes[i].band === 'balanced') continue;
+      if (dominant === -1 || axes[i].deviation > axes[dominant].deviation) dominant = i;
+    }
+
+    const key = dominant === -1 ? BALANCED_KEY : axes[dominant].title;
+    return { key, title: key, description: DESCRIPTIONS[key], dominant, axes, values };
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARD RENDERER
+
+   The imprint on the card is not a screenshot of the live canvas. It is
+   redrawn from the saved seed and the three answers through the same
+   ImprintField.sample() the WebGL field uses, with time frozen. Same
+   inputs, same picture — the export is reproducible and it visibly
+   inherits the field the user just built.
+   ═══════════════════════════════════════════════════════════════════ */
+const CARD_COPY = Object.freeze({
+  KICKER:  'دعوة خاصة',
+  IMPRINT: 'بصمة أثرك',
+  SECTION: 'دعوتك',
+  EVENT:   'لقاء المستقبل',
+  TBA:     'يُعلن قريباً',
+  CLOSING: 'أثرك جزء من اللحظة القادمة.',
+  L_DATE:  'التاريخ',
+  L_TIME:  'الوقت',
+  L_PLACE: 'المكان',
+});
+
+const CARD_LAYOUT = Object.freeze({
+  FRAME_PAD: 15,
+  KICKER_Y: 54,
+  PORTRAIT: { X: 240, Y: 142 },
+  IMPRINT_SCALE: 185,     // px per world unit; ties portrait radius to the face-protect radius
+  IMPRINT_TIME: 21.5,     // frozen sample time — chosen because the layers read clearly here
+  SCRIM_TOP: 312,
+  SCRIM_BOTTOM: 420,
+  LABEL_Y: 366,
+  TITLE_Y: 404,
+  AXES_Y: 442,
+  AXIS_STEP: 28,
+  RULE_Y: 530,
+  SECTION_Y: 568,
+  EVENT_Y: 602,
+  ROWS_Y: 630,
+  ROW_STEP: 21,
+  CLOSING_Y: 696,
+});
+
+/* A frame grabbed from the camera at assembly time, mirrored to match what
+   the user was looking at. Optional — the card is complete without it. */
+const Portrait = {
+  canvas: null,
+  capture() {
+    if (!CameraManager.active || !videoEl.videoWidth) return false;
+    const size = 320;
+    const c = this.canvas || (this.canvas = document.createElement('canvas'));
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+
+    // Square crop around the tracked face, falling back to the frame centre.
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    const nx = Track._raw.has ? Track._raw.x : 0.5;
+    const ny = Track._raw.has ? Track._raw.y : 0.45;
+    const box = Math.min(vw, vh) * (Track._raw.has ? Math.min(1, Track._raw.s * 4.2) : 0.8);
+    const sx = Math.max(0, Math.min(vw - box, nx * vw - box / 2));
+    const sy = Math.max(0, Math.min(vh - box, ny * vh - box / 2));
+
+    g.translate(size, 0); g.scale(-1, 1);       // mirror, as the live composite is mirrored
+    g.drawImage(videoEl, sx, sy, box, box, 0, 0, size, size);
+    return true;
+  },
+  clear() { this.canvas = null; },
+};
+
+const InvitationCardRenderer = {
+  canvas: document.getElementById('cardCanvas'),
+  drawn: false,
+  _fontsReady: null,
+  _ctx: {
+    time: CARD_LAYOUT.IMPRINT_TIME, aspect: CONFIG.CARD.W / CONFIG.CARD.H, unit: 1,
+    chest: { x: 0, y: 0 },
+    faceX: 0, faceY: 0, faceS: 0.24,
+    // The card draws the imprint at rest: assembly finished, so the settle
+    // beat is complete and the signature is fully expressed. unify is 0 for
+    // the same reason — the band-to-band bridges belong to the merge, which
+    // is over by the time this frame exists.
+    assembly: 1, seal: 0, ambient: 0,
+    unify: 0, sigMix: 1, signature: SIG.BALANCED,
+    layers: [{ value: 50, act: 1, alpha: 1, pulse: 0, wave: 0 },
+             { value: 50, act: 1, alpha: 1, pulse: 0, wave: 0 },
+             { value: 50, act: 1, alpha: 1, pulse: 0, wave: 0 }],
+  },
+  _s: { x: 0, y: 0, dx: 0, dy: 0, size: 1, a: 1, r: 1, g: 1, b: 1 },
+
+  // Arabic shapes correctly in canvas only once the face is actually loaded;
+  // drawing early silently falls back to a system font and reflows the layout.
+  fonts() {
+    if (!this._fontsReady) {
+      this._fontsReady = Promise.all([
+        document.fonts.load('400 15px Cairo'),
+        document.fonts.load('600 15px Cairo'),
+        document.fonts.load('700 30px Cairo'),
+      ]).then(() => document.fonts.ready).catch(() => {});
+    }
+    return this._fontsReady;
+  },
+
+  async render(result, answers, seed) {
+    await this.fonts();
+    const W = CONFIG.CARD.W, H = CONFIG.CARD.H, K = CONFIG.CARD.EXPORT_SCALE;
+    const cv = this.canvas;
+    cv.width = W * K; cv.height = H * K;
+    const g = cv.getContext('2d');
+    g.setTransform(K, 0, 0, K, 0, 0);       // draw in logical units, export at 2×
+    g.direction = 'rtl';
+
+    this._background(g, W, H);
+    this._imprint(g, W, H, answers, seed, result);
+    this._scrim(g, W, H);
+    this._portrait(g);
+    this._seal(g);
+    this._text(g, W, H, result);
+    this._frame(g, W, H);
+    this.drawn = true;
+    return cv;
+  },
+
+  _background(g, W, H) {
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0A0716');
+    bg.addColorStop(0.42, '#191226');
+    bg.addColorStop(1, '#05060B');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+
+    const glow = g.createRadialGradient(W / 2, 190, 10, W / 2, 190, 330);
+    glow.addColorStop(0, 'rgba(0,234,242,.13)');
+    glow.addColorStop(1, 'rgba(0,234,242,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, 0, W, H);
+  },
+
+  /* The same sampler the live field runs, at a frozen time. Because the
+     particle statics come from the seed, the same seed and answers always
+     produce the same picture. */
+  _imprint(g, W, H, answers, seed, result) {
+    if (ImprintField.seedUsed !== seed) ImprintField.build(seed);
+
+    const ctx = this._ctx;
+    // The signature is what makes one exported card differ in shape from
+    // another, not just in caption.
+    ctx.signature = signatureFor(result?.key);
+    const A = CONFIG.FALLBACK_ANCHOR, B = CONFIG.BODY;
+    ctx.faceX = A.X; ctx.faceY = A.Y; ctx.faceS = A.SCALE;
+    ctx.unit = A.SCALE * CONFIG.FIELD.SCALE;
+    ctx.chest.x = A.X; ctx.chest.y = A.Y - A.SCALE * B.CHEST_Y;
+    for (let i = 0; i < 3; i++) ctx.layers[i].value = answers[i] ?? CONFIG.SLIDER.DEFAULT;
+
+    const S = CARD_LAYOUT.IMPRINT_SCALE;
+    const cx = CARD_LAYOUT.PORTRAIT.X, cy = CARD_LAYOUT.PORTRAIT.Y;
+    const toX = wx => cx + (wx - A.X) * S;
+    const toY = wy => cy - (wy - A.Y) * S;
+
+    const s = this._s;
+    const n = ParticleSystem.count;
+    const px = new Float32Array(n), py = new Float32Array(n), pa = new Float32Array(n);
+
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+
+    const dim = CONFIG.CARD.IMPRINT_ALPHA;
+    for (let i = 0; i < n; i++) {
+      ImprintField.sample(i, ctx, s);
+      const x = toX(s.x), y = toY(s.y);
+      const a = s.a * dim;
+      px[i] = x; py[i] = y; pa[i] = a;
+      if (a < 0.01) continue;
+
+      const rad = Math.max(1.1, s.size * CONFIG.CARD.IMPRINT_DOT);
+      const col = `${Math.round(s.r * 255)},${Math.round(s.g * 255)},${Math.round(s.b * 255)}`;
+      const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+      grd.addColorStop(0, `rgba(${col},${Math.min(1, a * 0.95).toFixed(3)})`);
+      grd.addColorStop(0.35, `rgba(${col},${Math.min(1, a * 0.42).toFixed(3)})`);
+      grd.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = grd;
+      g.beginPath();
+      g.arc(x, y, rad, 0, TAU);
+      g.fill();
+
+      if (ImprintField.role[i] === ROLE.TRAIL) {
+        g.strokeStyle = `rgba(${col},${(a * CONFIG.PARTICLE.TRAIL_SEGMENT_ALPHA).toFixed(3)})`;
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x - s.dx * CONFIG.PARTICLE.TRAIL_LEN * S, y + s.dy * CONFIG.PARTICLE.TRAIL_LEN * S);
+        g.stroke();
+      }
+    }
+
+    // Gold links, same cluster rule and same cap as the live field.
+    const P = ctx.layers[1];
+    const v = P.value / 100;
+    const midW = smooth(0, 1, 1 - Math.abs(P.value - 50) / ((CONFIG.SLIDER.BAND_HIGH - CONFIG.SLIDER.BAND_LOW) / 2 + 1e-6));
+    // Same signature override as the live field, so the network imprint's
+    // polygon survives the export instead of collapsing to loose dots.
+    const netSig = ctx.signature === SIG.NETWORK;
+    const KC = netSig ? CONFIG.SIGNATURE.NODES
+             : midW > 0.5 ? 2
+             : (v >= 0.5 ? CONFIG.LAYERS.CLUSTERS_SPACE : CONFIG.LAYERS.CLUSTERS_CONNECT);
+    let budget = netSig ? CONFIG.CONNECTIONS.MAX
+               : midW > 0.5 ? CONFIG.CONNECTIONS.MID_BAND_MAX
+                            : Math.round(CONFIG.CONNECTIONS.MAX * (1 - v));
+    budget = Math.max(0, Math.min(CONFIG.CONNECTIONS.MAX, budget));
+    const maxLenPx = CONFIG.CONNECTIONS.MAX_LEN * ctx.unit * S;
+
+    const pairs = ImprintField.pairs;
+    const totalPairs = pairs.length >> 1;
+    const stride = Math.max(1, Math.floor(totalPairs / Math.max(1, budget)));
+    let drawn = 0;
+    g.lineWidth = 1;
+    // Same two-level scan as the live field, so the card shows the same links.
+    for (let off = 0; off < stride && drawn < budget; off++) {
+      for (let p = off; p < totalPairs && drawn < budget; p += stride) {
+        const i = pairs[p * 2], j = pairs[p * 2 + 1];
+        if (i >= n || j >= n) continue;
+        if (ImprintField.clusterOf(i, KC) !== ImprintField.clusterOf(j, KC)) continue;
+        const dx = px[i] - px[j], dy = py[i] - py[j];
+        if (dx * dx + dy * dy > maxLenPx * maxLenPx) continue;
+        const a = CONFIG.CONNECTIONS.ALPHA * Math.min(pa[i], pa[j]) * 2;
+        if (a < 0.01) continue;
+        g.strokeStyle = `rgba(216,183,106,${Math.min(1, a).toFixed(3)})`;
+        g.beginPath();
+        g.moveTo(px[i], py[i]);
+        g.lineTo(px[j], py[j]);
+        g.stroke();
+        drawn++;
+      }
+    }
+
+    g.restore();
+  },
+
+  // Lets the imprint bleed down the card while keeping the text legible.
+  _scrim(g, W, H) {
+    const s = g.createLinearGradient(0, CARD_LAYOUT.SCRIM_TOP, 0, CARD_LAYOUT.SCRIM_BOTTOM);
+    s.addColorStop(0, 'rgba(5,6,11,0)');
+    s.addColorStop(1, 'rgba(5,6,11,.9)');
+    g.fillStyle = s;
+    g.fillRect(0, CARD_LAYOUT.SCRIM_TOP, W, H - CARD_LAYOUT.SCRIM_TOP);
+    g.fillStyle = 'rgba(5,6,11,.9)';
+    g.fillRect(0, CARD_LAYOUT.SCRIM_BOTTOM, W, H - CARD_LAYOUT.SCRIM_BOTTOM);
+  },
+
+  _portrait(g) {
+    const { X, Y } = CARD_LAYOUT.PORTRAIT, R = CONFIG.CARD.PORTRAIT_R;
+    if (CONFIG.CARD.PORTRAIT && Portrait.canvas) {
+      g.save();
+      g.beginPath(); g.arc(X, Y, R, 0, TAU); g.clip();
+      g.drawImage(Portrait.canvas, X - R, Y - R, R * 2, R * 2);
+      g.restore();
+      g.strokeStyle = 'rgba(125,220,255,.34)';
+      g.lineWidth = 1;
+      g.beginPath(); g.arc(X, Y, R, 0, TAU); g.stroke();
+    }
+  },
+
+  _seal(g) {
+    const { X } = CARD_LAYOUT.PORTRAIT;
+    const Y = CARD_LAYOUT.RULE_Y;
+    g.save();
+    g.strokeStyle = 'rgba(216,183,106,.72)';
+    g.lineWidth = 1;
+    g.beginPath(); g.arc(X, Y, 17, 0, TAU); g.stroke();
+    g.beginPath(); g.arc(X, Y, 11, 0, TAU); g.stroke();
+    g.fillStyle = 'rgba(216,183,106,.9)';
+    g.beginPath(); g.arc(X, Y, 3.4, 0, TAU); g.fill();
+    // The rule breaks around the seal so the seal reads as holding the card together.
+    g.strokeStyle = 'rgba(216,183,106,.3)';
+    g.beginPath(); g.moveTo(52, Y); g.lineTo(X - 28, Y); g.stroke();
+    g.beginPath(); g.moveTo(X + 28, Y); g.lineTo(428, Y); g.stroke();
+    g.restore();
+  },
+
+  _line(g, text, x, y, size, weight, color, align = 'center', spacing = null) {
+    g.font = `${weight} ${size}px Cairo, sans-serif`;
+    g.fillStyle = color;
+    g.textAlign = align;
+    g.textBaseline = 'alphabetic';
+    if (spacing !== null && 'letterSpacing' in g) g.letterSpacing = `${spacing}px`;
+    g.fillText(text, x, y);
+    if (spacing !== null && 'letterSpacing' in g) g.letterSpacing = '0px';
+  },
+
+  _text(g, W, H, result) {
+    const L = CARD_LAYOUT, X = W / 2;
+
+    this._line(g, CARD_COPY.KICKER, X, L.KICKER_Y, 13, 600, 'rgba(216,183,106,.92)', 'center', 3);
+    this._line(g, CARD_COPY.IMPRINT, X, L.LABEL_Y, 13, 400, 'rgba(217,247,255,.55)');
+    this._line(g, result.title, X, L.TITLE_Y, 30, 700, '#FFFFFF');
+
+    // Axis values, compact: name on the reading edge, band on the other.
+    result.axes.forEach((axis, i) => {
+      const y = L.AXES_Y + i * L.AXIS_STEP;
+      this._line(g, axis.name, 428, y, 12, 400, 'rgba(217,247,255,.52)', 'right');
+      this._line(g, axis.title ?? 'بين الاتجاهين', 52, y, 13, 600, '#D9F7FF', 'left');
+      g.fillStyle = 'rgba(217,247,255,.13)';
+      g.fillRect(52, y + 7, 376, 2);
+      g.fillStyle = 'rgba(125,220,255,.85)';
+      g.fillRect(52, y + 7, 376 * (axis.value / 100), 2);
+    });
+
+    this._line(g, CARD_COPY.SECTION, X, L.SECTION_Y, 14, 600, 'rgba(216,183,106,.92)');
+    this._line(g, CARD_COPY.EVENT, X, L.EVENT_Y, 22, 700, '#FFFFFF');
+
+    const dateText  = CONFIG.EVENT.DATE ? CalendarICS.displayDate() : CARD_COPY.TBA;
+    const timeText  = CONFIG.EVENT.DATE ? `${CONFIG.EVENT.START} – ${CONFIG.EVENT.END}` : CARD_COPY.TBA;
+    const placeText = CONFIG.EVENT.LOCATION || CARD_COPY.TBA;
+
+    [[CARD_COPY.L_DATE, dateText], [CARD_COPY.L_TIME, timeText], [CARD_COPY.L_PLACE, placeText]]
+      .forEach(([label, value], i) => {
+        const y = L.ROWS_Y + i * L.ROW_STEP;
+        this._line(g, label, 428, y, 12, 400, 'rgba(217,247,255,.5)', 'right');
+        this._line(g, value, 52, y, 13, 600, 'rgba(217,247,255,.95)', 'left');
+      });
+
+    this._line(g, CARD_COPY.CLOSING, X, L.CLOSING_Y, 12.5, 400, 'rgba(125,220,255,.72)');
+  },
+
+  _frame(g, W, H) {
+    const p = CARD_LAYOUT.FRAME_PAD, r = 20;
+    // roundRect landed in Safari 16.4; square corners are a fine degradation.
+    const box = (g.roundRect ? (x, y, w, h, rad) => g.roundRect(x, y, w, h, rad)
+                             : (x, y, w, h) => g.rect(x, y, w, h));
+    g.strokeStyle = 'rgba(216,183,106,.42)';
+    g.lineWidth = 1;
+    g.beginPath(); box(p, p, W - p * 2, H - p * 2, r); g.stroke();
+    g.strokeStyle = 'rgba(217,247,255,.09)';
+    g.beginPath(); box(p + 5, p + 5, W - (p + 5) * 2, H - (p + 5) * 2, r - 4); g.stroke();
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXPORT / SHARE / ICS
+   The action buttons sit in the DOM, outside the canvas, so none of them
+   can end up inside the exported image.
+   ═══════════════════════════════════════════════════════════════════ */
+const ShareDownloadManager = {
+  filename() {
+    const key = (currentResult?.key || '').replace(/\s+/g, '-');
+    return `${CONFIG.CARD.FILENAME}-${key || 'card'}.png`;
+  },
+
+  toBlob(canvas) {
+    return new Promise(res => canvas.toBlob(res, 'image/png'));
+  },
+
+  async download(canvas) {
+    const blob = await this.toBlob(canvas);
+    if (!blob) return false;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this.filename();
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return true;
+  },
+
+  canShareFiles() {
+    if (!navigator.share || !navigator.canShare) return false;
+    try {
+      const probe = new File([new Uint8Array(1)], 'probe.png', { type: 'image/png' });
+      return navigator.canShare({ files: [probe] });
+    } catch { return false; }
+  },
+
+  // Feature-detected share with a download fallback. A cancelled share sheet
+  // is a user decision, not a failure — it must not fall through to a download.
+  async share(canvas) {
+    const blob = await this.toBlob(canvas);
+    if (!blob) return 'error';
+    const file = new File([blob], this.filename(), { type: 'image/png' });
+    if (this.canShareFiles()) {
+      try {
+        await navigator.share({ files: [file], title: 'بصمة الأثر' });
+        return 'shared';
+      } catch (err) {
+        if (err?.name === 'AbortError') return 'cancelled';
+      }
+    }
+    await this.download(canvas);
+    return 'downloaded';
+  },
+};
+
+const CalendarICS = {
+  available() { return !!CONFIG.EVENT.DATE; },
+
+  displayDate() {
+    if (!CONFIG.EVENT.DATE) return CARD_COPY.TBA;
+    const [y, m, d] = CONFIG.EVENT.DATE.split('-');
+    return `${d}/${m}/${y}`;
+  },
+
+  // Local floating times with an explicit TZID: the event happens at a wall
+  // clock time in one place, which is not the same thing as a UTC instant.
+  _stamp(date, time) {
+    return `${date.replace(/-/g, '')}T${time.replace(/:/g, '')}00`;
+  },
+
+  _escape(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+                    .replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  },
+
+  build() {
+    if (!this.available()) return null;
+    const E = CONFIG.EVENT;
+    const uid = `${Date.now()}-${Journey.seed}@basmat-al-athar`;
+    const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const summary = currentResult ? `${E.TITLE} — ${currentResult.title}` : E.TITLE;
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//basmat-al-athar//webar//AR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      `X-WR-TIMEZONE:${E.TZ}`,
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${now}`,
+      `DTSTART;TZID=${E.TZ}:${this._stamp(E.DATE, E.START)}`,
+      `DTEND;TZID=${E.TZ}:${this._stamp(E.DATE, E.END)}`,
+      `SUMMARY:${this._escape(summary)}`,
+      `DESCRIPTION:${this._escape(E.DESCRIPTION)}`,
+      E.LOCATION ? `LOCATION:${this._escape(E.LOCATION)}` : null,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].filter(Boolean);
+
+    return lines.join('\r\n') + '\r\n';
+  },
+
+  download() {
+    const ics = this.build();
+    if (!ics) return false;
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${CONFIG.CARD.FILENAME}.ics`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return true;
+  },
+};
+
+/* ── Card states ────────────────────────────────────────────────── */
+const cardNoteEl = document.getElementById('cardNote');
+const btnIcs = document.getElementById('btnIcs');
+
+AppState.on(S.CARD_TRANSFORM, () => {
+  AppState.announce('افتح الدعوة');
+  if (!currentResult) renderResult();
+  // Draw the card while the imprint is still compressing, so the seal hands
+  // over to a finished frame instead of a blank one.
+  InvitationCardRenderer.render(currentResult, Journey.answers, Journey.seed);
+  Tweens.to(Stage, 'seal', 1, CONFIG.MOTION.CARD_MS, () => AppState.go(S.CARD));
+});
+
+AppState.on(S.CARD, () => {
+  // A ?state=17 jump lands here without passing through the transformation.
+  if (!InvitationCardRenderer.drawn) {
+    if (!currentResult) renderResult();
+    InvitationCardRenderer.render(currentResult, Journey.answers, Journey.seed);
+  }
+  InvitationCardRenderer.canvas.classList.add('in');
+
+  const ready = CalendarICS.available();
+  btnIcs.disabled = !ready;
+  cardNoteEl.textContent = ready ? '' : 'سيتم تفعيل الإضافة إلى التقويم فور إعلان موعد اللقاء.';
+
+  AppState.announce(currentResult ? `دعوة خاصة. ${currentResult.title}` : 'دعوة خاصة');
+}, () => {
+  InvitationCardRenderer.canvas.classList.remove('in');
+});
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  ShareDownloadManager.download(InvitationCardRenderer.canvas);
+});
+document.getElementById('btnShare').addEventListener('click', () => {
+  ShareDownloadManager.share(InvitationCardRenderer.canvas);
+});
+btnIcs.addEventListener('click', () => CalendarICS.download());
+
+document.getElementById('btnRestart').addEventListener('click', () => {
+  Journey.reset();
+  Layers.reset();
+  Track.reset();
+  Tweens.clear();
+  Stage.assembly = 0; Stage.seal = 0; Stage.signature = SIG.BALANCED;
+  currentResult = null;
+  Portrait.clear();
+  InvitationCardRenderer.drawn = false;
+  ImprintField.build(Journey.seed);   // a new session gets a new imprint
+  AppState.go(S.SPLASH);
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   ▸ PER-FRAME LOOP
+   ═══════════════════════════════════════════════════════════════════ */
+const clock = new THREE.Clock();
+
+// Rolling fps estimate. Feeds the debug readout and, from Phase 3, the
+// particle tiering — the number that matters is the sustained one after the
+// device has warmed up, not the first second off a cold GPU.
+const Perf = {
+  fps: 60,
+  _frames: 0,
+  _acc: 0,
+  sample(dt) {
+    this._frames++; this._acc += dt;
+    if (this._acc * 1000 < CONFIG.PERF.SAMPLE_MS) return false;
+    this.fps = this._frames / this._acc;
+    this._frames = 0; this._acc = 0;
+    if (DEBUG) Tuner.setFps(this.fps);
+    return true;
+  },
+};
+
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);   // clamp: a backgrounded tab returns a huge delta
+  const dtMs = dt * 1000;
+
+  if (Perf.sample(dt)) {
+    const n = PerformanceManager.onSample(Perf.fps);
+    if (n !== null) ParticleSystem.setCount(n);
+  }
+
+  Tweens.update(dtMs);
+  updateTracking(dtMs);
+  tickState();
+  updateField(dtMs);
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(frame);
+
+// The camera, the GPU and neural inference all run at once; a hidden tab that
+// keeps rendering is pure thermal cost with nothing on screen.
+document.addEventListener('visibilitychange', () => {
+  renderer.setAnimationLoop(document.hidden ? null : frame);
+  if (!document.hidden) clock.getDelta();
+  Ambience.setSuspended(document.hidden);
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════════════════════ */
+if (DEBUG) Tuner.build();
+
+ParticleSystem.init(Journey.seed);
+
+// Dev-only handle so any subsystem can be driven or inspected without
+// clicking through the journey. Nothing in the normal UI touches it.
+if (DEBUG) {
+  window.__imprint = { CONFIG, COPY, S, AppState, Journey, Layers, Stage, Track,
+                       ImprintField, ParticleSystem, PerformanceManager, Perf,
+                       ResultEngine, InvitationCardRenderer, CalendarICS,
+                       ShareDownloadManager, Portrait, renderer, step: frame };
+}
+
+AppState._force(S.SPLASH);
+
+// A ?state= jump is a dev affordance: it skips the camera gesture entirely,
+// so the field runs on the fixed-centre anchors and any question the jump
+// flew past is filled with a plausible answer.
+if (Dev.jumpTo) {
+  Journey.seedFor(Dev.jumpTo);
+  // Seeded answers have to reach the field too, or a jump to the result screen
+  // shows a result with no imprint behind it.
+  Journey.answers.forEach((v, i) => { if (v !== null) Layers.lock(i, v); });
+  // Past the assembly, the field is supposed to be settled into the signature.
+  // Without this a ?state=15 jump shows the result copy over an unassembled
+  // field, which is the one thing the signature work is meant to fix.
+  if (Dev.jumpTo > S.ASSEMBLY) {
+    Stage.assembly = 1;
+    Stage.signature = signatureFor(ResultEngine.compute(...Journey.answers).key);
+  }
+  AppState._force(Dev.jumpTo);
+}
+</script>
+</body>
+</html>
